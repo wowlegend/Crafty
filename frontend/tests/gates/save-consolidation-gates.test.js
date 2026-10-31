@@ -52,7 +52,8 @@ describe('save consolidation gates', () => {
       .map((f) => f.slice(SRC.length + 1));
     expect(rogue, 'a save payload is being built outside buildSaveData').toEqual([]);
     expect(/buildSaveData/.test(strip(read('WorldManager.jsx')))).toBe(true);
-    expect(/setActiveWorldId/.test(strip(read('WorldManager.jsx')))).toBe(true);
+    // The manual Save writes through the store's saveActiveWorld, which claims and marks the slot itself: what it writes
+    // and where is driven through the real World Manager in two-tab-save-gates.test.jsx, not read here.
   });
 });
 

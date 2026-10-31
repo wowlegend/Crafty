@@ -30,6 +30,7 @@ import { initSettingsPersistence } from './game/settingsPersist.js';
 import { ONBOARDING_TIPS } from './game/onboardingTips.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ContextLossPanel } from './ui/ContextLossPanel.jsx';
+import { SlotConflictPanel } from './ui/SlotConflictPanel.jsx';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { installAutosave } from './game/autosave';
 import { saveWorldInPlay } from './game/worldBoot.js';
@@ -283,6 +284,9 @@ function GameApp({ experienceSystem }) {
 
       {/* A lost WebGL context gets a way back: save, reload into the same world (ui/ContextLossPanel.jsx). */}
       <ContextLossPanel />
+
+      {/* Another tab saved this world: this tab stops saving, and offers the reload (ui/SlotConflictPanel.jsx). */}
+      <SlotConflictPanel />
 
       {!isWorldBuilt && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm pointer-events-auto">

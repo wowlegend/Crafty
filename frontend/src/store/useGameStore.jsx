@@ -97,6 +97,17 @@ function loadModificationsMessage(worldBlocks, seed) {
   return { type: 'load_modifications', payload: { modifications, seed } };
 }
 
+// The saved_at the save index holds for slot `id`, or null: a slot never saved in play, or a save from before the field.
+const slotSavedAt = (id) => (listWorlds().find((w) => w.id === id) || {}).saved_at ?? null;
+// Whether the index's `disk` saved_at is a later write than the `known` one (store saveActiveWorld): two ISO times, and
+// a time beside none is later. A disk with none is a slot nobody has saved in play since the tab read it.
+const writtenSince = (disk, known) => {
+  const d = Date.parse(disk);
+  if (!Number.isFinite(d)) return false;
+  const k = Date.parse(known);
+  return !Number.isFinite(k) || d > k;
+};
+
 // The notice a load's talent refund raises, by the plural form of the points it leaves to spend.
 const RESPEC_NOTICE = Object.freeze({ one: 'notice.talentsRespec.one', other: 'notice.talentsRespec.other' });
 
@@ -117,6 +128,11 @@ export const useGameStore = create((set, get) => ({
     // inherits a pointer to a save it never opened and the autosave writes a level-1 world over it.
     // NEVER serialize this into saveSchema.
     _sessionWorldId: null,
+    // The saved_at of that slot as this tab last read it (the claim) or wrote it (saveActiveWorld), or null. Transient.
+    _slotSavedAt: null,
+    // Set when saveActiveWorld refused to write over a newer save of the slot from another tab: { id }, or null. Once set,
+    // the tab saves nothing more and the conflict panel offers the reload (ui/SlotConflictPanel.jsx). Transient.
+    slotConflict: null,
     // The world the boot loaded, for the title's Continue: { id, name, level, savedAt } or null (game/worldBoot.js
     // bootWorld). Transient: the page that loaded it is the only one it describes.
     continueWorld: null,
@@ -1074,7 +1090,7 @@ export const useGameStore = create((set, get) => ({
         // safe direction: never overwrite a world you cannot identify.
         const loadedId = rawSaveData && rawSaveData.id;
         if (loadedId) {
-            set({ _sessionWorldId: loadedId });
+            set({ _sessionWorldId: loadedId, _slotSavedAt: slotSavedAt(loadedId) });
             setActiveWorldId(loadedId);
         }
         const owed = migrateRetired(saveData);
@@ -1262,7 +1278,7 @@ export const useGameStore = create((set, get) => ({
         const fresh = buildSaveData(useGameStore.getInitialState(), { position: { x: 0, y: 18, z: 0 } });
         get().loadWorldData(fresh);
         set({ resumeSpawn: null }); // a new world's player is not held at the placeholder position
-        set({ _sessionWorldId: id || null });
+        set({ _sessionWorldId: id || null, _slotSavedAt: id ? slotSavedAt(id) : null });
         if (id) setActiveWorldId(id);
     },
 
@@ -1279,8 +1295,13 @@ export const useGameStore = create((set, get) => ({
     // the autosave MINTS A NEW ONE. A save you never opened is not a save you may overwrite. The boot opens
     // the world a page plays (game/worldBoot.js), which is how a returning player's saves land in their slot.
     // `saved_at` is the title's "last played" (MenuSystem.jsx).
+    // TWO TABS, ONE SLOT. Every plain visit claims the newest world's slot (game/worldBoot.js), so a second tab and
+    // Continue put two tabs on one slot, and the one played longer ago wrote its older state over the other's
+    // (AUDIT:persistence:two-tabs-clobber-world). The tab knows the slot's saved_at as it last read or wrote it
+    // (`_slotSavedAt`); a save that finds the index's newer refuses, and `slotConflict` tells the player
+    // (ui/SlotConflictPanel.jsx). Returns whether it wrote.
     saveActiveWorld: (position) => {
-        if (get().isCaptureMode) return;
+        if (get().isCaptureMode) return false;
         const data = buildSaveData(get(), { position });
         let id = get()._sessionWorldId;
         if (!id) {
@@ -1288,12 +1309,21 @@ export const useGameStore = create((set, get) => ({
             set({ _sessionWorldId: id });
             setActiveWorldId(id);
         }
+        const existing = listWorlds().find((w) => w.id === id);
+        if (existing && writtenSince(existing.saved_at, get()._slotSavedAt)) {
+            if (!get().slotConflict) set({ slotConflict: { id } });
+            return false;
+        }
         // Preserve the player's chosen name. `data.save_name` is a `Save_<timestamp>` placeholder minted
         // fresh on every serialize, so writing it back renamed "Skyhold Keep" to "Save_7/13/2026,
         // 10:25:06 AM" on the first autosave. Only a brand-new slot gets the placeholder.
-        const existing = listWorlds().find((w) => w.id === id);
         const name = (existing && existing.name) || data.save_name;
         const created_at = (existing && existing.created_at) || new Date().toISOString();
-        writeWorld(id, { name, created_at, is_owner: true, saved_at: new Date().toISOString() }, data);
+        const saved_at = new Date().toISOString();
+        const meta = { name, created_at, is_owner: true, saved_at };
+        if (existing && 'is_public' in existing) meta.is_public = existing.is_public;
+        const ok = writeWorld(id, meta, data);
+        if (ok) set({ _slotSavedAt: saved_at });
+        return ok;
     }
 }));

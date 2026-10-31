@@ -11,7 +11,7 @@ import {
 import { useGameStore } from './store/useGameStore';
 import { useT } from './i18n/i18n.js';
 import { buildSaveData, savePosition } from './game/saveSchema.js';
-import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId, setActiveWorldId } from './game/worldSaves.js';
+import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId } from './game/worldSaves.js';
 import { goToWorld } from './game/worldSwitch.js';
 
 export const WorldManager = ({ onClose }) => {
@@ -42,28 +42,15 @@ export const WorldManager = ({ onClose }) => {
   };
 
   const saveCurrentWorld = async () => {
-    const name = `Guest's World - ${new Date().toLocaleDateString()}`;
-    // ONE serializer (buildSaveData) for the local blob.
-    const saveData = buildSaveData(useGameStore.getState(), { position: savePosition(useGameStore.getState()) });
-    const meta = { name, created_at: new Date().toISOString(), is_public: false, is_owner: true, saved_at: new Date().toISOString() };
-    const persistLocal = () => {
-      // B2a: reuse the slot THIS SESSION owns, so a manual "Save" and the autosave converge on ONE
-      // world — and so a manual save can no more overwrite a world this session never opened than an
-      // autosave can. Unowned session -> mint (collision-proof; a bare Date.now() can repeat in a ms).
-      let id = useGameStore.getState()._sessionWorldId;
-      if (!id) { id = mintWorldId(); useGameStore.setState({ _sessionWorldId: id }); }
-      setActiveWorldId(id);
-      writeWorld(id, meta, saveData);
-      setWorlds(listWorlds());
-    };
-    try {
-      setError('');
-      persistLocal();
-      setError('World saved to LocalStorage successfully!');
-    } catch (error) {
-      console.warn('LocalStorage save failed:', error);
-      setError('World save failed.');
-    }
+    // The autosave's own writer (store saveActiveWorld): the slot this tab owns, or a new one; the world's name, creation
+    // date and visibility kept (a save of its own renamed the world "Guest's World - <date>" for good,
+    // AUDIT:persistence:manual-save-renames-and-resets); and refused, like the autosave, over a newer save from another tab.
+    setError('');
+    const s = useGameStore.getState();
+    const saved = s.saveActiveWorld(savePosition(s));
+    setWorlds(listWorlds());
+    if (saved) setError('World saved to LocalStorage successfully!');
+    else setError(useGameStore.getState().slotConflict ? t('save.otherTab') : 'World save failed.');
   };
 
   const createWorld = async () => {
