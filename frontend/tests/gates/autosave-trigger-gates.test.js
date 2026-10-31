@@ -101,9 +101,16 @@ describe('the installed autosave', () => {
     doc.dispatchEvent(new Event('visibilitychange'));
     win.dispatchEvent(new Event('beforeunload'));
     expect(save, 'a flush with nothing pending saved').not.toHaveBeenCalled();
+    // The change is made while the page is shown: one made while it is hidden is held until it is shown (item 331,
+    // tests/gates/hidden-tab-gates.test.jsx).
+    doc.visibilityState = 'visible';
+    doc.dispatchEvent(new Event('visibilitychange'));
     useGameStore.setState({ coins: 40 });
+    doc.visibilityState = 'hidden';
     doc.dispatchEvent(new Event('visibilitychange'));
     expect(save, 'hiding the tab did not save the pending change').toHaveBeenCalledTimes(1);
+    doc.visibilityState = 'visible';
+    doc.dispatchEvent(new Event('visibilitychange'));
     useGameStore.setState({ coins: 41 });
     win.dispatchEvent(new Event('beforeunload'));
     expect(save, 'unloading did not save the pending change').toHaveBeenCalledTimes(2);

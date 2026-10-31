@@ -23,17 +23,28 @@ const TRIGGER_KEYS = Object.freeze([...PERSISTED_KEYS, 'isAlive']);
 
 /**
  * Autosave `store`: a change to any persisted key schedules `save`, and hiding the tab or unloading saves a pending one
- * at once. Returns the uninstall. The store subscription runs on every write, the per-frame position writes included,
- * so the comparison is a plain loop over a frozen array.
+ * at once. While the page is hidden a change schedules nothing; it is held, and scheduled when the page is shown again:
+ * with two tabs on one world, a write from the hidden one is newer than the save the visible one read, which refuses the
+ * visible tab's next save (store saveActiveWorld; DECISIONS 2026-10-31 item 331). Returns the uninstall. The store
+ * subscription runs on every write, the per-frame position writes included, so the comparison is a plain loop over a
+ * frozen array.
  */
 export function installAutosave(store, { save, delayMs = 5000, doc = document, win = window }) {
   const autosave = createAutosave({ save, delayMs });
+  let held = false;
   const unsub = store.subscribe((s, prev) => {
     for (let i = 0; i < TRIGGER_KEYS.length; i++) {
-      if (s[TRIGGER_KEYS[i]] !== prev[TRIGGER_KEYS[i]]) { autosave.schedule(); return; }
+      if (s[TRIGGER_KEYS[i]] !== prev[TRIGGER_KEYS[i]]) {
+        if (doc.visibilityState === 'hidden') held = true;
+        else autosave.schedule();
+        return;
+      }
     }
   });
-  const onVisibility = () => { if (doc.visibilityState === 'hidden') autosave.flush(); };
+  const onVisibility = () => {
+    if (doc.visibilityState === 'hidden') autosave.flush();
+    else if (held) { held = false; autosave.schedule(); }
+  };
   const onUnload = () => autosave.flush();
   doc.addEventListener('visibilitychange', onVisibility);
   win.addEventListener('beforeunload', onUnload);

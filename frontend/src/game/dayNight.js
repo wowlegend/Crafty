@@ -74,14 +74,17 @@ export function isDayAtUnit(t) {
 /**
  * Pure pause-gate decision for the real-time day/night ticker: should `gameTime`
  * advance this tick? The clock advances ONLY when the world is built, input is live,
- * the player is not dead, and we are not in visual-capture mode. Extracted pure so the
+ * the player is not dead, the page is not hidden, and we are not in visual-capture mode. Extracted pure so the
  * load-bearing determinism + Game-Loop-Isolation contract is exhaustively unit-testable
  * (a guard inversion is caught by a behavioral test, not just a static source gate).
- * @param {{ isWorldBuilt?: boolean, active?: boolean, isAlive?: boolean, captureMode?: boolean }} g
+ * The page's visibility is its own guard because on touch nothing drops the input gate when a page is switched away
+ * from: a hidden tab's clock ran on, and each tick scheduled a save that refused the visible tab's (DECISIONS
+ * 2026-10-31 item 331).
+ * @param {{ isWorldBuilt?: boolean, active?: boolean, isAlive?: boolean, captureMode?: boolean, hidden?: boolean }} g
  * @returns {boolean}
  */
-export function shouldAdvanceClock({ isWorldBuilt, active, isAlive, captureMode } = {}) {
-  return !!isWorldBuilt && !!active && isAlive !== false && !captureMode;
+export function shouldAdvanceClock({ isWorldBuilt, active, isAlive, captureMode, hidden } = {}) {
+  return !!isWorldBuilt && !!active && isAlive !== false && !captureMode && !hidden;
 }
 
 // --- M3b NIGHT SIEGE intensity ---------------------------------------------

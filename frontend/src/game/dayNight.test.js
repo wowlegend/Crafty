@@ -97,6 +97,11 @@ describe('dayNight pure module', () => {
       expect(shouldAdvanceClock({ ...ALL_PASS, isAlive: false })).toBe(false);
     });
 
+    it('pauses while the page is hidden (touch keeps the input gate up when the tab is switched away from)', () => {
+      expect(shouldAdvanceClock({ ...ALL_PASS, hidden: true })).toBe(false);
+      expect(shouldAdvanceClock({ ...ALL_PASS, hidden: false })).toBe(true);
+    });
+
     it('pauses in visual-capture mode (determinism guard)', () => {
       expect(shouldAdvanceClock({ ...ALL_PASS, captureMode: true })).toBe(false);
     });
