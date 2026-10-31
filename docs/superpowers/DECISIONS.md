@@ -143,6 +143,54 @@ and the registry merged without a code conflict.
    fix (the player's real y as the end height) changes what the worker is sent, which is not a one-line change in a review
    round; the row carries the scene and the numbers so the gate can be written red first.
 
+**Round 3: the fixer after the round-2 reviews (static: FIX; dynamic: FIX, on the same item).** Items 189-191 continue this
+lane's range. Main (449ce3ea, lane L5) was merged in first with a merge commit: DECISIONS conflicted at its top and both
+sections were kept, and the registry merge left two chaos-play rows twice, identical, which `registry-dedupe` collapsed.
+
+189. **The wind bed samples the camera, because the store's position is rounded.** (Supersedes item 186's premise that
+   SoundManager asked about "`playerPosition`, a float inside a column", and the same premise in the sentence of item 180
+   that begins "The verifier's 18.2% residue"; AUDIT:ultra:ultra-player-world-9.) PositionTracker writes `playerPosition` as
+   `Math.round` of the camera's position, so round 2's floor did nothing in play: the floor of a whole number is that number,
+   and the bed read the next column over whenever the player stood at or past the middle of a block. Round 2's gate fed
+   `ambienceAt` unrounded positions, and so did the round-1 figures item 186 answered (12.5% and 22.9%), so neither could see
+   it. Fed the store's rounded position, the coastal band read the wrong state at 24.6% of the positions inside surfaceY 27
+   columns and 14.0% inside surfaceY 28 columns, identically before round 2 and after it (the round-2 dynamic review).
+   SoundManager now samples `store.gameCamera.position`, the R3F camera the Player publishes and PositionTracker reads, which
+   is what the footsteps already read (Components.jsx hands `footstepTypeAt` the camera's x and z); `playerPosition` is the
+   fallback before the Player mounts. PositionTracker is unchanged, so none of the 26 other sites in `src` that read
+   `playerPosition` gets a different value. The gate, `wind-bed-live-chain-gates`, drives the chain with one modelled link
+   (the Player publishing its camera as `gameCamera`): the camera at a float position, the real PositionTracker frame
+   callback, the real store, the real SoundProvider's 8 s interval and the cutoff it ramps the bed's filter to, against the
+   real worker's water above the column the camera stands in, over the same 384 shore positions per seed. Red on round 2's
+   code at 80 of 384 positions (seed 12345) and 76 (seed 777); the round-2 form, SoundManager on `playerPosition` alone, is
+   among its mutants and goes red. Its SETUP holds that a sound fed the store's point is wrong somewhere in the probe set, so
+   it goes red if PositionTracker stops rounding: that is a re-aim of the probe, not a defect in the game.
+
+190. **The water gate's footstep reference is the worker's block, not the sampler.** (Static finding 4.) The footstep check
+   compared `footstepTypeAt` at a position with `footstepTypeAt` at its column's corner, so a mistake inside it that depends
+   only on the floored coordinates (one column over, x and z swapped) gave the same answer on both sides. It now reads the
+   block the worker put on top of 8 columns per class where the beach meets the land (surfaceY 29, sand, and 30, the biome's
+   own block: sand, grass, snow and dirt at these seeds), 256 positions per seed, and its SETUP holds that the reference has
+   more than one footstep and that the float sample steps wrong on it. One column over in x, x and z swapped, every footstep
+   sand, and two wrong table entries each go red. The worker harness and the shore picker the two water gates share live in
+   `tests/_support/terrainWorker.js`. `biome-ambience-gates` loses its three pins on SoundManager's text
+   (`ambienceAt(pp.x, pp.z)`, no `surfaceBlockAt`, `playerPosition`): they required round 2's call exactly as it was, and the
+   live-chain gate drives which point the bed samples. The comments that carried round 2's premise, or said that every
+   reader of a player's position goes through `surfaceBlockUnderfoot` (WeatherSystem does not), are corrected (static 3).
+
+191. **The records are corrected where they were false.** `AUDIT:ultra:ultra-player-world-9`'s note said round 2 closed the
+   residue; it now says why it did not and names round 3 and its gate. `REVIEW:l11:weather-samples-float-position` named the
+   float as WeatherSystem's cause and `surfaceBlockUnderfoot` as its fix, which would change nothing, because both sites read
+   `playerPosition`; its fix is now the camera, as here (static 2). Item 186's pointer, "the last sentence of item 180", names
+   a sentence two more follow (static 5): it is the sentence that begins "The verifier's 18.2% residue". Two flake rows:
+   `REVIEW:e2e-flakes:quest-text-no-frame-while-held` gains PR #63's certifying run 41157558361 (quest-text.spec.js:54,
+   attempt 1 failed the hold's frame SETUP at frames 0, heldMs 380; retry #1 passed), and
+   `REVIEW:e2e-flakes:dragon-fight-parried-bite-move` said one more failed attempt turns `ci ok` red after a failed first
+   attempt, where it takes two (`frontend/playwright.config.js:31`, two retries on CI).
+
+**Not covered:** a lived run (no local browser in this lane; CI is the arbiter, `ci ok` on the exact head); the Player's
+publication of its camera is modelled in the gate, not driven; WeatherSystem's two samples stay a row.
+
 ---
 
 ## 2026-10-30 (lane L5, round 2) — [LOOP] the Player loop's half of the predicate is gated, a locked Aspect key reads it, and every way back is gated to ask for the pointer
