@@ -79,7 +79,8 @@ section names its lane). Each stands while it earns its place.
    and that tab writes the world back at its next save.
 349. **Round 2 fits under the index ceiling, 652,500 B, with no raise** (item 282; supersedes item 341's headroom).
    The round's code first built the index chunk at 652,622 B. Its own code was compacted, behaviour unchanged:
-   `holdsNothing` reads with `|| {}` (this build lowers each `?.` to a temporary and two null tests);
+   `holdsNothing` read with `|| {}` (the build then lowered each `?.` to a temporary and two null tests; since item
+   350 it does not, and `holdsNothing` reads with `?.` again);
    `leaveTabNote` returns nothing, since nothing read it; `goToWorld`'s second parameter is the flag itself; and the
    storage listener calls `noteStorageWrite` directly. With `npm run build` on the round's code head `38e901e3` the
    index chunk is 652,430 B, 70 B under, and bundle-budget passes. Nothing was moved out. (Its headroom is superseded
@@ -97,7 +98,8 @@ section names its lane). Each stands while it earns its place.
    chunk found 176 optional calls and none with a spread argument, so Chrome and Edge 87 to 90 run this build's `?.`
    correctly, and Firefox and Safari already ran it natively at their listed versions. The same build with the target
    moved reads index 646,192 B (7,130 B less), r3f 688,507 B (444 B less), panelBundle 61,539 B (515 B less); three and
-   rapier are unchanged. So the index chunk is 6,308 B under the unchanged ceiling at this head, and that headroom is
+   rapier are unchanged (at `7a96dd9a`; with `holdsNothing` back on `?.`, the index reads 646,175 B, 6,325 B under the
+   unchanged ceiling). That headroom is
    the next lanes' (item 282's lookbook move left its freed bytes as headroom too). Vite 7's own default moves Chrome
    and Edge to 107. Not covered: a future optional call that spreads its arguments would misbehave on Chrome and Edge
    87 to 90 (REVIEW:l8:optional-call-spread-chrome-87-90, LOW). One line to reverse.

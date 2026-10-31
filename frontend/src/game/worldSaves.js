@@ -63,14 +63,13 @@ const placeholderName = (w) => !!w && typeof w.name === 'string' && w.name.start
 const count = (v) => (Array.isArray(v) ? v.length : 0);
 // Nothing earned in it: level 1, no XP, no coins, no block edited, no chest, not won, no quest claimed, no shrine reached
 // (reaching one grants nothing, store reachShrine). A save with no progression slice is from before the slice, and what
-// it holds cannot be read off it, so it is never empty. (`|| {}` and not `?.`: this build lowers each `?.` to longer code,
-// and the index chunk has a byte ceiling, scripts/ci/bundle-budget.mjs.)
+// it holds cannot be read off it, so it is never empty.
 function holdsNothing(data) {
   const p = data && data.progression;
   if (!p || typeof p !== 'object') return false;
-  const g = data.game_state || {};
-  return !(p.level > 1) && !(p.totalXP > 0) && !(p.coins > 0) && !count((data.world_data || {}).blocks) && !count(data.chests)
-    && !g.gameWon && !count((data.questState || {}).completedQuestIds) && !count((g.shrines || {}).reached);
+  const g = data.game_state;
+  return !(p.level > 1) && !(p.totalXP > 0) && !(p.coins > 0) && !count(data.world_data?.blocks) && !count(data.chests)
+    && !g?.gameWon && !count(data.questState?.completedQuestIds) && !count(g?.shrines?.reached);
 }
 
 /** A world nobody named and nothing was earned in: one a plain visit passes over for an earned one (game/worldBoot.js). */
