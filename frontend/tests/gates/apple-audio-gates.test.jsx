@@ -9,6 +9,11 @@ import { MenuSystem } from '../../src/MenuSystem.jsx';
 import { useGameStore } from '../../src/store/useGameStore';
 import { FROZEN_CLOCK_MS } from '../../src/audio/audioRecovery.js';
 
+// The title's 3D backdrop is an R3F canvas that MenuSystem loads lazily; jsdom has no WebGL or ResizeObserver, and
+// whether its chunk resolved inside a case depended on the machine's load (one full-suite run rendered it and threw).
+// The backdrop is not this gate's subject, so it is replaced with nothing, as boot-guard-gates does.
+vi.mock('../../src/render/TitleDiorama.jsx', () => ({ TitleDiorama: () => null }));
+
 /**
  * APPLE AUDIO, ON AN iOS DOCUMENT (deep audit 2026-10-30, lane L10; AUDIT:silent:ios-audiocontext-interrupted-never-resumed
  * and AUDIT:silent:ios-music-refused-play-swallowed-and-unmutable).
