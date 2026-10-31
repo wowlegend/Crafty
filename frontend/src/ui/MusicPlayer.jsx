@@ -7,7 +7,8 @@ import { onUserGesture } from '../audio/audioRecovery.js';
 
 // ElevenLabs-generated background music (replaces the muted procedural pad/arp — PROC_MUSIC_GAIN=0 in
 // SoundManager). Picks the track by context (boss > night/day) and SMOOTH-crossfades between them.
-// musicEnabled-gated; capture-safe (no playback under capture -> visual frames unaffected); renders nothing.
+// musicEnabled-gated; capture-safe (under capture no track starts, and a gesture pauses one already playing); renders
+// nothing.
 const VOL = 0.4;
 // The crossfade's slope, in level per second: 0.04 every 60 ms, the step the fade has always taken.
 const FADE_PER_SEC = 0.04 / 0.06;
@@ -37,7 +38,7 @@ export default function MusicPlayer() {
     // This guard is at MOUNT, and capture is enabled AFTER boot by a test-bridge hook that installs in a later
     // effect -- so it has always read false and has never once suppressed anything. It is kept, because it is correct
     // for the case where capture is entered before this mounts. What makes the suppression REAL is the check inside the
-    // playback effect below, which runs on every state change.
+    // gesture callback below and inside the playback effect, which runs on every state change.
     if (isCaptureMode() || !audioContext) return undefined;
     const tracks = {};
     for (const [key, src] of Object.entries(TRACKS)) {
@@ -55,7 +56,16 @@ export default function MusicPlayer() {
     // gesture restriction when it is played inside one (HTMLMediaElement::play), so a later dusk or boss crossfade can
     // start its track from a timer. A permitted play() clears `paused` before it returns and a refused one leaves it set
     // (HTML, the play() method), so an event that carries no activation, a finger's pointerdown, primes nothing.
+    // While no track can be heard (music off, Mute All, the slider at 0) a gesture plays no element, as before the tracks
+    // went through Web Audio, so nothing decodes for a soundtrack nobody hears; the first gesture with a track wanted
+    // primes the rest. Under capture every track is held paused, the value capture declares for the soundtrack, checked
+    // here because capture begins after boot.
     const offGesture = onUserGesture(() => {
+      if (isCaptureMode()) {
+        for (const t of Object.values(tracks)) if (!t.el.paused) t.el.pause();
+        return;
+      }
+      if (!wantRef.current || tracks[wantRef.current].target === 0) return;
       for (const [key, t] of Object.entries(tracks)) {
         const wanted = key === wantRef.current;
         if (!t.el.paused || (t.primed && !wanted)) continue;

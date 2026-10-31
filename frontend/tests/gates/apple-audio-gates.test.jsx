@@ -8,6 +8,7 @@ import MusicPlayer from '../../src/ui/MusicPlayer';
 import { MenuSystem } from '../../src/MenuSystem.jsx';
 import { useGameStore } from '../../src/store/useGameStore';
 import { FROZEN_CLOCK_MS } from '../../src/audio/audioRecovery.js';
+import { enterCaptureMode, exitCaptureMode } from '../../src/devtest/captureMode.js';
 
 // The title's 3D backdrop is an R3F canvas that MenuSystem loads lazily; jsdom has no WebGL or ResizeObserver, and
 // whether its chunk resolved inside a case depended on the machine's load (one full-suite run rendered it and threw).
@@ -28,10 +29,12 @@ vi.mock('../../src/render/TitleDiorama.jsx', () => ({ TitleDiorama: () => null }
  * returning tab is left alone.
  *
  * The music half: a track is playing after the Start tap, the music slider sets its level, every track is paused
- * within 1 s of Mute All and comes back on unmute, and a dusk crossfade starts the night track from a timer.
+ * within 1 s of Mute All and comes back on unmute, and a dusk crossfade starts the night track from a timer. While no
+ * track can be heard (music off, the slider at 0) a tap asks no track to play, and in capture mode a tap starts none
+ * and pauses one already playing.
  *
  * Not covered here: what a real iPhone or iPad does. The fixture models WebKit's source and three open WebKit bugs; the
- * lived proof is Kevin's device run (registry AUDIT:lane:L10-apple-audio-and-device-run). Nor what Chromium's
+ * lived proof is Kevin's device run (registry REVIEW:l1:ios-device-run). Nor what Chromium's
  * createMediaElementSource does: jsdom has no Web Audio, so the route the tracks take is the fixture's.
  *
  * Mutation-Proof: see the commit trailer.
@@ -53,6 +56,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  exitCaptureMode();
   ios?.restore();
   ios = null;
   vi.useRealTimers();
@@ -250,5 +254,58 @@ describe('the soundtrack obeys the music slider and Mute All on an iPhone, whose
     await advance(1000);
     expect(playing(tracks), `1 s after Mute All: ${state(tracks)}`).toEqual([]);
     expect(tracks.map((el) => ios.audible(el)), 'a muted track still reaches the speakers').toEqual([0, 0, 0]);
+  });
+
+  it('with the music slider at 0, a tap plays no track again, and raising the slider brings the day track back', async () => {
+    const { tracks, day } = await startedAt(1);
+    act(() => ios.gesture(() => useGameStore.getState().setMusicVolume(0)));
+    await advance(2000);
+    expect(playing(tracks), `SETUP: the slider at 0 left a track playing: ${state(tracks)}`).toEqual([]);
+    const plays = tracks.map((el) => el.plays);
+    act(() => ios.tap(document.body));
+    await advance(1000);
+    expect(playing(tracks), `a tap with the slider at 0 played a track nobody can hear: ${state(tracks)}`).toEqual([]);
+    expect(tracks.map((el) => el.plays), `a tap with the slider at 0 asked a track to play: ${state(tracks)}`).toEqual(plays);
+    act(() => ios.gesture(() => useGameStore.getState().setMusicVolume(0.5)));
+    await advance(2000);
+    expect(playing(tracks), `the slider raised to 0.5: ${state(tracks)}`).toEqual(['day.mp3']);
+    expect(ios.audible(day), `the slider raised to 0.5: ${state(tracks)}`).toBeGreaterThan(0);
+  });
+
+  it('with music off, the Start tap asks no track to play; with music on again, the next tap starts the day track', async () => {
+    const tracks = bootGame('iphone');
+    act(() => api.setMusicEnabled(false));
+    await advance(1000);
+    const plays = tracks.map((el) => el.plays);
+    act(() => ios.tap(screen.getByRole('button', { name: /start adventure/i })));
+    expect(useGameStore.getState().gameStarted, 'SETUP: the Start tap did not start the run').toBe(true);
+    await advance(1000);
+    expect(tracks.map((el) => el.plays), `with music off the Start tap asked a track to play: ${state(tracks)}`).toEqual(plays);
+    act(() => api.setMusicEnabled(true));
+    act(() => ios.tap(document.body));
+    await advance(2000);
+    expect(playing(tracks), `music on again, then a tap: ${state(tracks)}`).toEqual(['day.mp3']);
+  });
+});
+
+describe('capture mode holds the soundtrack silent on the gesture path too', () => {
+  it('in capture mode a tap starts no track and pauses one already playing; out of it the same tap starts the day track', async () => {
+    const tracks = bootGame('iphone');
+    await advance(1000);
+    expect(playing(tracks), `SETUP: a track plays before any gesture: ${state(tracks)}`).toEqual([]);
+    act(() => { enterCaptureMode(); });
+    const plays = tracks.map((el) => el.plays);
+    act(() => ios.tap(document.body));
+    await advance(1000);
+    expect(playing(tracks), `a tap in capture mode started a track: ${state(tracks)}`).toEqual([]);
+    expect(tracks.map((el) => el.plays), `a tap in capture mode asked a track to play: ${state(tracks)}`).toEqual(plays);
+    act(() => { exitCaptureMode(); });
+    act(() => ios.tap(document.body));
+    await advance(1000);
+    expect(playing(tracks), `out of capture mode, a tap: ${state(tracks)}`).toEqual(['day.mp3']);
+    act(() => { enterCaptureMode(); });
+    act(() => ios.tap(document.body));
+    await advance(1000);
+    expect(playing(tracks), `a tap in capture mode left a playing track playing: ${state(tracks)}`).toEqual([]);
   });
 });
