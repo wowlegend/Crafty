@@ -18,9 +18,9 @@ export function sessionStore() {
  * Where sessionStorage refuses the note, nothing reloads and the player is told (save.switchRefused), unless
  * `orPlainVisit`: the reload goes ahead as a plain visit (worldBoot.js switchWorld). Returns whether the switch was made.
  * @param {{ world?: string, fresh?: boolean }} note
- * @param {{ orPlainVisit?: boolean }} [opts]
+ * @param {boolean} [orPlainVisit]
  */
-export function goToWorld(note, { orPlainVisit = false } = {}) {
+export function goToWorld(note, orPlainVisit) {
   const made = !!switchWorld(note, { getState: useGameStore.getState, storage: sessionStore(), reload: reloadPage, orPlainVisit });
   if (!made) useGameStore.getState().addNotification?.('save.switchRefused', 'warning');
   return made;

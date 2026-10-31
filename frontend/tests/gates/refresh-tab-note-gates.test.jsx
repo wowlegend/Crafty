@@ -30,6 +30,7 @@ import { render, act, cleanup, fireEvent, screen } from '@testing-library/react'
  *   T5 a tab whose world was deleted leaves a note                          -> RED expected
  *   T6 a world that never ran a frame is noted (the hold skipped)            -> RED expected
  *   T7 a title that loaded nothing and never started leaves a fresh note     -> RED expected
+ *   T7b plausible-wrong: only a started page leaves a note (F5 twice, from the title) -> RED expected
  *   T8 a page kept for the back-forward cache leaves a note                  -> RED expected
  *   T0 identity (a comment edit)                                             -> must SURVIVE
  */
@@ -142,6 +143,9 @@ describe('a refresh continues the world the tab was playing', () => {
     expect(p.listed('local_other_tab_0'), 'SETUP: the boot pruned nothing').toBe(false);
     expect({ id: p.S()._sessionWorldId, title: p.S().continueWorld?.id, kept: p.listed(minted) },
       'the refresh did not continue the empty New World it was playing, or pruned it').toEqual({ id: minted, title: minted, kept: true });
+    leave(); // F5 again, from the title of the world the last refresh continued: the tab still holds that world
+    p = await pageLoad();
+    expect(p.S()._sessionWorldId, 'a second refresh, from the title, left the world the tab holds').toBe(minted);
     leave();
     sessionStorage.clear(); // a new tab: its sessionStorage starts empty
     p = await pageLoad();

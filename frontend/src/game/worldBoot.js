@@ -212,20 +212,16 @@ export function tabNote(state) {
  * visit or another's note: a switch's note is already there (the switch decides where the reload goes), the tab deleted
  * its world (WorldManager.jsx), the tab has no world in play (it loaded none and was never started), or the world it
  * loaded never ran a frame (its boot attempt is still there, BOOT_ATTEMPT_KEY: the plain visit holds that world on the
- * title rather than load it into the same failure). Returns whether it left one.
+ * title rather than load it into the same failure).
  * @param {object} state the store's state
  * @param {Storage|null} session
  */
 export function leaveTabNote(state, session) {
   const id = state._sessionWorldId;
-  if (!session || state._slotDeleted || !(id || state.gameStarted)) return false;
   try {
-    if (session.getItem(BOOT_NOTE_KEY) !== null) return false;
-  } catch {
-    return false;
-  }
-  if (id && attemptedWorld(session) === id) return false;
-  return writeBootNote(session, tabNote(state));
+    if (session && !state._slotDeleted && (id || state.gameStarted) && session.getItem(BOOT_NOTE_KEY) === null
+      && !(id && attemptedWorld(session) === id)) writeBootNote(session, tabNote(state));
+  } catch { /* storage refused: no note, and the next load is a plain visit */ }
 }
 
 /**

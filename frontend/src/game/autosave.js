@@ -54,7 +54,7 @@ export function installAutosave(store, { save, onLeave, delayMs = 5000, doc = do
     autosave.flush();
     if (!e.persisted) onLeave?.();
   };
-  const onStorage = () => store.getState().noteStorageWrite?.();
+  const onStorage = () => store.getState().noteStorageWrite();
   doc.addEventListener('visibilitychange', onVisibility);
   win.addEventListener('beforeunload', onUnload);
   win.addEventListener('pagehide', onPageHide);

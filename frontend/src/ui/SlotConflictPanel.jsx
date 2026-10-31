@@ -26,7 +26,7 @@ export function SlotConflictPanel() {
       className="fixed inset-0 z-modal flex flex-col items-center justify-center gap-5 bg-ink"
     >
       <p className="max-w-sm px-6 text-center text-lg font-bold text-text">{t('save.otherTab')}</p>
-      <Button variant="primary" size="lg" data-testid="slot-conflict-reload" onClick={() => goToWorld({ world: conflict.id }, { orPlainVisit: true })}>
+      <Button variant="primary" size="lg" data-testid="slot-conflict-reload" onClick={() => goToWorld({ world: conflict.id }, true)}>
         <Icon name="sword" size={20} className="flex-none" /> {t('ui.reload')}
       </Button>
     </div>
