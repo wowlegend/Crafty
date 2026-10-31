@@ -1,6 +1,8 @@
 import { Vector3 } from 'three';
 import { ecs, alliesQuery } from '../ecs/world';
-import { rosterOf, allyFor, sameRoster } from '../game/squadRoster.js';
+import { rosterOf } from '../game/squadRoster.js';
+import { HYBRIDS, hybridAlly } from '../game/hybrids.js';
+import { mobEntity } from '../game/mobTypes.js';
 import { FOLLOW_RING } from '../game/squadAI.js';
 import { groundForMover } from '../game/mobFloor.js';
 import { BASE_CAPSULE } from '../game/beasts.js';
@@ -13,6 +15,24 @@ import { BASE_CAPSULE } from '../game/beasts.js';
 const REBUILD_M = FOLLOW_RING.max + 1;
 const CENTRE_OVER_FEET = BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
 let minted = 0;
+
+/** Whether two rosters hold the same creatures in the same order. */
+const sameRoster = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((e, i) => e.type === b[i].type);
+
+/**
+ * The ally entity for a roster entry at `position` (a THREE.Vector3, the spawn contract MobModel reads): a hybrid as its
+ * fusion makes it, a mob type as a bind leaves the mob the spawner made (game/mobTypes.js mobEntity, then what
+ * convertMobToAlly does to it: an ally, whole, not aggroed, its type its fusion key).
+ */
+function allyFor(entry, id, position) {
+  const def = HYBRIDS[entry.type];
+  if (def) return hybridAlly(def, id, position, 0);
+  const e = mobEntity(entry.type, id, position);
+  delete e.isMob;
+  e.isAlly = true;
+  e.baseType = entry.type;
+  return e;
+}
 
 /**
  * The squad's two owners, kept as one (deep audit 2026-10-30, lane L3). The store's `squad` is the roster the save
