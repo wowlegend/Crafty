@@ -9,7 +9,7 @@ import { BloomEffect, GodRaysEffect } from 'postprocessing';
 import { registerTestHook } from '../devtest/testBridge.js';
 import { useGameStore } from '../store/useGameStore';
 import { TIERS } from './quality.js';
-import { lookbookPassesOff } from './lookbookSeam.js';
+import { lookbookPassesOff } from './lookbookState.js';
 import { applyPassesOff } from './passesOff.js';
 import { getViewmodel, oneDepthCopy } from './viewmodel.js';
 

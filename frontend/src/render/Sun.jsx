@@ -2,7 +2,7 @@ import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { skyFrameRef } from './mood';
-import { lookbookPassesOff } from './lookbookSeam.js';
+import { lookbookPassesOff } from './lookbookState.js';
 
 // Sun -- the sky sun billboard (and therefore the GodRays light source): tracks the camera at a fixed distance along
 // the SUN's direction and takes the sun's colour, both from the one sky frame <Atmosphere> publishes each frame

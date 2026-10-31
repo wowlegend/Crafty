@@ -39,9 +39,9 @@ const BUDGETS = [
   // chunk and the ceiling came down with it: a module this chunk carries that renders the full `motion` component puts
   // the framer-motion features back, about 47.6 KB, which is past the ceiling by itself. A module the lazy panel chunk
   // carries moves that chunk, which has no ceiling (ForgePanel with `motion` read 636,434 B here, under it): the
-  // full-motion markers further down hold every chunk. Lane L3 (DECISIONS 2026-10-31 item 257) raised it by its own
-  // measured bytes, 3,515 (the squad's roster, the shrine record, the save repair, the declared keys), and no more.
-  { name: 'index', max: 656_015, actualAtWrite: 634_075 },
+  // full-motion markers further down hold every chunk. The lookbook probe's installer is not in this chunk either: it is
+  // a lazy chunk fetched on `?lookbook=1` only (DECISIONS 2026-10-31 item 282), held by its marker check below.
+  { name: 'index', max: 652_500, actualAtWrite: 634_075 },
   { name: 'three', max: 740_000, actualAtWrite: 680_700 },
 ];
 
@@ -158,6 +158,25 @@ for (const marker of DRAGON_MARKERS) {
     failed = true;
   } else {
     console.log(`✓ dragon: ${DRAGON_MARKERS.length} marker only in ${holders[0].file}, none in the boot chunk`);
+  }
+}
+
+// THE LAZY LOOKBOOK SEAM (DECISIONS 2026-10-31 item 282): the probe's installer (render/lookbookSeam.js) is its own chunk,
+// fetched by index.jsx on a `?lookbook=1` page only; the game's own readers import render/lookbookState.js. One error
+// message only the installer carries, a plain string so the minifier keeps it quoted: ABSENT from the boot chunk proves
+// no static import pulled the installer back in; PRESENT in exactly one other chunk proves the split happened rather than
+// the seam having been deleted (the probe would then find no door).
+const LOOKBOOK_SEAM_MARKERS = ['lookbook: stand() before the player body exists'];
+for (const marker of LOOKBOOK_SEAM_MARKERS) {
+  const holders = holdersOf(`"${marker}"`);
+  if (bootChunk && holders.includes(bootChunk)) {
+    console.error(`✘ lookbook seam: "${marker}" is in the BOOT chunk (${bootChunk.file}) — render/lookbookSeam.js is statically imported again`);
+    failed = true;
+  } else if (holders.length !== 1) {
+    console.error(`✘ lookbook seam: "${marker}" found in ${holders.length} chunk(s) — expected exactly one lazy seam chunk`);
+    failed = true;
+  } else {
+    console.log(`✓ lookbook seam: ${LOOKBOOK_SEAM_MARKERS.length} marker only in ${holders[0].file}, none in the boot chunk`);
   }
 }
 

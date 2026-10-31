@@ -69,7 +69,7 @@ Beside them: `CLAUDE.md` (the one instruction file), `memory/ARCHITECTURE.md` (t
 
 | Record | Kept because |
 |---|---|
-| `docs/superpowers/command-record.html` | Kevin's one review page (https://claude.ai/artifact/AdWhiwq9utxaUdUQBEcfCA), refreshed at each landing; `.artifact-sync.json` records its publish |
+| `docs/superpowers/command-record.html` | Kevin's one review page (https://claude.ai/artifact/AdWhiwq9utxaUdUQBEcfCA), refreshed at each landing; written from `docs/superpowers/command-record.json` by `frontend/scripts/ci/command-record.mjs` (DECISIONS 2026-10-31 item 281); `.artifact-sync.json` records its publish |
 | `docs/superpowers/era-review.html`, `docs/superpowers/sota-audit.html` | Pages published from these sources, frozen as dated history (DECISIONS 2026-10-28 item 13); DECISIONS and STATUS cite them |
 | `docs/superpowers/KEVIN-REVIEW-BATCH.md` | Kevin's inbox (`CLAUDE.md`); DECISIONS settles |
 | `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` | The queue-ledger gate reads it |

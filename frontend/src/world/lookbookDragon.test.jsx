@@ -4,7 +4,8 @@ import { renderHook, cleanup, act } from '@testing-library/react';
 import { useGameStore } from '../store/useGameStore.jsx';
 import { useBossSystem, lookbookDragonSpot } from './bossSystem.js';
 import { blightHeartSite } from './blightHeart.js';
-import { installLookbookSeam, lookbookDragonHold, _resetLookbookForTest } from '../render/lookbookSeam.js';
+import { installLookbookSeam, _resetLookbookForTest } from '../render/lookbookSeam.js';
+import { lookbookDragonHold } from '../render/lookbookState.js';
 import { setActive, getActiveSnapshot } from '../input/inputState.js';
 import { cycleFraction } from '../game/dayPhase.js';
 

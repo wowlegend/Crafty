@@ -13,7 +13,7 @@ import { phaseForHealth, enteredBefore } from '../game/bossPersistence.js';
 import { isWorldFrozenNow, worldNow } from '../game/worldClock.js';
 import { bossCombat, bossDamage } from '../game/bossCombat.js';
 import { preloadDragon, shouldPreloadAtMount } from '../render/dragonLoader.js';
-import { parseLookbookParam } from '../render/lookbookSeam.js';
+import { parseLookbookParam } from '../render/lookbookState.js';
 import { registerTestHook } from '../devtest/testBridge.js';
 import { readImpulses, clearImpulses } from '../devtest/impulseLog.js';
 import { requestZone } from '../game/elemancerChannel.js';
@@ -269,7 +269,7 @@ export const useBossSystem = (playerLevel) => {
     }, [damageBoss, suspendEncounter, stats]);
 
     // THE LOOKBOOK'S DRAGON (DECISIONS 2026-10-30 item 122): the production build's one way to wake the dragon without
-    // the fight's level and lair gates, installed only when the page URL carries ?lookbook=1 (render/lookbookSeam.js
+    // the fight's level and lair gates, installed only when the page URL carries ?lookbook=1 (render/lookbookState.js
     // parseLookbookParam), so the game a player loads has no spawn seam. The lookbook probe shoots the fight on a real
     // GPU through it; its `dragon()` holds the pose.
     useEffect(() => {
