@@ -30,6 +30,8 @@ import { bossTierStats } from '../../src/game/bossTier.js';
  *   W3 the World Manager's Load loads in place, no reload                     -> RED expected
  *   W4 plausible-wrong: the switch reloads BEFORE it saves                    -> RED expected
  *   W5 plausible-wrong: the context-loss note names no world (a plain visit)   -> RED expected
+ *   W6 Create writes the live world into the new slot (the L2 review's M14)    -> RED expected
+ *   W7 Create's fresh note names no slot (the review's M17 and static F4)      -> RED expected
  *   W0 identity (a comment edit)                                               -> must SURVIVE
  */
 
@@ -198,7 +200,11 @@ describe('a world switch in play leaves nothing of the world before it', () => {
     fireEvent.click(screen.getByText('Create'));
     const freshId = p.saves.listWorlds().find((w) => w.name === 'Fresh')?.id;
     expect(freshId, 'SETUP: Create wrote no slot named Fresh').toBeTruthy();
+    // B2b: Create's slot holds a new world from the moment it is written, not the level-9 world in play.
+    expect({ level: blob(p, freshId)?.progression?.level, coins: blob(p, freshId)?.progression?.coins },
+      'Create\'s slot holds the world in play, not a new one').toEqual({ level: 1, coins: 0 });
     if (globalThis.__reloads.length) { p.unload(); p = await pageLoad(); }
+    expect(p.S()._sessionWorldId, 'the new world does not own the slot Create made').toBe(freshId);
     const max = bossTierStats(0).health;
     const want = { active: false, health: max, tier: 0 };
     expect(globalThis.__scene, `the dragon hook kept the old world's fight: ${JSON.stringify(globalThis.__scene)}`).toEqual(want);
@@ -206,10 +212,14 @@ describe('a world switch in play leaves nothing of the world before it', () => {
     expect(p.S().level, 'the new world is not level 1').toBe(1);
     // The new world, played: nothing wakes at the origin, and the save holds what the hook and the store hold.
     if (screen.queryByTestId('title-start')) fireEvent.click(screen.getByTestId('title-start'));
-    act(() => { p.input.setActive(true); p.S().setGameTime((t) => t + 1); });
+    act(() => { p.input.setActive(true); p.S().setGameTime((t) => t + 1); p.S().addCoins(5); });
     advance(POLL_MS + AUTOSAVE_MS);
     expect(globalThis.__scene, 'a dragon woke in the new world').toEqual(want);
     expect(blobBoss(blob(p, freshId)), 'the new world\'s save holds another encounter').toEqual({ ...want, defeated: false });
+    // The new world saves into the slot Create made, under the name typed, and mints none of its own.
+    expect(blob(p, freshId)?.progression?.coins, 'the new world did not save into the slot Create made').toBe(5);
+    expect(p.saves.listWorlds().map((w) => w.name === 'Fresh' ? 'Fresh' : 'other').sort(),
+      'the slots after the new world saved: the world switched from, and Fresh').toEqual(['Fresh', 'other']);
     p.unload();
   }, 60000);
 

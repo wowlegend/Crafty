@@ -20,6 +20,7 @@ import { bossTierStats } from '../../src/game/bossTier.js';
  *   E1 the hook's resumeQuietly seeded false again                          -> RED expected
  *   E2 plausible-wrong: only an ACTIVE fight counts as entered               -> RED expected (the suspended one)
  *   E3 plausible-wrong: a health at the tier's maximum counts as entered     -> RED expected (the fresh fight)
+ *   E4 a slain dragon counts as entered (bossDefeated not read; the L2 review's M8) -> RED expected (the return)
  *   E0 identity (a comment edit)                                             -> must SURVIVE
  */
 
@@ -62,4 +63,19 @@ describe('a fight the save shows entered wakes without the entrance', () => {
       expect(useGameStore.getState().hitstopUntil > 0, 'the freeze').toBe(c.entrance);
     });
   }
+});
+
+describe('a slain dragon\'s return keeps its entrance (item 202: only a fight entered and not won is quiet)', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { cleanup(); vi.useRealTimers(); });
+
+  it('a won world loaded before the hook, its tier-1 return due: the return wakes with the notice and the freeze', () => {
+    arm({ gameWon: true, bossTier: 1, bossDefeated: true, bossHealth: 0, bossActive: false, bossKillNight: 3, nightCount: 6 });
+    const r = arrive();
+    // PRESENCE: the return is due and announced, so its wake is the subject, not a dragon that never came.
+    expect(keys(), 'the return was never announced (not due?)').toContain('notice.bossReturns');
+    expect(r.result.current.bossActive, 'the return did not wake at the lair').toBe(true);
+    expect(keys().includes(ENTRANCE_KEY), `the due return woke without its entrance: ${JSON.stringify(keys())}`).toBe(true);
+    expect(useGameStore.getState().hitstopUntil > 0, 'the return woke without the entrance freeze').toBe(true);
+  });
 });
