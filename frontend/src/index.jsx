@@ -53,7 +53,7 @@ import { applyThemeVars } from './theme/cssVars.js';
 import { startGame } from './startGame.jsx';
 import { useGameStore } from './store/useGameStore';
 import { GameMethods } from './GameMethods';
-import { installLookbookSeam } from './render/lookbookSeam.js';
+import { parseLookbookParam } from './render/lookbookState.js';
 import { setActive, getActiveSnapshot } from './input/inputState.js';
 import { cycleFraction } from './game/dayPhase.js';
 import { glInfo, contextLossCount } from './render/glDiagnostics.js';
@@ -63,30 +63,50 @@ import { handNodeCount } from './render/viewmodel.js';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
 
-if (typeof window !== 'undefined') {
-  window.useGameStore = useGameStore;
-  // DEV-only: the terrain verbs (mine/place/open) and the build raycasts live on GameMethods, a plain
-  // module object Terrain populates on mount. Exposing it here lets an E2E drive the REAL verb closures
-  // the mouse router calls, rather than a re-implementation — the same reason window.useGameStore and
-  // window.__craftyTest exist. Added 2026-08-11 because no E2E had ever placed a block, in a game whose
-  // core loop is build-by-day / survive-by-night, which is how an inert Building Tools panel survived on
-  // four advertised entry surfaces. `import.meta.env.DEV` is statically false in prod, so this is
-  // tree-shaken out of the shipped bundle.
-  if (import.meta.env.DEV) window.GameMethods = GameMethods;
-  // The lookbook probe's door into the PRODUCTION build (render/lookbookSeam.js): installed only for `?lookbook=1`,
-  // and inert until a script calls it. Not DEV-gated on purpose — the probe shoots the shipped bundle.
-  installLookbookSeam(window, {
-    store: useGameStore, setActive, getActive: getActiveSnapshot, cycleOf: cycleFraction, glInfo, contextLosses: contextLossCount,
-    hostiles: () => mobsQuery.entities,
-    removeEntity: (e) => ecs.remove(e),
-    // A dynamic import, so the timer is its own chunk that no player downloads.
-    loadPassTimer: () => import('./render/passTimer.js'),
-    sunDir: () => skyFrameRef.current.sunDir,
-    handNodes: handNodeCount,
-    // The boss system installs this only on a ?lookbook=1 page; read at the call, after App has mounted it.
-    spawnDragon: (o) => useGameStore.getState().lookbookSpawnDragon?.(o),
-  });
+// The page's start. `installLookbookSeam` is the lookbook probe's door into the PRODUCTION build
+// (render/lookbookSeam.js) or undefined: that module is its own chunk, fetched only for a `?lookbook=1` page, so no
+// player downloads it. Everything that waits on the store (the e2e boot, the probes, scripts/ci/prod-smoke.mjs) finds
+// the seam installed the moment window.useGameStore exists, because both happen here in one run, before the first render.
+function boot(installLookbookSeam) {
+  if (typeof window !== 'undefined') {
+    window.useGameStore = useGameStore;
+    // DEV-only: the terrain verbs (mine/place/open) and the build raycasts live on GameMethods, a plain
+    // module object Terrain populates on mount. Exposing it here lets an E2E drive the REAL verb closures
+    // the mouse router calls, rather than a re-implementation — the same reason window.useGameStore and
+    // window.__craftyTest exist. Added 2026-08-11 because no E2E had ever placed a block, in a game whose
+    // core loop is build-by-day / survive-by-night, which is how an inert Building Tools panel survived on
+    // four advertised entry surfaces. `import.meta.env.DEV` is statically false in prod, so this is
+    // tree-shaken out of the shipped bundle.
+    if (import.meta.env.DEV) window.GameMethods = GameMethods;
+    // Called only on `?lookbook=1` pages (the seam checks the parameter itself too), and inert until a script calls it.
+    // Not DEV-gated on purpose — the probe shoots the shipped bundle.
+    installLookbookSeam?.(window, {
+      store: useGameStore, setActive, getActive: getActiveSnapshot, cycleOf: cycleFraction, glInfo, contextLosses: contextLossCount,
+      hostiles: () => mobsQuery.entities,
+      removeEntity: (e) => ecs.remove(e),
+      // A dynamic import, so the timer is its own chunk that no player downloads.
+      loadPassTimer: () => import('./render/passTimer.js'),
+      sunDir: () => skyFrameRef.current.sunDir,
+      handNodes: handNodeCount,
+      // The boss system installs this only on a ?lookbook=1 page; read at the call, after App has mounted it.
+      spawnDragon: (o) => useGameStore.getState().lookbookSpawnDragon?.(o),
+    });
+  }
+
+  // The world this tab plays is loaded before the first render (startGame.jsx, game/worldBoot.js).
+  startGame(ReactDOM.createRoot(document.getElementById('root')));
 }
 
-// The world this tab plays is loaded before the first render (startGame.jsx, game/worldBoot.js).
-startGame(ReactDOM.createRoot(document.getElementById('root')));
+// A `?lookbook=1` page boots when the seam's chunk arrives; if that fetch fails the page stops with the error, and only
+// the probe opens that page. The destructuring is the form knip and the bundler read as using one export.
+async function bootLookbookPage() {
+  const { installLookbookSeam } = await import('./render/lookbookSeam.js');
+  boot(installLookbookSeam);
+}
+
+// A player's page boots in this same run.
+if (typeof window !== 'undefined' && parseLookbookParam(window.location?.search)) {
+  bootLookbookPage();
+} else {
+  boot(null);
+}

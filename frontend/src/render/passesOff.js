@@ -1,7 +1,7 @@
 // passesOff.js — switch named post passes off in the live composer, for the lookbook's whole-frame differential
 // (scripts/visual/lookbook.mjs --passes; plan docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md). The set comes
-// from the lookbook seam (render/lookbookSeam.js lookbookPassesOff) and is empty for every player, so for them this is
-// a loop over a handful of passes that finds nothing to do.
+// from the lookbook seam (render/lookbookState.js lookbookPassesOff, which render/lookbookSeam.js writes) and is empty
+// for every player, so for them this is a loop over a handful of passes that finds nothing to do.
 //
 // "Off" has to cost what a deletion would on the GPU, so an effect is switched off in both places its work lives: its
 // blend function goes to SKIP, which postprocessing 6.39.5 leaves out of the merged shader (EffectPass.updateMaterial)

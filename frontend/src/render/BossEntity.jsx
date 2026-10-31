@@ -19,7 +19,7 @@ import { worldDelta, isWorldFrozen, worldNow } from '../game/worldClock.js';
 import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
-import { lookbookDragonHold } from './lookbookSeam.js';
+import { lookbookDragonHold } from './lookbookState.js';
 import { decalFor, decalOpacity, decalSpin, placeDecal, DECAL_GEOMETRY } from './dragonTelegraphs.js';
 import { UI } from '../theme/tokens.js';
 import { registerTestHook } from '../devtest/testBridge.js';

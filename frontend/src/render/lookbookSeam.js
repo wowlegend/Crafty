@@ -13,7 +13,9 @@
 // the HUD on. They refuse while a pose is set, because the Player re-applies a pose every frame and would undo them.
 //
 // HOW PLAYERS CANNOT TRIP IT. Two locks, both required:
-//   1. Nothing is installed unless the page URL carries exactly `?lookbook=1` (parseLookbookParam).
+//   1. Nothing is installed unless the page URL carries exactly `?lookbook=1` (parseLookbookParam). This module is not
+//      even downloaded without it: index.jsx loads it with a dynamic import() on that page only, and the game's own
+//      readers import render/lookbookState.js, never this file.
 //   2. Even then nothing changes until a script calls `window.__craftyLookbook.pose(...)`. A player who types the
 //      parameter sees the ordinary game; there is no UI, no key and no store field behind it.
 //
@@ -28,43 +30,21 @@
 // senses, their arrows and the combat stance read the body (game/mobSenses.js mobSensePoint). The first-person hands
 // hide while a hero pose is set (an elevated shot with hands in the corner misleads); an eye pose keeps them.
 //
-// Module state on purpose: the pose is read every frame by the Player (a transient read — Game-Loop Isolation), and
-// it changes only when a script asks.
+// WHERE THE STATE LIVES. The pose, the hand pose, the passes switched off and the dragon's hold are module state in
+// render/lookbookState.js, read every frame by the game (a transient read — Game-Loop Isolation) and written only by the
+// functions below, which validate first. They change only when a script asks.
 
 import { LOOKBOOK_PASS_NAMES, lookbookEffectNames } from './passesOff.js';
+import {
+  parseLookbookParam, lookbookPose, setLookbookPose, setLookbookHandPose, setLookbookPassesOff, setLookbookDragonHold,
+  lookbookHandPose, lookbookPassesOff, lookbookDragonHold, _resetLookbookStateForTest,
+} from './lookbookState.js';
 
-const LOOKBOOK_PARAM = 'lookbook';
-
-let _pose = null;
-let _handPose = null;
-const _subs = new Set();
 let _passTimer = null; // the page-wide handle from render/passTimer.js, once the probe asked for timings
-// The post passes a script switched off (render/passesOff.js applies them in the composer; render/Sun.jsx reads 'sun').
-// Replaced, never mutated, so a reader that kept the previous set keeps a consistent one.
-let _passesOff = new Set();
-// The pose a dragon woken by the seam holds (DRAGON_POSES), or null: a held dragon takes no flight step and starts no
-// attack, so a frame of the fight is the same frame on every run. Read per frame by render/BossEntity.jsx.
-let _dragonHold = null;
 
 /** The poses dragon() can hold the dragon in: at rest, each attack's tell partway through its windup (render/BossEntity.jsx
  *  draws its ground decal and its glow), and staggered. */
 export const DRAGON_POSES = Object.freeze(['rest', 'bite', 'fireball', 'roar', 'lava', 'summon', 'staggered']);
-
-/** The pose the seam holds the dragon in, or null (the ordinary fight). Read per frame — keep it a plain read. */
-export function lookbookDragonHold() {
-  return _dragonHold;
-}
-
-/** The named passes switched off, for the per-frame readers. Empty unless a lookbook script asked. */
-export function lookbookPassesOff() {
-  return _passesOff;
-}
-
-/** PURE. True only for the exact `lookbook=1` parameter. */
-export function parseLookbookParam(search) {
-  if (typeof search !== 'string') return false;
-  return new URLSearchParams(search).get(LOOKBOOK_PARAM) === '1';
-}
 
 /**
  * PURE. A DAWN-origin cycle fraction (game/dayPhase.cycleFraction: 0 dawn, 0.25 noon, 0.5 dusk, 0.75 midnight — the
@@ -75,39 +55,6 @@ export function timeOfDayForCycle(cycle) {
   const c = Number(cycle);
   const f = Number.isFinite(c) ? c : 0;
   return (((f + 0.25) % 1) + 1) % 1;
-}
-
-/** The pose the Player pins the camera to, or null (the ordinary game). Read per frame — keep it a plain read. */
-export function lookbookPose() {
-  return _pose;
-}
-
-/** For useSyncExternalStore: whether a pose is set. */
-/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
-export function lookbookPinned() {
-  return _pose !== null;
-}
-
-/** For useSyncExternalStore: whether the first-person hands hide. A hero pose hides them; an eye pose (`hands: true`)
- *  keeps them, so a still at the eye shows what the player sees. */
-export function lookbookHidesHands() {
-  return _pose !== null && !_pose.hands;
-}
-
-/** The hand pose a script holds in place of the hand rig's clock (render/playerRender.jsx), or null. Read per frame. */
-export function lookbookHandPose() {
-  return _handPose;
-}
-
-/** For useSyncExternalStore: the held hand pose's kind ('swing', 'cast', 'charge') or null. */
-export function lookbookHandPoseKind() {
-  return _handPose === null ? null : _handPose.kind;
-}
-
-/** For useSyncExternalStore: notified on every pose and clear. Returns an unsubscribe function. */
-export function subscribeLookbook(cb) {
-  _subs.add(cb);
-  return () => _subs.delete(cb);
 }
 
 function finite3(v, name) {
@@ -121,19 +68,18 @@ const copy3 = (v) => (Array.isArray(v) && v.length === 3 ? [v[0], v[1], v[2]] : 
 
 function setPose(p) {
   if (p === null) {
-    _pose = null;
-  } else {
-    // Validate everything before touching state: a refused pose leaves the previous one (or none) in place.
-    const position = finite3(p && p.position, 'position');
-    const lookAt = finite3(p && p.lookAt, 'lookAt');
-    const fov = Number.isFinite(p.fov) ? p.fov : 75; // the game's own base fov (GameScene camera, capture pin)
-    _pose = { position, lookAt, fov, hands: p.hands === true };
+    setLookbookPose(null);
+    return;
   }
-  for (const cb of _subs) cb();
+  // Validate everything before touching state: a refused pose leaves the previous one (or none) in place.
+  const position = finite3(p && p.position, 'position');
+  const lookAt = finite3(p && p.lookAt, 'lookAt');
+  const fov = Number.isFinite(p.fov) ? p.fov : 75; // the game's own base fov (GameScene camera, capture pin)
+  setLookbookPose({ position, lookAt, fov, hands: p.hands === true });
 }
 
 /**
- * A copy of a pose, arrays included, or null. pose() and info() hand THIS to callers, never the live `_pose`:
+ * A copy of a pose, arrays included, or null. pose() and info() hand THIS to callers, never the live held pose:
  * validation runs on the way in (finite3), so a returned live object would be a way round it — one assignment from a
  * NaN camera that PositionTracker would then publish as the player's position. (Review F3.)
  */
@@ -160,15 +106,6 @@ function checkHandPose(p) {
   if (p.kind === 'cast') return { kind: 'cast', t: unit(p.t, 't') };
   if (!SWING_STEPS.includes(p.step)) throw new RangeError(`lookbook: handPose step must be 1, 2 or 3, got ${JSON.stringify(p.step)}`);
   return { kind: 'swing', step: p.step, t: unit(p.t, 't') };
-}
-
-/** Pin `camera` to `pose`: position, a level up vector, the look target, the fov, and a rebuilt projection. */
-export function applyLookbookPose(camera, pose) {
-  camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
-  camera.up.set(0, 1, 0);
-  camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
-  camera.fov = pose.fov;
-  camera.updateProjectionMatrix();
 }
 
 const DEG = Math.PI / 180;
@@ -270,13 +207,13 @@ export function installLookbookSeam(win, {
 }) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   const unposed = (verb) => {
-    if (_pose !== null) throw new Error(`lookbook: ${verb}() while a pose is set; clear() first`);
+    if (lookbookPose() !== null) throw new Error(`lookbook: ${verb}() while a pose is set; clear() first`);
   };
   const body = () => store.getState().playerRigidBodyRef?.current ?? null;
   const camera = () => store.getState().gameCamera ?? null;
   win.__craftyLookbook = Object.freeze({
     /** Pin the camera: { position: [x,y,z], lookAt: [x,y,z], fov? }. Throws on a malformed pose. */
-    pose: (p) => { setPose(p); return copyPose(_pose); },
+    pose: (p) => { setPose(p); return copyPose(lookbookPose()); },
     /** Hand the camera back to the player rig. */
     clear: () => { setPose(null); },
     /** Set the time of day as a DAWN-origin cycle fraction; returns the cycle the store actually landed on. A direct
@@ -317,7 +254,7 @@ export function installLookbookSeam(win, {
      *  start on its next tick, so an eye pose (`hands: true`) at the body's eye is how a form is shot in first person.
      *  Returns the form the store holds. */
     form: (element) => {
-      if (_pose === null) throw new Error('lookbook: form() needs a pose; the beast state machine ends an unposed form');
+      if (lookbookPose() === null) throw new Error('lookbook: form() needs a pose; the beast state machine ends an unposed form');
       const s = store.getState();
       if (element === null) s.exitBeastForm();
       else if (!s.enterBeastForm(element) && s.activeBeastForm !== element) {
@@ -327,9 +264,9 @@ export function installLookbookSeam(win, {
     },
     /** Hold the first-person hands in a pose (checkHandPose), or let the clock drive them again (null). */
     handPose: (p) => {
-      _handPose = checkHandPose(p);
-      for (const cb of _subs) cb();
-      return _handPose === null ? null : { ..._handPose };
+      const held = checkHandPose(p);
+      setLookbookHandPose(held);
+      return held === null ? null : { ...held };
     },
     /** Remove the live hostiles within `radius` metres of the eye (else the body), the way capture mode clears mobs
      *  (ecs.remove, so no kill, XP or loot is counted), so a frame shows the world rather than a fight in the player's
@@ -353,12 +290,12 @@ export function installLookbookSeam(win, {
       if (pose !== null && !DRAGON_POSES.includes(pose)) {
         throw new TypeError(`lookbook: dragon pose must be one of ${DRAGON_POSES.join(', ')} or null, got ${JSON.stringify(pose)}`);
       }
-      if (pose === null) { _dragonHold = null; return null; }
+      if (pose === null) { setLookbookDragonHold(null); return null; }
       if (!spawnDragon) throw new Error('lookbook: dragon() needs the boss system\'s spawn');
       const at = position === undefined ? undefined : finite3(position, 'position');
       const woke = spawnDragon({ position: at });
       if (!woke) throw new Error('lookbook: the boss system has not installed its lookbook spawn yet');
-      _dragonHold = pose;
+      setLookbookDragonHold(pose);
       return woke;
     },
     /** The ground's height at { x, z } (the mobs' ground probe: the top of the column), or null where it is not loaded. A
@@ -389,14 +326,16 @@ export function installLookbookSeam(win, {
       if (!Array.isArray(names) || unknown.length) {
         throw new TypeError(`lookbook: passesOff takes names from ${LOOKBOOK_PASS_NAMES.join(', ')}; got ${JSON.stringify(names)}`);
       }
-      _passesOff = new Set(list);
-      return [..._passesOff].sort();
+      const off = new Set(list);
+      setLookbookPassesOff(off);
+      return [...off].sort();
     },
     /** What the probe records per shot. */
     info: () => {
       const s = store.getState();
       const rb = s.playerRigidBodyRef?.current;
       const cam = s.gameCamera;
+      const hand = lookbookHandPose();
       let cameraNodes = 0;
       cam?.traverse?.(() => { cameraNodes += 1; });
       const t = rb?.translation?.();
@@ -410,9 +349,9 @@ export function installLookbookSeam(win, {
         frameCap: s.frameCap,
         contextLosses: contextLosses(),
         gl: glInfo(),
-        pose: copyPose(_pose),
+        pose: copyPose(lookbookPose()),
         form: s.activeBeastForm ?? null,
-        handPose: _handPose === null ? null : { ..._handPose },
+        handPose: hand === null ? null : { ...hand },
         worldBuilt: s.isSpawnChunkLoaded === true,
         body: t ? [t.x, t.y, t.z] : null,
         eye: cam ? cam.position.toArray() : null,
@@ -428,9 +367,9 @@ export function installLookbookSeam(win, {
         // Where the sun is, so a shot can face it (GodRays shows only near it); null when the build hands no reader.
         sun: sunDir ? sunBearing(sunDir()) : null,
         // The passes switched off, and the postprocessing effects that must show skipped in the chain while they are.
-        passesOff: { names: [..._passesOff].sort(), effects: lookbookEffectNames(_passesOff) },
+        passesOff: { names: [...lookbookPassesOff()].sort(), effects: lookbookEffectNames(lookbookPassesOff()) },
         // The fight a frame shows: whether the dragon is up, the pose the seam holds it in, and where it is.
-        dragon: { active: s.bossActive === true, hold: _dragonHold, position: copy3(s.getBossPosition?.()) },
+        dragon: { active: s.bossActive === true, hold: lookbookDragonHold(), position: copy3(s.getBossPosition?.()) },
       };
     },
   });
@@ -440,10 +379,6 @@ export function installLookbookSeam(win, {
 /** Test-only. */
 /** @internal Test seam: resets module state between cases. */
 export function _resetLookbookForTest() {
-  _pose = null;
-  _handPose = null;
-  _subs.clear();
+  _resetLookbookStateForTest();
   _passTimer = null;
-  _passesOff = new Set();
-  _dragonHold = null;
 }

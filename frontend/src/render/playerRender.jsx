@@ -16,7 +16,7 @@ import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
 import { worldDelta } from '../game/worldClock.js';
 import { handSwing, slashSweep } from '../game/meleeString.js';
-import { lookbookHandPose, lookbookHandPoseKind, subscribeLookbook } from './lookbookSeam.js';
+import { lookbookHandPose, lookbookHandPoseKind, subscribeLookbook } from './lookbookState.js';
 import {
   GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, installValueFloor, makeGauntletMaterials, makeHeldMaterial, stepFormTint,
 } from './viewmodel.js';
