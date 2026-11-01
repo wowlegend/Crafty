@@ -284,7 +284,7 @@ export const PERSISTED_KEYS = Object.freeze([
   '_tombstone', 'worldBlocks', 'chests', 'inventory', 'questState',
   'level', 'currentXP', 'totalXP', 'equipment', 'relicTiers', 'talentPoints', 'unlockedTalents', 'coins',
   'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay', 'squad',
-  'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon', 'reachedShrines', 'rewardedShrines',
+  'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon', 'hearthLit', 'reachedShrines', 'rewardedShrines',
   'bossActive', 'bossHealth', 'bossDefeated', 'bossTier', 'bossKillNight',
   'playerHealth', 'maxHealth', 'mana', 'maxMana',
 ]);
@@ -380,6 +380,8 @@ export function buildSaveData(state, { position } = {}) {
       // `achievements` DELETED 2026-08-11: setAchievements had zero callers and the array zero readers,
       // so this wrote an empty list into every save. QuestSystem's achievements ride in questState.
       gameWon: state.gameWon, // S9c: the win-state survives a reload
+      // Whether the Hearth has been kindled (W3-A). A save from before the field loads it lit (store loadWorldData).
+      hearthLit: state.hearthLit,
       // The frontier shrines this world has reached, and those whose reward chest has been opened (QuestSystem.jsx).
       shrines: { reached: state.reachedShrines, rewarded: state.rewardedShrines },
       // A-bis B2g: the boss FIGHT survives a reload too, not just the win. gameWon alone only stopped a

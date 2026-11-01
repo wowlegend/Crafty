@@ -27,6 +27,9 @@ import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { voxelIndex } from '../world/chunkLayout.js';
 import { DEFAULT_WORLD_SEED, resolveWorldSeed } from '../world/worldSeed.js';
 import { seedClimate } from '../world/climate.js';
+import { BLOCK_ID } from '../world/blockIds.js';
+import { lanternsIn } from '../world/lanternIndex.js';
+import { worldNow } from '../game/worldClock.js';
 
 // How long ONE attacker must wait before it can damage the player again. This was an inline 500 applied
 // to a single global timestamp, which made it a world-wide budget rather than a per-attacker cooldown —
@@ -738,7 +741,10 @@ export const useGameStore = create((set, get) => ({
     setSelectedBlock: (block) => set({ selectedBlock: block }),
 
     worldBlocks: new Map(),
-    setWorldBlocks: (blocks) => set({ worldBlocks: blocks }),
+    // The placed lanterns' cells, [{ x, y, z }] (world/lanternIndex.js), for the lights (game/lights.js). Rebuilt with
+    // worldBlocks by every writer of it (a place, a mine, a boss smash) and by a load; derived, never saved.
+    lanterns: lanternsIn(null),
+    setWorldBlocks: (blocks) => set((s) => ({ worldBlocks: blocks, lanterns: lanternsIn(blocks, BLOCK_ID.lantern, s.lanterns) })),
     // The open world's terrain seed (world/worldSeed.js). Set only by a load; New World loads the initial state, so it
     // writes 12345.
     worldSeed: DEFAULT_WORLD_SEED,
@@ -852,6 +858,26 @@ export const useGameStore = create((set, get) => ({
     // the save slice so a reload mid-run cannot re-grant a night's reward).
     lastRewardedNight: 0,
 
+    // THE FIRST NIGHT's seams (W3-A task script, U1; DECISIONS 2026-11-01 (W3-A PR C) item 496). Only hearthLit is saved:
+    // a save without it reads lit. The rest is derived or per session, and a load resets it.
+    hearthLit: true,
+    // The night the clock last crossed into and the gameTime it crossed at, { night, gameTime }, or null. Written only by
+    // setGameTime's crossing into night, never by a load or a jump of the clock, so a siege director keyed on it cannot
+    // start a siege on a load.
+    lastNightfall: null,
+    // The siege in progress as its director holds it ({ night, bearings, wave, captainId, ... }), or null.
+    siege: null,
+    // The Hearth's flame, 0 to 1, in quarter steps: a draining flame writes the store four times and at 0, no more.
+    hearthFlame: 1,
+    setHearthFlame: (f) => set((s) => {
+        const q = Math.ceil(Math.min(1, Math.max(0, Number(f) || 0)) * 4) / 4; // the quarter it is still within; 0 only at 0
+        return q === s.hearthFlame ? s : { hearthFlame: q };
+    }),
+    // The dawn rush the captain's death starts, { night, startedAt } (gameTime), or null: the clock runs to day, and the
+    // crossing into day ends it.
+    dawnRush: null,
+    startDawnRush: () => set((s) => (s.isDay || s.dawnRush ? s : { dawnRush: { night: s.nightCount, startedAt: s.gameTime } })),
+
     // EMBER (game/ember.js): the one Aspect meter. Day kills fill it (useEmberAccrual, App), day placements fill it up
     // to the day's allowance (accrueBuildEmber, world/placeAtHit.js), the four verbs spend it, dawn empties it
     // (setGameTime, on the clock's crossing into day). Both fields are persisted.
@@ -918,7 +944,9 @@ export const useGameStore = create((set, get) => ({
             return {
                 gameTime: newTime,
                 isDay: !state.isDay,
-                ...(enteringNight ? { nightCount: state.nightCount + 1 } : { ember: 0 }),
+                ...(enteringNight
+                    ? { nightCount: state.nightCount + 1, lastNightfall: { night: state.nightCount + 1, gameTime: newTime } }
+                    : { ember: 0, dawnRush: null }),
             };
         }
         return { gameTime: newTime };
@@ -969,6 +997,9 @@ export const useGameStore = create((set, get) => ({
     damageFlash: false,
     screenShake: 0,
     lastHitDir: null, // {angle,t} of the most recent hit (combat-legibility cue); angle null for a hit with no source
+    // The world clock (game/worldClock.js worldNow) at the most recent hit, or null: calm counts from it, so a frozen
+    // world holds it. Stamped beside lastHitDir.
+    lastHurtAt: null,
 
     setPlayerHealth: (healthArg) => set((state) => ({ playerHealth: typeof healthArg === 'function' ? healthArg(state.playerHealth) : healthArg })),
     setMaxHealth: (max) => set({ maxHealth: max }),
@@ -1034,6 +1065,7 @@ export const useGameStore = create((set, get) => ({
             // projectile, the dragon's fireball impact, lava) has no direction: its angle is null, so the kick goes
             // straight back and the edge glow shows nothing, rather than both pointing at whatever hit last.
             lastHitDir: { angle: dir ?? null, t: now },
+            lastHurtAt: worldNow(),
         });
         if (stopMs > 0) get().triggerHitstop(stopMs);
 
@@ -1185,6 +1217,15 @@ export const useGameStore = create((set, get) => ({
                 _worldEditsPending: !state.terrainWorker,
                 _tombstone: { ...splitTombstone(saveData, owed.claimedQuestIds), migrated: owed.migrated },
                 worldBlocks,
+                lanterns: lanternsIn(worldBlocks, BLOCK_ID.lantern, state.lanterns),
+                // A save without the field reads lit: only a save that recorded a cold Hearth loads cold.
+                hearthLit: saveData.game_state?.hearthLit !== false,
+                // The night's per-session state belongs to the world loaded before: a load starts none of it, and the
+                // crossing a nightfall records is never a load.
+                lastNightfall: null,
+                siege: null,
+                dawnRush: null,
+                hearthFlame: 1,
                 worldSeed,
                 inventory,
                 selectedBlock,

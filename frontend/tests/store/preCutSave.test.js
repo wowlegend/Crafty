@@ -89,11 +89,13 @@ describe('the tombstone pass-through', () => {
     // The whole slice, not the planted keys alone: a field this build stops writing (gameMode, the four Aspect banks,
     // attributes, spellLevels) must come back exactly as the pre-cut save had it. The keys added are the ember the banks
     // were summed into, the Forge's relic tiers (none tempered), the squad's roster (none bound), the shrine record (none
-    // reached) and the world's seed (12345, the seed every save before the field was played on); the keys changed are the
-    // talents the refund paid (the describe at the end of this file).
+    // reached), the world's seed (12345, the seed every save before the field was played on) and the Hearth, lit (a save
+    // from before the field reads lit); the keys changed are the talents the refund paid (the describe at the end of this
+    // file).
     expect(saved.progression, 'the pre-cut progression slice did not round-trip unchanged')
       .toEqual({ ...f.progression, ember: 75, emberBuildDay: { night: 0, built: 0 }, relicTiers: {}, squad: [], talentPoints: 8, unlockedTalents: {} });
-    expect(saved.game_state, 'the pre-cut game_state slice did not round-trip unchanged').toEqual({ ...f.game_state, worldSeed: 12345, shrines: { reached: [], rewarded: [] } });
+    expect(saved.game_state, 'the pre-cut game_state slice did not round-trip unchanged')
+      .toEqual({ ...f.game_state, worldSeed: 12345, shrines: { reached: [], rewarded: [] }, hearthLit: true });
   });
 
   it('keeps carrying the keys across a second load and save (the bag is re-read, not spent)', () => {

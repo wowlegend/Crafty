@@ -389,8 +389,9 @@ describe('night(): the night as the store holds it, read-only', () => {
   it('reads the store\'s own fields; a night field the store holds none of is null; the answer is a copy; it writes nothing', () => {
     const w = fakeWin('?lookbook=1');
     installLookbookSeam(w, deps());
+    // The store holds every night field since U1 (store/useGameStore.jsx); a build without one is staged by clearing it.
     useGameStore.setState({ gameTime: 700, isDay: false, nightCount: 1, isAlive: true, playerHealth: 64, maxHealth: 120, ember: 40,
-      siege: undefined, hearthLit: undefined });
+      siege: undefined, hearthLit: undefined, hearthFlame: undefined, dawnRush: undefined, lastNightfall: undefined, lastHurtAt: undefined });
     const writes = [];
     const off = useGameStore.subscribe((s, prev) => { for (const k of Object.keys(s)) if (s[k] !== prev[k]) writes.push(k); });
     const n = w.__craftyLookbook.night();
@@ -411,7 +412,8 @@ describe('night(): the night as the store holds it, read-only', () => {
     held.lastNightfall.night = 9;
     expect(useGameStore.getState().siege.bearings, 'night() handed back the live siege').toEqual([1.2]);
     expect(useGameStore.getState().lastNightfall.night, 'night() handed back the live lastNightfall').toBe(1);
-    useGameStore.setState({ siege: undefined, hearthLit: undefined, lastNightfall: undefined });
+    const initial = useGameStore.getInitialState();
+    useGameStore.setState(Object.fromEntries(['siege', 'hearthLit', 'hearthFlame', 'dawnRush', 'lastNightfall', 'lastHurtAt'].map((k) => [k, initial[k]])));
   });
 });
 

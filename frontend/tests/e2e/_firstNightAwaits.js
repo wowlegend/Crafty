@@ -26,7 +26,7 @@ export const AWAITS = Object.freeze({
   a: Object.freeze([
     red('D2', 'cold', /^the brazier is lit at Start \(intensity [\d.]+\)/),
     red('D2', 'kindle', /^G 2 m from the brazier lit no cold brazier: intensity [\d.]+ before the press/),
-    red('D2', 'lit', /^the store does not say the Hearth is lit after the kindle \(hearthLit null\)/),
+    red('D2', 'lit', /^the store does not say the Hearth went from cold to lit with the kindle \(hearthLit true before the press, true after\)/),
   ]),
   b: Object.freeze([
     red('N5', 'siege', /^no siege at the crossing: the store holds null/),

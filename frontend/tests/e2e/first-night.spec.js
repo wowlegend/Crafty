@@ -380,6 +380,7 @@ test.describe('a fresh profile', () => {
     await stand(page, { x: BRAZIER[0], z: BRAZIER[2] + 2, heading: 0 });
     const lightNow = () => page.evaluate(brazierLight, BRAZIER_FIRE);
     const before = (await lightNow()).intensity;
+    const litBefore = (await page.evaluate(readNight)).hearthLit;
     await page.keyboard.press('g');
     let after = await lightNow();
     for (let i = 0; i < 25 && !(before === 0 && after.intensity > 0); i++) {
@@ -388,8 +389,11 @@ test.describe('a fresh profile', () => {
     }
     red('kindle', before === 0 && after.intensity > 0,
       `G 2 m from the brazier lit no cold brazier: intensity ${before} before the press and ${after.intensity} after (a kindle reads 0, then more)`);
+    // The store's own word, cold before the press and lit after it: a Hearth the store already called lit (U1's default,
+    // which D2 makes cold for a fresh profile) was kindled by nothing.
     const hearthLit = (await page.evaluate(readNight)).hearthLit;
-    red('lit', hearthLit === true, `the store does not say the Hearth is lit after the kindle (hearthLit ${JSON.stringify(hearthLit)})`);
+    red('lit', litBefore === false && hearthLit === true,
+      `the store does not say the Hearth went from cold to lit with the kindle (hearthLit ${JSON.stringify(litBefore)} before the press, ${JSON.stringify(hearthLit)} after)`);
   });
 });
 

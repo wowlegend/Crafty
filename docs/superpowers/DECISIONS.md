@@ -268,6 +268,25 @@ ceiling.
    thirteen modules (a `motion` mutant in the new file red), `modal-static-gates` reads `ui/AchievementsPanel.jsx` (two
    mutants red), and `controls-panel-gates` and `taught-keys-gates` import the panel from its new file.
 
+496. **U1, the store: the night's fields, and only the Hearth's state is saved.** `hearthLit` starts true and is saved in
+   `game_state`; a save without it, or with anything but `false`, loads lit, so every returning world keeps its fire and
+   only D2's eligible fresh profile will start cold. `lastNightfall { night, gameTime }` is written only on
+   `setGameTime`'s crossing into night, beside the `nightCount` bump it describes, and a load nulls it: no load, clock
+   jump or direct `nightCount` write can start a night's director. `lastHurtAt` is `worldNow()` stamped beside
+   `lastHitDir`, so calm (V2) counts world time and a paused or hit-stopped world holds it. `lanterns`, the placed
+   lanterns' cells (`world/lanternIndex.js`), is rebuilt wherever `worldBlocks` is replaced (`setWorldBlocks`, which the
+   place, the mine and the boss smash all call, and a load) and keeps its reference when no lantern moved; it reads
+   `BLOCK_ID.lantern`, which L2 adds, so it is empty until then and block 16 keeps one home. Not saved, and reset by a
+   load: `siege`, `dawnRush` (with `startDawnRush()`, at night only; the crossing into day ends it) and `hearthFlame`,
+   which stores the quarter the flame is still within (0.1 reads 0.25; 0 only at 0) and writes only when that quarter
+   changes, so a flame burning from full to out writes it four times. No setter for `hearthLit` or `siege`: their units write
+   them. Red first: `tests/store/night-seams.test.js`, 7 of 7 red on the base; 15 mutants red, the identity survived.
+   `preCutSave`'s round trip now expects the lit Hearth a pre-field save gains. **Beat (a)'s third red is rewritten**
+   (item 482's rule for a unit that moves a beat's red): with the store lit by default, "the store says lit after G"
+   passed on a Hearth nothing kindled, so the check now asks the store for cold before the press and lit after, and its
+   recorded red reads `hearthLit true before the press, true after` (it read `null` before this unit). The run that
+   checked the record is item 498.
+
 ---
 
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
