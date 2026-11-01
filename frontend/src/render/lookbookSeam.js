@@ -346,10 +346,11 @@ export function installLookbookSeam(win, {
      *  eye turned by `yawDeg`, and HOLD `moment` (STAGE_MOMENTS): the world is frozen through the store's own hitstop, so
      *  the AI neither moves it nor replaces its windup; 'windup' plants windupUntil at 0.8 of the ramp, and 'hit' renews
      *  lastHit every frame. Returns { id, position }. unstage() removes what was staged and lets the world go. */
-    stage: ({ type, distance = 3, moment = 'idle', yawDeg = 0, side = 0 } = {}) => {
+    stage: ({ type, distance = 3, moment = 'idle', yawDeg = 0, side = 0, elite = null } = {}) => {
       if (!STAGE_MOMENTS.includes(moment)) {
         throw new TypeError(`lookbook: stage moment must be one of ${STAGE_MOMENTS.join(', ')}, got ${JSON.stringify(moment)}`);
       }
+      if (elite !== null && elite !== 'ember' && elite !== 'captain') throw new TypeError(`lookbook: stage elite must be 'ember', 'captain' or null, got ${JSON.stringify(elite)}`);
       const d = finite(distance, 'distance');
       const turn = finite(yawDeg, 'yawDeg') * DEG;
       const s = finite(side, 'side');
@@ -366,14 +367,16 @@ export function installLookbookSeam(win, {
       if (!Number.isFinite(y)) throw new Error(`lookbook: stage() found no ground at ${x.toFixed(1)}, ${z.toFixed(1)}`);
       if (moment === 'cast') {
         // `type` is the element: the spell system's deterministic cast (EnhancedMagicSystem spawnDeterministicCast),
-        // its projectile `distance` m along the eye's forward at eye height and its impact 3 m beyond, on the floor.
+        // its projectile `distance` m along the eye's forward at eye height. Its cast telegraph and its impact go 3 m
+        // BEHIND the eye, out of the frame: held at their first instant they would fill it (a rune circle at the muzzle,
+        // the impact's flash sphere), and the frame is the projectile's.
         if (!st.spawnDeterministicCast) throw new Error('lookbook: stage() cast before the spell system exists');
-        const [ix, iz] = [cam.position.x + fx * (d + 3), cam.position.z + fz * (d + 3)];
+        const [ix, iz] = [cam.position.x - fx * 3, cam.position.z - fz * 3];
         const iy = st.getMobFloor?.(ix, iz, cam.position.y - 1.6);
         const at = [x, cam.position.y - 0.2, z];
         st.spawnDeterministicCast({
           spellType: type,
-          muzzle: [cam.position.x + fx, cam.position.y - 0.3, cam.position.z + fz],
+          muzzle: [ix, cam.position.y - 0.3, iz],
           projectile: at,
           impact: [ix, (Number.isFinite(iy) ? iy : y) + 0.1, iz],
           direction: [fx, -0.05, fz],
@@ -385,6 +388,7 @@ export function installLookbookSeam(win, {
       if (!st.spawnMob(x, z, type, y)) throw new TypeError(`lookbook: the spawner refused the type ${JSON.stringify(type)}`);
       const mob = [...hostiles()].find((m) => !before.has(m));
       if (!mob) throw new Error('lookbook: the spawner reported a spawn the mob query does not show');
+      if (elite) mob.elite = elite; // a crest or a captain's banner (src/night/eliteLook.js), set before the mob mounts
       mob.rotation = Math.atan2(cam.position.x - x, cam.position.z - z) + turn;
       mob.snapSync = true; // a held world takes no damp step: copy the pose
       if (!_stage.holding) { st.triggerHitstop(STAGE_HOLD_MS); _stage.holding = true; }

@@ -17,6 +17,7 @@ import { OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { mobLook, applyMobLook } from './feedbackGrammar.js';
 import { mobTones, HOSTILE_EYE } from './mobTones.js';
+import { eliteFeatures } from '../night/eliteLook.js';
 import { featureColor } from '../game/mobFeatures.js';
 import { VILLAGER_GREETINGS } from '../game/villagerGreetings.js';
 import { useT } from '../i18n/i18n.js';
@@ -44,9 +45,13 @@ const MobModel = React.memo(({ entity }) => {
 
   // Mob-distinctness T3: per-type silhouette feature boxes (pure game/mobFeatures), derived from the
   // body dims. Empty for unfeatured types (pig/zombie/villager/spider) -> zero render change for them.
+  // An elite's crest and a captain's banner (src/night/eliteLook.js) join them; `entity.elite` is set at spawn.
   const features = useMemo(
-    () => mobFeatures(entity.type, { bodyW, bodyH, bodyD, headW, headH, headD }),
-    [entity.type, bodyW, bodyH, bodyD, headW, headH, headD],
+    () => {
+      const dims = { bodyW, bodyH, bodyD, headW, headH, headD };
+      return [...mobFeatures(entity.type, dims), ...eliteFeatures(entity.elite, dims)];
+    },
+    [entity.type, entity.elite, bodyW, bodyH, bodyD, headW, headH, headD],
   );
 
   // Two more tones on parts the mob already has (render/mobTones.js): a lighter head, darker legs.
@@ -316,9 +321,9 @@ const MobModel = React.memo(({ entity }) => {
             body-local frame, same toon material + inverted-hull outline as the body so the creature
             reads as ONE form; `tone` shades them. Empty for unfeatured types (no render change). */}
         {features.map((f, i) => (
-          <mesh key={`feat-${i}`} castShadow receiveShadow position={f.pos} rotation={f.rot || [0, 0, 0]}>
+          <mesh key={`feat-${i}`} castShadow={!f.elite} receiveShadow position={f.pos} rotation={f.rot || [0, 0, 0]}>
             <boxGeometry args={f.box} />
-            <MobToonMaterial color={featureColor(f.tone, entity.color)} />
+            <MobToonMaterial color={featureColor(f.tone, entity.color)} emissive={f.tone === 'ember' ? '#FF7A2A' : '#000000'} emissiveIntensity={0.6} />
             {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
           </mesh>
         ))}

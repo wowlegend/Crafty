@@ -380,6 +380,9 @@ const COMBAT_CYCLES = [0.3, 0.75];
 const COMBAT_HEADING = 120;
 const COMBAT_PITCH = -8;
 const COMBAT_SHOTS = Object.freeze([
+  // A spell held in flight 4 m out (the seam's 'cast': the spell system's deterministic cast), first, before any mob is
+  // staged at that spot.
+  ...['fireball', 'iceball', 'lightning', 'arcane'].map((el) => ({ name: `cast-${el}`, type: el, moment: 'cast', distance: 4 })),
   { name: 'idle-zombie', type: 'zombie', moment: 'idle', distance: 3.5 },
   { name: 'windup-zombie', type: 'zombie', moment: 'windup', distance: 3.5 },
   { name: 'windup-zombie-45', type: 'zombie', moment: 'windup', distance: 3.5, yawDeg: 45 },
@@ -387,8 +390,9 @@ const COMBAT_SHOTS = Object.freeze([
   { name: 'windup-skitterling', type: 'skitterling', moment: 'windup', distance: 3.5 },
   { name: 'hit-zombie', type: 'zombie', moment: 'hit', distance: 3.5 },
   { name: 'windup-zombie-far', type: 'zombie', moment: 'windup', distance: 14 },
-  // A spell held in flight 4 m out with its impact 3 m beyond (the seam's 'cast': the spell system's deterministic cast).
-  ...['fireball', 'iceball', 'lightning', 'arcane'].map((el) => ({ name: `cast-${el}`, type: el, moment: 'cast', distance: 4 })),
+  // Elites (W3-A F5): an ember-touched duskhound's crest, and the siege captain's crest and banner, turned to show it.
+  { name: 'idle-duskhound-ember', type: 'duskhound', moment: 'idle', distance: 3.5, elite: 'ember' },
+  { name: 'windup-zombie-captain', type: 'zombie', moment: 'windup', distance: 4, yawDeg: 140, elite: 'captain' },
 ]);
 const COMBAT_DRAW_MS = 1500;
 
@@ -418,7 +422,7 @@ async function shootCombat(page, report, dir, target, facts) {
       await holdTier();
       await setCycle(page, c);
       let staged = null;
-      try { staged = await lb('stage', { type: shot.type, distance: shot.distance, moment: shot.moment, yawDeg: shot.yawDeg ?? 0 }); }
+      try { staged = await lb('stage', { type: shot.type, distance: shot.distance, moment: shot.moment, yawDeg: shot.yawDeg ?? 0, elite: shot.elite ?? null }); }
       catch (e) { report.notes.push(`combat ${shot.name} at ${c}: stage() refused: ${String(e.message).slice(0, 160)}`); continue; }
       await passTimes(page, { reset: true });
       await delay(700);
@@ -427,7 +431,10 @@ async function shootCombat(page, report, dir, target, facts) {
       const after = await info(page);
       const pt = await passTimes(page);
       await lb('unstage');
-      const why = [after.active ? null : 'input not live', after.isAlive ? null : 'player dead'].filter(Boolean);
+      // What the stage left behind: live mobs within 1 m of where it stood (unstage removes what it staged).
+      const left = staged ? (await page.evaluate(() => window.__craftyLookbook.mobs()) || [])
+        .filter((m) => Math.hypot(m.position[0] - staged.position[0], m.position[2] - staged.position[2]) < 1).map((m) => m.type) : [];
+      const why = [after.active ? null : 'input not live', after.isAlive ? null : 'player dead', left.length ? `left behind: ${left}` : null].filter(Boolean);
       report.combat.push({ file, cycle: c, ...shot, staged, valid: why.length === 0, why, ...facts(after, t0, pt) });
       console.log(`lookbook combat ${target.id} ${file}: ${why.length ? `INVALID ${why.join('; ')}` : 'valid'}`);
     }

@@ -91,8 +91,9 @@ import { worldNow } from '../../src/game/worldClock.js';
  *   K0g the hit stamp not renewed after its first frame -> "hit: ..."
  *   K0h unstage() leaves the world held -> "windup: ..."
  *   K0i plausible-wrong: the side step to the left -> "hit: ..."
- *   K4a the cast's impact at the projectile, not beyond it -> "cast: ..."
+ *   K4a the cast's impact at the projectile, in the frame -> "cast: ..."
  *   K4b a cast without the world held -> "cast: ..."
+ *   K5h the rank not set on the staged mob -> "elite: ..."
  *
  * BLIND SPOT: that Components.jsx's Player useFrame applies the pose to the LIVE camera (and stops applying it on
  * clear), that the hands really hide, and that index.jsx installs the seam, are the e2e's
@@ -1184,7 +1185,7 @@ describe('stage(): a mob held in one combat moment in front of the eye', () => {
     expect(e.lastHit, 'no stamp after unstage').toBe(last);
   });
 
-  it('cast: the spell system\'s deterministic cast, its projectile along the eye forward and its impact beyond, the world held', () => {
+  it('cast: the spell system\'s deterministic cast, its projectile along the eye forward, its telegraph and impact behind the eye, the world held', () => {
     const { w, spawned } = setup();
     const casts = [];
     useGameStore.setState({ spawnDeterministicCast: (o) => casts.push(o) });
@@ -1194,14 +1195,25 @@ describe('stage(): a mob held in one combat moment in front of the eye', () => {
     expect(casts[0].spellType).toBe('iceball');
     expect(casts[0].projectile[0]).toBeCloseTo(14, 5); // 4 m east of the eye at (10, 60, 10)
     expect(casts[0].projectile[2]).toBeCloseTo(10, 5);
-    expect(casts[0].impact[0]).toBeCloseTo(17, 5); // 3 m beyond, on the floor
+    expect(casts[0].impact[0]).toBeCloseTo(7, 5); // 3 m behind the eye, out of the frame, on the floor
     expect(casts[0].impact[1]).toBeCloseTo(57.1, 5);
+    expect(casts[0].muzzle[0], 'the cast telegraph behind the eye too').toBeCloseTo(7, 5);
     expect(r.position).toEqual(casts[0].projectile);
     expect(useGameStore.getState().hitstopUntil - performance.now(), 'the world is held').toBeGreaterThan(60000);
     w.__craftyLookbook.unstage();
     expect(useGameStore.getState().hitstopUntil, 'and let go').toBeLessThanOrEqual(performance.now());
     useGameStore.setState({ spawnDeterministicCast: null });
     expect(() => w.__craftyLookbook.stage({ type: 'iceball', moment: 'cast' })).toThrow(/spell system/);
+  });
+
+  it('elite: the staged mob carries the rank MobModel draws a crest or a banner for; an unknown rank is refused', () => {
+    const { w, mobs } = setup();
+    w.__craftyLookbook.stage({ type: 'zombie', moment: 'windup', elite: 'captain' });
+    expect(mobs.entities[0].elite).toBe('captain');
+    w.__craftyLookbook.stage({ type: 'duskhound', moment: 'idle', side: 2 });
+    expect(mobs.entities[1].elite, 'no rank unless asked').toBeUndefined();
+    expect(() => w.__craftyLookbook.stage({ type: 'zombie', elite: 'king' })).toThrow(/elite/);
+    expect(mobs.entities, 'a refused rank stages nothing').toHaveLength(2);
   });
 
   it('refuses an unknown moment, a type the spawner refuses, a bad distance, and a build without the mob query', () => {

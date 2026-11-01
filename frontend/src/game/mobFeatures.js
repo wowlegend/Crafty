@@ -105,6 +105,7 @@ export function hasHostileEyes(entity, mobConfig) {
 /** The authored colour for a feature of `tone` on a body of `baseColor`. */
 export function featureColor(tone, baseColor) {
   if (tone === 'bone') return '#e6dcc4';
+  if (tone === 'ember') return '#FF7A2A'; // an elite's crest and a captain's flag (src/night/eliteLook.js)
   if (tone === 'dark') return _hexScale(baseColor, 0.55);
   return baseColor;
 }
