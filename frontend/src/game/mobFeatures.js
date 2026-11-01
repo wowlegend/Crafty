@@ -5,8 +5,9 @@
 // material + inverted-hull outline as the body, so a featured mob reads as ONE creature whose
 // SILHOUETTE (not just color) identifies the species. Static geometry only (capture-deterministic).
 //
-// A spec: { box:[w,h,d], pos:[x,y,z], rot?:[x,y,z], tone?:'dark'|'bone' }. `rot` defaults to none;
-// `tone` is an optional shade hint the renderer applies (else the feature inherits the body color).
+// A spec: { box:[w,h,d], pos:[x,y,z], rot?:[x,y,z], tone?:'dark'|'bone', crest?:true }. `rot` defaults to none;
+// `tone` is an optional shade hint the renderer applies (else the feature inherits the body color); `crest` marks
+// a box of the type's own head crest.
 // Positions/sizes are DERIVED from the body dims so features scale with each type's size.
 
 // Humanoid ARMS (B5 mob-art): two boxes at the body sides — the silhouette cue that reads an upright mob
@@ -49,11 +50,12 @@ const FEATURES = {
     ...humanoidArms(d, { tone: 'bone' }), // bony arms at the sides
   ],
   // charred night-siege husk -> a jagged charred head-CREST (a 3-spike crown, centre tallest, sides
-  // splayed) on the head top — reads front-on (unlike a back-crest, which a front view hides).
+  // splayed) on the head top — reads front-on (unlike a back-crest, which a front view hides). `crest`: an
+  // elite husk wears this crown in ember in place of the elite crest (src/night/eliteLook.js), at the same spot.
   emberhusk: (d) => [
-    { box: [d.headW * 0.16, d.headH * 0.70, d.headD * 0.18], pos: [-d.headW * 0.30, d.bodyH + d.headH * 1.12, d.bodyD / 3], rot: [0, 0, 0.32], tone: 'dark' },
-    { box: [d.headW * 0.16, d.headH * 0.90, d.headD * 0.18], pos: [0, d.bodyH + d.headH * 1.22, d.bodyD / 3], rot: [0, 0, 0], tone: 'dark' },
-    { box: [d.headW * 0.16, d.headH * 0.70, d.headD * 0.18], pos: [d.headW * 0.30, d.bodyH + d.headH * 1.12, d.bodyD / 3], rot: [0, 0, -0.32], tone: 'dark' },
+    { box: [d.headW * 0.16, d.headH * 0.70, d.headD * 0.18], pos: [-d.headW * 0.30, d.bodyH + d.headH * 1.12, d.bodyD / 3], rot: [0, 0, 0.32], tone: 'dark', crest: true },
+    { box: [d.headW * 0.16, d.headH * 0.90, d.headD * 0.18], pos: [0, d.bodyH + d.headH * 1.22, d.bodyD / 3], rot: [0, 0, 0], tone: 'dark', crest: true },
+    { box: [d.headW * 0.16, d.headH * 0.70, d.headD * 0.18], pos: [d.headW * 0.30, d.bodyH + d.headH * 1.12, d.bodyD / 3], rot: [0, 0, -0.32], tone: 'dark', crest: true },
   ],
   // passive livestock -> horns angled up-out off the head sides (bigger so they read).
   cow: (d) => [

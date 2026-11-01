@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { MOB_TYPES } from '../game/mobTypes';
-import { mobFeatures, hasHostileEyes } from '../game/mobFeatures';
+import { hasHostileEyes } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
 import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
 import { isStaggered, staggerPose } from '../game/perfectDodge.js';
@@ -17,7 +17,7 @@ import { OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { mobLook, applyMobLook } from './feedbackGrammar.js';
 import { mobTones, HOSTILE_EYE } from './mobTones.js';
-import { eliteFeatures } from '../night/eliteLook.js';
+import { drawnFeatures } from '../night/eliteLook.js';
 import { featureColor } from '../game/mobFeatures.js';
 import { VILLAGER_GREETINGS } from '../game/villagerGreetings.js';
 import { useT } from '../i18n/i18n.js';
@@ -44,13 +44,10 @@ const MobModel = React.memo(({ entity }) => {
   const [headW, headH, headD] = entity.headSize || mobConfig.headSize;
 
   // Mob-distinctness T3: per-type silhouette feature boxes (pure game/mobFeatures), derived from the
-  // body dims. Empty for unfeatured types (pig/zombie/villager/spider) -> zero render change for them.
-  // An elite's crest and a captain's banner (src/night/eliteLook.js) join them; `entity.elite` is set at spawn.
+  // body dims. Empty for unfeatured types (pig, spider) -> zero render change for them.
+  // An elite's crest and a captain's banner join them (src/night/eliteLook.js); `entity.elite` is set at spawn.
   const features = useMemo(
-    () => {
-      const dims = { bodyW, bodyH, bodyD, headW, headH, headD };
-      return [...mobFeatures(entity.type, dims), ...eliteFeatures(entity.elite, dims)];
-    },
+    () => drawnFeatures(entity.type, entity.elite, { bodyW, bodyH, bodyD, headW, headH, headD }),
     [entity.type, entity.elite, bodyW, bodyH, bodyD, headW, headH, headD],
   );
 
