@@ -2,8 +2,8 @@ name: probe start-stall
 
 # THROWAWAY PROBE WORKFLOW (lane start-stall, fix round 2). It runs on this lane's own branch and is removed by the lane's
 # next commit; it never reaches main with a live trigger. It proves the reworked tests/e2e/start-before-built.spec.js
-# (carried in ci-probe/ and copied into place on the runner) on the runner: the shipped plated caption 8 times, debfdfc2's
-# text-only caption 4 times, and each mutant once through scripts/dev/mutate-e2e.sh, which applies it, runs the spec and
+# (carried in ci-probe/ and copied into place on the runner) on the runner: the shipped outlined caption 8 times, the same
+# with the round-1 probe's pointerrawupdate listener added 4 times, and each mutant once through scripts/dev/mutate-e2e.sh, which applies it, runs the spec and
 # restores it (nothing mutated is committed). mutate-e2e.sh is patched on the runner to print the spec's whole output,
 # so every 2 s sample is in the log.
 on:
@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: [plate-a, plate-b, caption, e1, e1b, silence, slowleak, nobuild, nolock, e0]
+        case: [outline-a, outline-b, raw, e1, e1b, silence, slowleak, nobuild, nolock, e0]
     steps:
       - uses: actions/checkout@v7
 
@@ -56,8 +56,8 @@ jobs:
           sed -i 's|  rm -f "$BAK" "$OUT"|  cat "$OUT"; rm -f "$BAK" "$OUT"|' scripts/dev/mutate-e2e.sh
           grep -c 'cat "$OUT"; rm -f' scripts/dev/mutate-e2e.sh
           case "$CASE" in
-            plate-a|plate-b) npx playwright test "$SPEC" --repeat-each=4 --retries=0 --reporter=list ;;
-            caption) python3 ../ci-probe/arm.py variant caption && npx playwright test "$SPEC" --repeat-each=4 --retries=0 --reporter=list ;;
+            outline-a|outline-b) npx playwright test "$SPEC" --repeat-each=4 --retries=0 --reporter=list ;;
+            raw) python3 ../ci-probe/arm.py variant raw && npx playwright test "$SPEC" --repeat-each=4 --retries=0 --reporter=list ;;
             *) M="$RUNNER_TEMP/mutant"
                python3 ../ci-probe/arm.py mutant "$CASE" "$M"
                sh scripts/dev/mutate-e2e.sh "$(cat "$M/subj")" "$SPEC" "$(cat "$M/label")" "$(cat "$M/old")" "$(cat "$M/new")" $(cat "$M/mode") ;;

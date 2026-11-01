@@ -28,10 +28,14 @@ import { execSync } from 'node:child_process';
 // and of every Chromium process below this worker, from ps. It fails on any of five arms, all printed with their numbers:
 //  - bound: the browser process grows more than BROWSER_GROWTH_MB over its value at the click;
 //  - brake: all of them together grow more than ALL_BRAKE_MB (the drained runs' renderer rose 1 to 1.5 GB);
-//  - answers: more than MAX_MISSED_READS bounded reads in a row go unanswered (the page stopped answering for a sustained
-//    span, about 30 s; the old screen's stalled page answered 1 of 7 to 9);
-//  - late: the browser process grows more than LATE_GROWTH_MB over the last LATE_SPAN_MS of the window, so a slow leak that
-//    stays under the bound still fails;
+//  - answers: the longest run of missed bounded reads spans more than MAX_SILENT_MS, counted from the answer before it to
+//    the answer after it (or to the end of the sampling, or from the click): the page stopped answering for a sustained
+//    span (the old screen's stalled page answered 1 of 7 to 9). It is judged in time, not in reads: the samples are paced
+//    by Node's clock, but a read that does not answer costs its full bound, so a count would stretch with the bound;
+//  - late: the browser process's floor (its lowest sample) over the window's last LATE_HALF_MS rises more than
+//    LATE_FLOOR_RISE_MB over its floor in the LATE_HALF_MS before, so a slow leak that stays under the bound still fails.
+//    Floors, not peaks: a page that falls behind for one sample and catches up spikes the browser for that sample and
+//    gives it back (+275 and +328 MB, then +42, on the plated caption in run 41268462804); a leak raises the floor;
 //  - world: the spawn chunk is not built BUILD_BY_MS after the click.
 // The bound and the brake stop the sampling the moment either is passed, and on any failure the renderer is crashed first
 // through CDP, so a runner is not run out of memory with its log. Thresholds and the runs they were read from: DECISIONS
@@ -49,9 +53,9 @@ const READ_MS = 4000;
 const SAMPLE_GAP_MS = 2000;
 const BROWSER_GROWTH_MB = 600;
 const ALL_BRAKE_MB = 4000;
-const MAX_MISSED_READS = 4;
-const LATE_SPAN_MS = 30000;
-const LATE_GROWTH_MB = 100;
+const MAX_SILENT_MS = 30000;
+const LATE_HALF_MS = 15000;
+const LATE_FLOOR_RISE_MB = 50;
 const FLOOD_MIN = 100;
 
 function lockOnGestureOnly() {
@@ -118,11 +122,16 @@ function chromeMB() {
   return { browser: browser ? Math.round(browser.rss / 1024) : null, all: Math.round(chrome.reduce((a, r) => a + r.rss, 0) / 1024) };
 }
 
-/** The browser process's growth over the window's last LATE_SPAN_MS: the highest sample there less the first one. */
-function lateGrowth(samples, windowMs = WINDOW_MS, spanMs = LATE_SPAN_MS) {
-  const late = samples.filter((x) => x.t >= windowMs - spanMs && x.t <= windowMs && x.browser != null);
-  if (late.length < 2) return null;
-  return Math.max(...late.map((x) => x.browser)) - late[0].browser;
+/** The browser process's floor over the window's last LATE_HALF_MS less its floor over the LATE_HALF_MS before; null when
+ *  either half holds no sample (the sampling stopped first). */
+function lateFloorRise(samples) {
+  const floor = (from, to) => {
+    const xs = samples.filter((x) => x.t >= from && x.t <= to && x.browser != null).map((x) => x.browser);
+    return xs.length ? Math.min(...xs) : null;
+  };
+  const a = floor(WINDOW_MS - 2 * LATE_HALF_MS, WINDOW_MS - LATE_HALF_MS);
+  const b = floor(WINDOW_MS - LATE_HALF_MS, WINDOW_MS);
+  return a === null || b === null ? null : b - a;
 }
 
 test('a Start clicked before the world is built: the page keeps answering, the browser stays bounded and the world builds under the pointer-lock flood', async ({ page }) => {
@@ -148,7 +157,7 @@ test('a Start clicked before the world is built: the page keeps answering, the b
   // past it only while the world is not built, up to BUILD_BY_MS.
   const samples = [];
   let reads = 0, answered = 0, missedRun = 0, longestMissed = 0, peak = before, allPeak = start0.all, last = null;
-  let lockSeen = false, builtAt = null, stopped = null;
+  let lockSeen = false, builtAt = null, stopped = null, lastAnswerAt = 0, longestSilentMs = 0;
   for (;;) {
     const t = Date.now() - t0;
     if (t >= BUILD_BY_MS || (t >= WINDOW_MS && builtAt !== null)) break;
@@ -157,6 +166,7 @@ test('a Start clicked before the world is built: the page keeps answering, the b
     const at = Date.now() - t0;
     if (s) {
       answered += 1; missedRun = 0; last = s; lockSeen ||= s.lock;
+      longestSilentMs = Math.max(longestSilentMs, at - lastAnswerAt); lastAnswerAt = at;
       if (s.built && builtAt === null) builtAt = at;
     } else { missedRun += 1; longestMissed = Math.max(longestMissed, missedRun); }
     const now = chromeMB();
@@ -168,15 +178,20 @@ test('a Start clicked before the world is built: the page keeps answering, the b
       + (s ? `, ${s.moves} pointer updates, lock ${s.lock ? 'held' : 'off'}, world ${s.built ? 'built' : 'not built'}` : ''));
     if (peak - before > BROWSER_GROWTH_MB) { stopped = 'bound'; break; }
     if (allPeak - start0.all > ALL_BRAKE_MB) { stopped = 'brake'; break; }
-    await page.waitForTimeout(SAMPLE_GAP_MS);
+    // Node's own timer paces the samples: with page.waitForTimeout here, each missed sample took 12 s instead of 6 while a
+    // mutant held the page's main thread (run 41268462804), and a 45 s silence read as 3 missed reads.
+    await new Promise((r) => setTimeout(r, SAMPLE_GAP_MS));
   }
-  const late = lateGrowth(samples);
+  longestSilentMs = Math.max(longestSilentMs, Date.now() - t0 - lastAnswerAt); // a page silent to the end
+  const late = lateFloorRise(samples);
   const arms = {
     bound: [peak - before <= BROWSER_GROWTH_MB, `browser +${peak - before} MB (at most ${BROWSER_GROWTH_MB})`],
     brake: [allPeak - start0.all <= ALL_BRAKE_MB, `all Chromium +${allPeak - start0.all} MB (at most ${ALL_BRAKE_MB})`],
-    answers: [longestMissed <= MAX_MISSED_READS, `${answered}/${reads} reads answered, longest run missed ${longestMissed} (at most ${MAX_MISSED_READS})`],
-    late: [stopped !== null || (late !== null && late <= LATE_GROWTH_MB),
-      late === null ? `not reached (sampling ${stopped ? `stopped by the ${stopped}` : 'ended first'})` : `browser +${late} MB over the last ${LATE_SPAN_MS / 1000} s (at most ${LATE_GROWTH_MB})`],
+    answers: [longestSilentMs <= MAX_SILENT_MS, `${answered}/${reads} reads answered, longest silence ${(longestSilentMs / 1000).toFixed(1)} s `
+      + `(at most ${MAX_SILENT_MS / 1000}), ${longestMissed} missed in a row`],
+    late: [stopped !== null || (late !== null && late <= LATE_FLOOR_RISE_MB),
+      late === null ? `not reached (sampling ${stopped ? `stopped by the ${stopped}` : 'ended first'})`
+        : `browser floor ${late >= 0 ? '+' : ''}${late} MB over the window's last ${LATE_HALF_MS / 1000} s against the ${LATE_HALF_MS / 1000} s before (at most +${LATE_FLOOR_RISE_MB})`],
     world: [builtAt !== null, builtAt === null ? `not built ${Math.round((Date.now() - t0) / 1000)} s after the click (by ${BUILD_BY_MS / 1000} s)` : `built ${Math.round(builtAt / 1000)} s after the click`],
   };
   const line = `start-before-built: ${Object.entries(arms).map(([k, [ok, why]]) => `${k} ${ok ? 'ok' : 'FAIL'} (${why})`).join('; ')}; `
