@@ -163,7 +163,10 @@ named in each commit's trailer, with an identity mutant beside each batch that s
 518. **The review's smaller findings.** The e2e's stand-clear step is bounded: the page counts its own drawn frames from
    the release, at most 60 (half a second of play at up to 120 Hz, against the watch's 0.3 s), then reads no placed
    block in the body; it was a 30 s poll (`bafa9901`, static F5; not mutation-run here, its proof is the real-Player
-   case it mirrors). The resume hold's tolerance mutant, which survived at 60 and 120 Hz where the steps sum to 10 s,
+   case it mirrors). On PR CI run 41322243911 it read the player clear on the second frame of 60, beside the block
+   (item 515), and the step after it failed two attempts of three: the D walk went into the block's own column and
+   covered 0.06 and 0.09 m. Stood beside it, the walks now skip the one way into the block and need the other three
+   (`bb84c276`). The resume hold's tolerance mutant, which survived at 60 and 120 Hz where the steps sum to 10 s,
    dies at 90 Hz, where 900 steps sum under it (`826df564`, static F4). Removing the lift from `moveKinematic`
    (`b393d08f`) regrouped a float sum (`d + next - at` for `d + (next - at)`), which moved three of item 510's
    field-origin counts by one (dynamic F3; measured again at `1db282e0`): seed 7's swapsRefused 3 to 2 and ownShellOut 2
@@ -176,7 +179,8 @@ named in each commit's trailer, with an identity mutant beside each batch that s
 519. **The six flake sightings of PR CI run 41311336652** are on their rows: canvas-pace-panels :29
    (`REVIEW:w2d:canvas-pace-esc-setup`), feedback-grammar :140 (`REVIEW:e2e-flakes:feedback-grammar-lit-band-white`) and
    :93, another assertion of the same spec (a new row, `REVIEW:e2e-flakes:feedback-grammar-windup-interior-dims`),
-   music-bus :74, input-live :72, and light-pool :25, whose presence line went red first this time. **Left open:**
+   music-bus :74, input-live :72, and light-pool :25, whose presence line went red first this time; and from run
+   41322243911, quest-text :54 (`REVIEW:e2e-flakes:quest-text-no-frame-while-held`). **Left open:**
    `REVIEW:l4:gate-reach-round1` (item 506), so the lane row stays open; new rows in the backlog: the golem in a pit
    (item 517) and the risen floor (item 514).
 
