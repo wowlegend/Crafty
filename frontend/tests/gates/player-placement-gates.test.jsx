@@ -70,7 +70,7 @@ const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
 const { setIntent, setActive, resetInput } = await import('../../src/input/inputState.js');
 const { generateMesh } = await import('../../src/world/mesher.js');
 const { CHUNK_SIZE, CHUNK_VOLUME, voxelIndex } = await import('../../src/world/chunkLayout.js');
-const { genCell, deepestSolid, eyeCell, solidAt, LAND_TOP, DEEP_SEABED, FIELD_CAVE } = await import('../integration/chaosPlay/harness.js');
+const { genCell, deepestSolid, eyeCell, solidAt, LAND_TOP, DEEP_SEABED, FIELD_CAVE, AIR } = await import('../integration/chaosPlay/harness.js');
 const { createPlacedCellColliders, createEditSeq } = await import('../../src/world/placedCellColliders.js');
 const { GameMethods } = await import('../../src/GameMethods');
 const { LOAD_FIT_SPAN } = await import('../../src/game/formFit.js');
@@ -649,15 +649,28 @@ describe('a block in the eye\'s cell, the centre and lowest point clear, does no
   }
 });
 
-/** The solid cells a straight move from `a` to `b` passes through, read on the voxel grid every 5 cm. */
-function solidOnLine(a, b) {
-  const crossed = new Set();
-  const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) / 0.05);
-  for (let i = 0; i <= n; i++) {
-    const c = [a.x + ((b.x - a.x) * i) / n, a.y + ((b.y - a.y) * i) / n, a.z + ((b.z - a.z) * i) / n].map(Math.floor);
-    if (solidAt(grid, ...c)) crossed.add(c.join(','));
+/** The solid cells a straight move from `a` to `b` touches on the voxel grid, its faces, edges and corners included: each
+ *  solid cell in the box the move spans, tested against the segment exactly (the slab test), never by points read along
+ *  it, so a move through the edge two solid cells share counts both (the fit reads its own points; this reads none).
+ *  With `reach`, what moves is a vertical line `reach` either side of the centre (the capsule's lowest point to its top),
+ *  tested as the centre's segment against each cell grown by `reach` up and down. */
+function solidOnLine(a, b, reach = 0) {
+  const A = [a.x, a.y, a.z], B = [b.x, b.y, b.z], grow = [0, reach, 0];
+  const lo = A.map((v, k) => Math.floor(Math.min(v, B[k]) - grow[k])), hi = A.map((v, k) => Math.floor(Math.max(v, B[k]) + grow[k]));
+  const crossed = [];
+  for (let x = lo[0]; x <= hi[0]; x++) for (let y = lo[1]; y <= hi[1]; y++) for (let z = lo[2]; z <= hi[2]; z++) {
+    if (!solidAt(grid, x, y, z)) continue;
+    let t0 = 0, t1 = 1;
+    [x, y, z].forEach((c, k) => {
+      const d = B[k] - A[k], c0 = c - grow[k], c1 = c + 1 + grow[k];
+      if (d === 0) { if (A[k] < c0 || A[k] > c1) t1 = -1; return; }
+      const u = (c0 - A[k]) / d, v = (c1 - A[k]) / d;
+      t0 = Math.max(t0, Math.min(u, v));
+      t1 = Math.min(t1, Math.max(u, v));
+    });
+    if (t0 <= t1 + 1e-9) crossed.push(`${x},${y},${z}`);
   }
-  return [...crossed];
+  return crossed;
 }
 
 // The same block under a roof: in the cave tunnel (x -6 to -5, z -14 to -6, two high under rock to the cliff's top at 36),
@@ -732,10 +745,20 @@ describe('a block in the eye\'s cell under a roof stands the player clear in the
 // Boxed in on open land by a pillar three high on each side and a block in the eye's cell, the spots the fit finds
 // clear are a diagonal cell away, past a pillar's corner (1.28 m off): a straight move there cuts through the pillar.
 // Nothing reachable through open cells fits, so the column's top is the answer, through the block alone, named in the
-// warning (game/formFit.js fitLoadedSpot reads the move to each spot past LOAD_REACH).
-describe('a block in the eye\'s cell with a pillar on each side: the player is never moved through a pillar\'s corner', () => {
-  for (const hz of [60, 120]) {
-    it(`${hz} Hz: the player boxed in is stood on the column's top through the block, not past a pillar's corner`, () => {
+// warning (game/formFit.js fitLoadedSpot reads the move to each spot past LOAD_REACH). From (x + 0.65, z + 0.65) the one
+// clear spot in reach, (+0.8, +0.8), lies on a line through the edge the pillars at (x + 1, z) and (x, z + 1) share,
+// which is inside neither: points read along it land in the two open cells round that edge. With the +x pillar holed at
+// the floor, its bottom cell open at the centre's height, a move from (x + 0.7, z + 0.5) to the cell past its corner
+// went through the hole's cell, the capsule's upper half through the pillar over it (the static review of lane L13 part
+// 2's round 2, its N2). The capsule's middle line, lowest point to top, is read along the move, so the one solid cell it
+// may cross is the block it stood in.
+const BOXES = [
+  { box: 'a pillar on each side', holed: false, starts: [[0.7, 0.5], [0.65, 0.65]] },
+  { box: 'the +x pillar holed at the floor', holed: true, starts: [[0.5, 0.5], [0.7, 0.5]] },
+];
+describe('a block in the eye\'s cell with a pillar on each side: the player is never moved through a pillar', () => {
+  for (const hz of [60, 120]) for (const { box, holed, starts } of BOXES) for (const [ox, oz] of starts) {
+    it(`${hz} Hz, ${box}, from (x + ${ox}, z + ${oz}): the player boxed in is stood on the column's top through the block, never through a pillar`, () => {
       standPlayer(hz);
       const x = -5, z = 8, key = '-1_0';
       const was = grid.logical.get(key);
@@ -744,18 +767,20 @@ describe('a block in the eye\'s cell with a pillar on each side: the player is n
       b[voxelIndex(x + CHUNK_SIZE, LAND_TOP + 1, z)] = stone;
       const pillars = [[x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]];
       for (const [px, pz] of pillars) for (let y = LAND_TOP; y < LAND_TOP + 3; y++) b[voxelIndex(px + CHUNK_SIZE, y, pz)] = stone;
+      if (holed) b[voxelIndex(x + 1 + CHUNK_SIZE, LAND_TOP, z)] = AIR;
       grid.logical.set(key, b);
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       try {
         remesh([key]);
-        const start = { x: x + 0.7, y: LAND_TOP + 0.95, z: z + 0.5 };
+        const start = { x: x + ox, y: LAND_TOP + 0.95, z: z + oz };
         h.body.setTranslation(start, true);
         h.world.propagateModifiedBodyPositionsToColliders();
         expect(solidAt(grid, ...eyeCell(h.body)), 'SETUP: the eye is not in the block').toBe(true);
+        expect([solidAt(grid, x + 1, LAND_TOP, z), solidAt(grid, x + 1, LAND_TOP + 1, z)], 'SETUP: the +x pillar\'s foot is not as the case says').toEqual([!holed, true]);
         for (let i = 0; i < hz; i++) frame(hz);
         const end = h.body.translation();
         const said = warn.mock.calls.map((c) => String(c[0])).filter((m) => /in the rock/.test(m));
-        const r = { start, end: at(), crossed: solidOnLine(start, end), said, ...reading() };
+        const r = { start, end: at(), crossed: solidOnLine(start, end, BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius), said, ...reading() };
         expect(said.length, `SETUP: the stuck-in-rock watch never moved the player ${JSON.stringify(r)}`).toBeGreaterThan(0);
         expect(r.crossed.filter((c) => pillars.some(([px, pz]) => c.startsWith(`${px},`) && c.endsWith(`,${pz}`))), `the player was moved through a pillar ${JSON.stringify(r)}`).toEqual([]);
         expect(r.crossed, `the player was moved through more than the block in the eye's cell ${JSON.stringify(r)}`).toEqual([`${x},${LAND_TOP + 1},${z}`]);

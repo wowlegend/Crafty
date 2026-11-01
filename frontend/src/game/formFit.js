@@ -38,9 +38,8 @@ const LOAD_REACH = 0.6;
 // that body clear): the block is cleared 0.92 m sideways, and the column-top fallback stood the player on the top of the
 // column, up through the roof over a tunnel, four metres of rock (tests/gates/player-placement-gates.test.jsx; the static
 // review of lane L13 part 2, its F1). So the search goes on to LOAD_WIDE, which reaches that 0.92 m along an axis or
-// the diagonal (1.30 m), on a grid of WIDE_STEP, and takes a spot only where the straight move to it stays in open
-// cells, read every STEP (a corner cut by less than that is not seen). A centre in solid ground takes none of these: its
-// move starts in the rock.
+// the diagonal (1.30 m), on a grid of WIDE_STEP, and takes a spot only where the straight move to it touches no solid
+// cell (fitLoadedSpot's `open`). A centre in solid ground takes none of these: its move starts in the rock.
 const LOAD_WIDE = 1.4;
 const WIDE_STEP = 0.2;
 /** How far sideways from a loaded save's centre the fit reads the colliders: a confirming ball's radius past the wider
@@ -162,16 +161,39 @@ export function fitLoadedSpot(world, rapier, body, saved, probe, opts = {}) {
   const shape = opts.shape || BASE_CAPSULE;
   const clear = clearTest(world, rapier, body, shape, opts);
   const solid = new Map();
-  const inGround = (p) => {
-    const x = Math.floor(p.x), y = Math.floor(p.y), z = Math.floor(p.z);
+  const solidCell = (x, y, z) => {
     const key = `${x}_${y}_${z}`;
     if (!solid.has(key)) solid.set(key, cellSolid(world, rapier, x, y, z));
     return solid.get(key);
   };
-  // Whether the straight move by (dx, dy, dz) from the saved centre stays in open cells, read every STEP.
+  const inGround = (p) => solidCell(Math.floor(p.x), Math.floor(p.y), Math.floor(p.z));
+  // Whether the straight move by (dx, dy, dz) from the saved centre takes the capsule's middle line, its lowest point to
+  // its top, through no solid cell but those it stands in now over the centre's own: read every STEP, and between two
+  // readings every cell of the box their cells span. Points read along a move see only the cells they land in: a move
+  // through the edge two solid cells share is inside neither, and one that cuts a cell's corner can miss it between two
+  // points; and the centre's cell alone let the upper half pass through a wall over a hole one cell high. A body boxed in
+  // by pillars was moved out past the edge two of them share, and through a holed one
+  // (tests/gates/player-placement-gates.test.jsx; the static review of lane L13 part 2's round 2, its N2). The segment
+  // between two readings lies in that box; STEP is under a cell, so it is at most two cells across.
+  const reach = shape.halfHeight + shape.radius;
+  const span = (y) => [Math.floor(y - reach), Math.floor(y + reach)];
+  const [ox, oy, oz] = [saved.x, saved.y, saved.z].map(Math.floor);
+  const [oLo, oHi] = span(saved.y);
+  const standsIn = (x, y, z) => x === ox && z === oz && y !== oy && y >= oLo && y <= oHi;
   const open = (dx, dy, dz) => {
     const n = Math.ceil(Math.hypot(dx, dy, dz) / STEP);
-    for (let i = 0; i < n; i++) if (inGround({ x: saved.x + (dx * i) / n, y: saved.y + (dy * i) / n, z: saved.z + (dz * i) / n })) return false;
+    let was = null;
+    for (let i = 0; i <= n; i++) {
+      const y = saved.y + (dy * i) / n;
+      const c = [Math.floor(saved.x + (dx * i) / n), ...span(y), Math.floor(saved.z + (dz * i) / n)];
+      const from = was || c;
+      for (let x = Math.min(from[0], c[0]); x <= Math.max(from[0], c[0]); x++) {
+        for (let z = Math.min(from[3], c[3]); z <= Math.max(from[3], c[3]); z++) {
+          for (let cy = Math.min(from[1], c[1]); cy <= Math.max(from[2], c[2]); cy++) if (!standsIn(x, cy, z) && solidCell(x, cy, z)) return false;
+        }
+      }
+      was = c;
+    }
     return true;
   };
   // Within LOAD_REACH, then out to LOAD_WIDE along open cells only: the coarse grid's spots within LOAD_REACH are spots

@@ -59,6 +59,17 @@ describe('the stuck-in-rock recovery reads the centre at its rate, and moves a b
     }
   });
 
+  it('a body inside the rock a metre from its side is stood on the rock\'s top over where it is, not moved out of the side', () => {
+    // The capsule clears the side face at x 8 from x 8.41 on, 1.11 m off and inside the fit's wider search (formFit.js
+    // fitLoadedSpot), which takes a spot only along open cells; a centre in solid ground starts its move in the rock.
+    const world = scene();
+    const body = player(world, { x: 7.3, y: 4.5, z: 0.5 });
+    const { spot } = run(world, body, 60, 120);
+    expect(spot, 'SETUP: the body inside the rock was never moved').not.toBeNull();
+    expect([spot.by, +spot.x.toFixed(3), +spot.z.toFixed(3)], `the body was not stood on the rock's top over where it was ${JSON.stringify(spot)}`).toEqual(['column', 7.3, 0.5]);
+    expect(spot.y, 'the spot does not stand the capsule on the rock\'s top').toBeCloseTo(TOP + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius + 0.05, 3);
+  });
+
   it('a reading out of the rock starts the window over', () => {
     const hz = 60;
     const world = scene();
