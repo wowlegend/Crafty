@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 //   - lastHurtAt: the WORLD clock (game/worldClock.js worldNow) at the last hit, so a frozen world holds it.
 //   - lanterns: the placed lanterns' cells, kept with worldBlocks by a place, a mine and a load (world/lanternIndex.js).
 //     No lantern block exists until unit L2 (block 16), so this file gives BLOCK_ID one, as L2 will.
-//   - hearthFlame (quarter steps), siege, dawnRush and startDawnRush(): never saved; a load resets them.
+//   - hearthFlame (full until H1 drains it), siege, dawnRush and startDawnRush(): never saved; a load resets them.
 // Mutation-proven in the commit that adds it (its Mutation-Proof trailer).
 // NOT CHECKED HERE: the readers (the units that build them), and the bus events at the same crossings (night-bus-gates).
 vi.mock('../../src/world/blockIds.js', async (orig) => {
@@ -136,24 +136,6 @@ describe('the lantern index', () => {
 });
 
 describe('the night\'s unsaved fields', () => {
-  it('hearthFlame steps in quarters, up to the next one, and writes only on a change', () => {
-    const s = () => useGameStore.getState();
-    expect(s().hearthFlame, 'SETUP: the flame does not start full').toBe(1);
-    const steps = [[0.9, 1], [0.74, 0.75], [0.5, 0.5], [0.26, 0.5], [0.1, 0.25], [0.0001, 0.25], [0, 0], [-1, 0], [2, 1]];
-    for (const [f, want] of steps) {
-      s().setHearthFlame(f);
-      expect(s().hearthFlame, `a flame of ${f} is stored as ${s().hearthFlame}, not ${want}`).toBe(want);
-    }
-    expect(steps.length).toBe(9);
-    let writes = 0;
-    const off = useGameStore.subscribe(() => { writes += 1; });
-    s().setHearthFlame(0.6);
-    s().setHearthFlame(0.7);
-    s().setHearthFlame(0.55);
-    off();
-    expect(writes, 'three flames in one quarter wrote the store more than once').toBe(1);
-  });
-
   it('startDawnRush starts a rush at night only, and the crossing into day ends it', () => {
     const s = () => useGameStore.getState();
     expect(s().dawnRush, 'SETUP: a fresh store holds a rush').toBeNull();

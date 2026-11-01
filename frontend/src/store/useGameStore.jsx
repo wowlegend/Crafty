@@ -868,12 +868,8 @@ export const useGameStore = create((set, get) => ({
     lastNightfall: null,
     // The siege in progress as its director holds it ({ night, bearings, wave, captainId, ... }), or null.
     siege: null,
-    // The Hearth's flame, 0 to 1, in quarter steps: a draining flame writes the store four times and at 0, no more.
+    // The Hearth's flame, 0 to 1, in quarter steps (H1's director writes it, at each quarter and at 0).
     hearthFlame: 1,
-    setHearthFlame: (f) => set((s) => {
-        const q = Math.ceil(Math.min(1, Math.max(0, Number(f) || 0)) * 4) / 4; // the quarter it is still within; 0 only at 0
-        return q === s.hearthFlame ? s : { hearthFlame: q };
-    }),
     // The dawn rush the captain's death starts, { night, startedAt } (gameTime), or null: the clock runs to day, and the
     // crossing into day ends it.
     dawnRush: null,

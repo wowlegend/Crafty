@@ -506,7 +506,7 @@ export const SoundProvider = ({ children }) => {
   const generateSounds = () => {
     if (!audioContext.current) return;
     // S3-M1: the voice bank lives in audio/synthVoices.js — one registry, one loop — with any a chunk has added.
-    for (const [name, make] of Object.entries({ ...VOICES, ...addedVoices })) {
+    for (const [name, make] of [...Object.entries(VOICES), ...Object.entries(addedVoices)]) {
       sounds.current[name] = make(audioContext.current);
     }
   };

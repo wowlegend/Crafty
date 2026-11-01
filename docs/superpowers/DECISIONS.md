@@ -278,9 +278,11 @@ ceiling.
    place, the mine and the boss smash all call, and a load) and keeps its reference when no lantern moved; it reads
    `BLOCK_ID.lantern`, which L2 adds, so it is empty until then and block 16 keeps one home. Not saved, and reset by a
    load: `siege`, `dawnRush` (with `startDawnRush()`, at night only; the crossing into day ends it) and `hearthFlame`,
-   which stores the quarter the flame is still within (0.1 reads 0.25; 0 only at 0) and writes only when that quarter
-   changes, so a flame burning from full to out writes it four times. No setter for `hearthLit` or `siege`: their units write
-   them. Red first: `tests/store/night-seams.test.js`, 7 of 7 red on the base; 15 mutants red, the identity survived.
+   full. No setter for `hearthLit`, `siege` or `hearthFlame`: their units write them, and `store-setters-called` bars a
+   setter nothing calls (a first `setHearthFlame`, which stored the quarter the flame is still within, went red there in
+   the full suite and was cut; H1, which drains the flame, writes the quarter steps). Red first:
+   `tests/store/night-seams.test.js`, 7 of 7 red on the base; 13 mutants red, the identity survived (two more killed the
+   cut setter).
    `preCutSave`'s round trip now expects the lit Hearth a pre-field save gains. **Beat (a)'s third red is rewritten**
    (item 482's rule for a unit that moves a beat's red): with the store lit by default, "the store says lit after G"
    passed on a Hearth nothing kindled, so the check now asks the store for cold before the press and lit after, and its
@@ -315,12 +317,19 @@ ceiling.
    again; the task script put it in `i18n.js`, and it lives in the night chunk (`night/nightStrings.js`) under the same
    script's rule that a unit over its share moves code there, since the night is its only caller (-360 B). Gated:
    `night-loader-gates` (4 tests, 6 mutants red) and `night-voices-strings-gates` (6 tests, 10 mutants red), each with an
-   identity mutant surviving. **U1's bytes:** 644,426 B before U1 and 646,343 B after, +1,917 B against its 900 B share
-   (the store +942, the bus +347, these doors +628: the loader with its import about 350, the voice registry about 210),
+   identity mutant surviving. The bank built at mount loops `[...Object.entries(VOICES), ...Object.entries(addedVoices)]`,
+   which keeps `aspect-sfx-gates`' loop of the one registry (a spread of both into one object went red there). **U1's
+   bytes:** 644,426 B before U1 and 646,229 B after, +1,803 B against its 900 B share (the store +828, the bus +347, these
+   doors +628: the loader with its import about 350, the voice registry about 210),
    against 652,500 B, which was not raised. The room of item 495 covers it today. PR #82 (lane L13 part 2) was estimated
-   to leave about 157 B before item 495, so about 3,660 B of its own: with it, about 2,500 B remain for PR C's later index
+   to leave about 157 B before item 495, so about 3,660 B of its own: with it, about 2,600 B remain for PR C's later index
    units, which hold about 3.35 KB of shares (L1's 0.3 KB among them, once the lights move to the boot chunk), so the
-   next room is taken before those units build (the controls card and hint, item 495), or the shares are cut.
+   next room is taken before those units build (the controls card and hint, item 495), or the shares are cut. **The
+   run that checked item 496's rewritten record:** beat (a) alone with `FIRST_NIGHT_AWAITING=1`, locally (Chromium, the
+   Playwright-managed dev server on 4179, started at a load of 27.9), on this phase's N4 commit: 1 passed in 1.5 minutes,
+   3 of 3 reds as recorded (the brazier lit at Start, intensity 1.6; G lit no cold brazier, 1.6 before and after;
+   `hearthLit true before the press, true after`). The spec's store reader takes `siege`, `hearthLit` and `lanterns`,
+   and U1 starts the first null and the last empty, which read as before, so no other beat was run.
 
 499. **L1: the lights, pure, and left out of production knip until the game reads them.** `game/lights.js`:
    `litLights(state, shrines)` (the Hearth at its brazier while `hearthLit` and its flame above 0, each lantern at its
@@ -334,7 +343,7 @@ ceiling.
    tooling modules are (item 115), and `HEARTH_BRAZIER` carries `@internal`. So the exception cannot outlive its reason,
    `tests/scripts/knip-production-exclusions.test.js` fails, naming the importer, once any non-test src module imports a
    listed module (red with `night/night.js` importing the lights; its scan of dynamic imports and its exclusion of test
-   files each shown by a mutant). Index: 0 B (646,343 B before and after).
+   files each shown by a mutant). Index: 0 B (646,343 B before and after, before item 496's setter was cut).
 
 520. **N4: the siege director's rules, pure, in the night chunk.** `night/siegeDirector.js` (item 495's numbering
    resumes here: lane L13 part 2 holds 500 to 519). Waves at 0, 180 and 380 units into the night (0, 72 and 152 s at
