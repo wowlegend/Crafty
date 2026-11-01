@@ -124,6 +124,7 @@ import { PNG } from 'pngjs';
 import { shootHudSet } from './_lookbookHud.mjs';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
 import { drawCounterSource, summariseDraws } from './_glDrawCounter.mjs';
+import { FRAME_M } from '../../src/render/lookbookSeam.js';
 
 const PORT = probePort(import.meta.url);
 const arg = (k, d) => {
@@ -381,7 +382,7 @@ const BRAZIER_CYCLE = 0.75;
 const COMBAT_CYCLES = [0.3, 0.75];
 const COMBAT_HEADING = 120;
 const COMBAT_PITCH = -8;
-const COMBAT_CLEAR_M = 40; // hostiles removed before each combat shot: past the 14 m far shot
+const COMBAT_CLEAR_M = FRAME_M; // hostiles removed before each combat shot: as far as frame() looks for one
 const ELITE_TYPES = ['zombie', 'skeleton', 'spider', 'skitterling', 'duskhound', 'moss_brute', 'emberhusk']; // every hostile type can roll one
 const ELITE_DISTANCE = (type) => (type === 'moss_brute' ? 5 : 3.5); // the brute's crest leaves the frame's top at 3.5 m
 const COMBAT_SHOTS = Object.freeze([

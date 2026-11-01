@@ -53,7 +53,8 @@ const STAGE_WINDUP_RAMP = 0.8; // how far through its windup a staged mob is hel
 const STAGE_HOLD_MS = 600000; // the world freeze's cap; unstage() ends it at once
 // What stage() put in the world: the mobs, whether the per-frame hit stamp runs, and whether the world is held for it.
 const _stage = { mobs: [], stamping: false, holding: false, cast: false };
-const FRAME_M = 60; // how far from the eye frame() looks for mobs and spells drawn in view
+/** How far from the eye frame() looks for mobs and spells drawn in view. */
+export const FRAME_M = 60;
 const MATCH_M = 1.5; // a drawn mob stands on its live ECS mob within this (the render damp lags a walking mob)
 const _p = new Vector3();
 const _v = new Vector3();
@@ -451,7 +452,8 @@ export function installLookbookSeam(win, {
     /** What a frame holds besides the stage, for the probe's validity check, read from what is DRAWN: every mob model
      *  (MobModel's group, named 'mob') in the game camera's view within FRAME_M, each matched to the live ECS mob it
      *  stands on (type, staged, hostile, health) or reported with `entity: false` when none is (a model left drawn
-     *  after its mob was removed; a bound ally too, which the lookbook's world has none of); and how many spells are
+     *  after its mob was removed; a bound ally too, which the lookbook's world has none of), with where it is drawn
+     *  (`at`) and its distance from the eye; and how many spells are
      *  drawn in view (projectile heads and impact pops, named 'spell'). `{ mobs: null, spells: null }` when the build
      *  hands the seam no scene. */
     frame: () => {
@@ -468,11 +470,13 @@ export function installLookbookSeam(win, {
         o.getWorldPosition(_p);
         if (o.name === 'spell') { if (inView(cam, _p)) spells += 1; return; }
         const e = live.find((m) => m?.position && Math.hypot(m.position.x - _p.x, m.position.z - _p.z) < MATCH_M && Math.abs(m.position.y - _p.y) < MATCH_M);
+        const at = [+_p.x.toFixed(2), +_p.y.toFixed(2), +_p.z.toFixed(2)];
         _p.y += 1; // the body, not the feet
         if (!inView(cam, _p)) return;
+        const distanceM = +_p.distanceTo(cam.position).toFixed(1);
         mobs.push(e
-          ? { entity: true, type: e.type ?? null, staged: _stage.mobs.includes(e), hostile: isLiveHostile(e), health: e.health ?? null, maxHealth: e.maxHealth ?? null }
-          : { entity: false, type: null, staged: false, hostile: null, health: null, maxHealth: null });
+          ? { entity: true, type: e.type ?? null, staged: _stage.mobs.includes(e), hostile: isLiveHostile(e), health: e.health ?? null, maxHealth: e.maxHealth ?? null, at, distanceM }
+          : { entity: false, type: null, staged: false, hostile: null, health: null, maxHealth: null, at, distanceM });
       });
       return { mobs, spells };
     },
