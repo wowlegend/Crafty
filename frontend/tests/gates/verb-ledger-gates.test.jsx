@@ -422,6 +422,18 @@ describe('a cell placed since the last world step is seen by the next click and 
 describe('a world mounted again over the same worker keeps the cell it places solid until the mesh that holds it (Terrain.jsx)', () => {
   it('a mesh the worker made before the new placement reached it does not retire that placement\'s stand-in', async () => {
     const stamps = (rs) => rs.filter((m) => m.type === 'chunk_mesh').map((m) => m.payload.editSeq);
+    const kind = HOTBAR_BLOCKS[0];
+    const stock = () => store.setState((s) => ({ selectedBlock: kind, buildingMode: 'single', buildSize: 1,
+      inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, [kind]: (s.inventory.blocks[kind] || 0) + 1 } } }));
+    // A placement of its own first, so the worker's stamp numbers something however the file is run (alone, the case had
+    // none to read: the dynamic review of lane L13 part 2, its F4).
+    const [first] = openColumns(1);
+    expect(first, 'SETUP: the chunk has no open column').toBeTruthy();
+    stock();
+    aimAtTop(first);
+    expect((await click(2)).verb, 'SETUP: the first click on the top face did not place').toBe('place');
+    await land();
+    await r.step(1);
     const before = GameMethods.placedCells;
     await act(async () => { H.remount(); });
     for (let i = 0; i < 300 && GameMethods.placedCells === before; i++) await act(async () => { await new Promise((res) => setTimeout(res, 10)); });
@@ -435,9 +447,7 @@ describe('a world mounted again over the same worker keeps the cell it places so
     expect(GameMethods.placedCells.size(), 'SETUP: the new mount holds a stand-in before it placed anything').toBe(0);
     const [c] = openColumns(1);
     expect(c, 'SETUP: the chunk has no open column after the rows above').toBeTruthy();
-    const kind = HOTBAR_BLOCKS[0];
-    store.setState((s) => ({ selectedBlock: kind, buildingMode: 'single', buildSize: 1,
-      inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, [kind]: (s.inventory.blocks[kind] || 0) + 1 } } }));
+    stock();
     // The chunk's mesh is asked for again (the streamer re-asks a chunk), then the click: the worker meets them in order.
     H.live.postMessage({ type: 'generate', payload: { cx: CX, cz: CZ } });
     aimAtTop(c);
