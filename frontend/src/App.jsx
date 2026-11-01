@@ -39,6 +39,7 @@ import { installSquadPersistence } from './world/squadPersistence.js';
 import { useDayNightClock } from './game/useDayNightClock';
 import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
 import { requestGameLock } from './input/pointerLock.js';
+import { ON_WORLD_TEXT } from './ui/onWorldText.js';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -300,14 +301,13 @@ function GameApp({ experienceSystem }) {
           A still caption at the foot of the screen, not a layer over the canvas: in play the page must drain every pointer
           update the lock sends it, and on a software compositor a layer covering the live canvas left it unable to, most
           of all a translucent, blurred, animated one (DECISIONS 2026-10-31 items 370-371; tests/e2e/start-before-built.spec.js).
-          The caption sits on a small solid plate because the unbuilt world behind it is bright fog: bare text read 1.02:1
-          there (DECISIONS 2026-10-31 item 380). */}
+          The unbuilt world behind it is bright fog, where soft-shadowed text read 1.03:1, so the caption takes the ink outline
+          of type drawn on the world (ui/onWorldText.js). Not a plate: a small solid plate under it left the page draining
+          the flood worse on CI (DECISIONS 2026-10-31 item 380). */}
       {!isWorldBuilt && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-50 flex justify-center">
-          <div className="flex flex-col items-center bg-panel border-chrome border-ink rounded-md shadow-elev-md px-6 py-3">
-            <h2 className="text-3xl font-bold text-text mb-1 font-mono tracking-widest">{t('world.generating')}</h2>
-            <p className="text-success font-mono text-sm">{t('world.buildingTerrain')}</p>
-          </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-50 flex flex-col items-center">
+          <h2 className="text-3xl font-bold text-text mb-2 font-mono tracking-widest" style={ON_WORLD_TEXT}>{t('world.generating')}</h2>
+          <p className="text-success font-mono text-sm font-semibold" style={ON_WORLD_TEXT}>{t('world.buildingTerrain')}</p>
         </div>
       )}
 
