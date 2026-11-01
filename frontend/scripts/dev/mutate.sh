@@ -1,7 +1,10 @@
 #!/bin/bash
 # mutate.sh — apply ONE deliberate defect to a subject file, run ONE spec, restore, report.
 #
-#   sh scripts/dev/mutate.sh <subject> <spec> <expected-test-count> <label> <old> <new>
+#   sh scripts/dev/mutate.sh [--testTimeout=<ms>] <subject> <spec> <expected-test-count> <label> <old> <new>
+#
+#   --testTimeout  passed to vitest: a spec whose tests run past vitest.config.js's 20 s timeout fails on the unmutated
+#                  subject too, so without it every mutant there reads COULD NOT CHECK (exit 3), never a verdict
 #
 #   exit 0  RED       — the spec caught the mutant (the gate reacts to this defect)
 #   exit 1  SURVIVED  — the spec stayed green on a broken subject: THE GATE HAS A HOLE
@@ -35,9 +38,16 @@
 set -u
 cd "$(dirname "$0")/../.." || exit 3
 
+TIMEOUT_ARG=""
+case "${1:-}" in
+  --testTimeout=*)
+    TIMEOUT_ARG="$1"
+    case "${TIMEOUT_ARG#--testTimeout=}" in ''|*[!0-9]*) echo "  [3] --testTimeout takes milliseconds: $TIMEOUT_ARG" >&2; exit 3;; esac
+    shift;;
+esac
 SUBJ="${1:-}"; SPEC="${2:-}"; EXPECT="${3:-}"; LABEL="${4:-}"; OLD="${5:-}"; NEW="${6-}"
 if [ -z "$SUBJ" ] || [ -z "$SPEC" ] || [ -z "$EXPECT" ] || [ -z "$LABEL" ] || [ -z "$OLD" ]; then
-  echo "usage: mutate.sh <subject> <spec> <expected-test-count> <label> <old> <new>" >&2; exit 3
+  echo "usage: mutate.sh [--testTimeout=<ms>] <subject> <spec> <expected-test-count> <label> <old> <new>" >&2; exit 3
 fi
 [ -f "$SUBJ" ] || { echo "  [3] $LABEL — subject not found: $SUBJ"; exit 3; }
 
@@ -75,7 +85,7 @@ PY
 JSON="$(mktemp "${TMPDIR:-/tmp}/mutate-json.XXXXXX")" || exit 3
 run_spec() {
   rm -f "$JSON"
-  npx vitest run "$SPEC" --reporter=json --outputFile="$JSON" > "$OUT" 2>&1
+  npx vitest run "$SPEC" ${TIMEOUT_ARG:+"$TIMEOUT_ARG"} --reporter=json --outputFile="$JSON" > "$OUT" 2>&1
 }
 # Prints the collected test count on line 1, then one failed test title per line.
 read_json() {
