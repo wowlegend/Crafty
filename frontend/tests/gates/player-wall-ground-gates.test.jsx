@@ -58,6 +58,8 @@ const { setIntent, setActive, resetInput } = await import('../../src/input/input
 const { generateMesh } = await import('../../src/world/mesher.js');
 const { CHUNK_SIZE, CHUNK_VOLUME, voxelIndex } = await import('../../src/world/chunkLayout.js');
 const { PANEL_FLAGS } = await import('../../src/ui/panelState.js');
+const { GameMethods } = await import('../../src/GameMethods.js');
+const { createPlacedCellColliders, createEditSeq } = await import('../../src/world/placedCellColliders.js');
 
 const DT = 1 / 60; // @react-three/rapier 2.2.0's fixed step
 const TOP = 30; // the land's top face
@@ -88,6 +90,7 @@ beforeAll(async () => {
 });
 
 let t = 0, acc = 0;
+let cells = null; // the placed-cell registry (world/placedCellColliders.js), when a case places cells
 /** Terrain.jsx getMobGroundLevel: a ray straight down from y = 255 at (x + 0.1, z + 0.1), the player's body excluded. */
 function groundProbe(x, z) {
   const hit = h.world.castRay(new RAPIER.Ray({ x: x + 0.1, y: 255, z: z + 0.1 }, { x: 0, y: -1, z: 0 }), 300, true, undefined, undefined, undefined, h.body);
@@ -96,9 +99,11 @@ function groundProbe(x, z) {
 /** One display frame at `hz`: the stepper's 1/60 s accumulator, then the Player's frame. */
 function frame(hz) {
   acc += 1 / hz;
-  while (acc >= DT - 1e-9) { h.world.step(); acc -= DT; }
+  let stepped = 0;
+  while (acc >= DT - 1e-9) { h.world.step(); cells?.afterStep(); acc -= DT; stepped++; }
   t += 1 / hz;
   h.frame({ camera: h.camera, clock: { getElapsedTime: () => t, elapsedTime: t } }, 1 / hz);
+  return stepped;
 }
 const y = () => h.body.translation().y;
 
@@ -125,6 +130,8 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  delete GameMethods.placedCells;
+  cells = null;
   cleanup();
   resetInput();
   vi.restoreAllMocks();
@@ -211,4 +218,46 @@ describe('a wall is not ground: a held jump climbs no sheer face or shaft, and a
       expect(Object.keys(rows).length, 'SETUP: a fall was not measured').toBe(6);
     });
   }
+});
+
+/** How far the live capsule reaches into the unit cell (x, y, z): its radius less its core segment's distance to the box. */
+function depthIn([x, y, z]) {
+  const p = h.body.translation(), c = h.body.collider(0);
+  const dx = Math.max(x - p.x, 0, p.x - (x + 1)), dz = Math.max(z - p.z, 0, p.z - (z + 1));
+  const dy = Math.max(y - (p.y + c.halfHeight()), 0, (p.y - c.halfHeight()) - (y + 1));
+  return c.radius() - Math.hypot(dx, dy, dz);
+}
+
+// THE PLAYER'S SWEEP IS CUT AT A CELL PLACED SINCE THE LAST STEP (Components.jsx hands moveKinematic
+// GameMethods.placedCells.unindexed(); game/kinematicMove.js). The controller's sweep reads Rapier's broad phase, which only a
+// world step updates, so at 120 Hz a cell placed between a frame that stepped and one that does not is passed through by
+// that frame's sweep unless the move is cut at it (registry REVIEW:fix-invisible-box:cut-argument-ungated).
+describe('a cell placed in front of the walking player between two frames stops the walk at 120 Hz', () => {
+  it('120 Hz: the cell is placed after a frame that stepped, ahead of the capsule by less than a frame\'s walk, and the capsule never enters it', () => {
+    const hz = 120;
+    standPlayer(hz);
+    cells = createPlacedCellColliders(h.world, RAPIER, createEditSeq());
+    GameMethods.placedCells = cells;
+    putAt(hz, { x: 6.5, y: STAND, z: 14.5 });
+    setIntent('moveF', true);
+    for (let i = 0; i < hz / 2; i++) frame(hz); // up to the walk's speed
+    // Walk on, two frames at a time, until a frame that stepped leaves the capsule's front (where its pending move puts it)
+    // 5 to 100 mm short of a cell boundary ahead: the next frame's walk (14 m/s, 117 mm) crosses it.
+    let placed = null;
+    for (let i = 0; i < 4 * hz && !placed; i++) {
+      if (frame(hz) === 0) continue;
+      const front = h.body.nextTranslation().z - BASE_CAPSULE.radius;
+      const gap = front - Math.floor(front);
+      if (gap > 0.005 && gap < 0.1) placed = [Math.floor(h.body.translation().x), TOP, Math.floor(front) - 1];
+    }
+    expect(placed, 'SETUP: the walk never came within a frame of a cell boundary after a frame that stepped').not.toBeNull();
+    cells.add(...placed);
+    const noStep = frame(hz) === 0;
+    let worst = depthIn(placed);
+    for (let i = 0; i < 30; i++) { frame(hz); worst = Math.max(worst, depthIn(placed)); }
+    setIntent('moveF', false);
+    const row = { placed, noStep, worst: +worst.toFixed(3), end: h.body.translation().z.toFixed(3) };
+    expect(noStep, `SETUP: the frame after the placement took a world step, so the sweep could see the cell ${JSON.stringify(row)}`).toBe(true);
+    expect(worst, `the capsule walked into the cell placed in front of it ${JSON.stringify(row)}`).toBeLessThanOrEqual(0.005);
+  });
 });
