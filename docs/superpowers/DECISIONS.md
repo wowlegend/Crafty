@@ -114,8 +114,9 @@ server, one browser at a time from 21:00Z, on ports 4291 and 4292.
    (`REVIEW:start-stall:governor-samples-the-build`, LOW). And merging main the documented way failed the commit hook:
    registry v2's S6 reads `git rev-list HEAD`, and in a merge's pre-commit HEAD is the branch's own tip, so every
    `closedBy` sha main added read as no ancestor (18 of 37 registry-harvest tests red). The merge `4eb154a0` was made from
-   main's side and the lane fast-forwarded to it; whether S6 should read `MERGE_HEAD` too is the registry v2 owner's
-   (`REVIEW:start-stall:s6-in-a-merge-commit`, LOW). The caption's residual stall under the headless flood is
+   main's side and the lane fast-forwarded to it; whether S6 should read `MERGE_HEAD` too was the registry v2 owner's
+   (`REVIEW:start-stall:s6-in-a-merge-commit`, LOW), answered the same night by the registry S6 lane (item 369), and the
+   lane's second merge of main (`f7228b13`) went through the documented way. The caption's residual stall under the headless flood is
    `REVIEW:start-stall:caption-page-still-stalls` (LOW, LANE:flakes). Its candidate fix is to take the pointer lock only
    once the world is built (the lock is what the flood rides on, and until then the player is held in the sky with nothing
    to look at), a change to the pointer-lock entry path that this lane did not make: the recovery overlay and the
