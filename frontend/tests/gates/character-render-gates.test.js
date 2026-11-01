@@ -71,7 +71,7 @@ describe('character ink outline is tier-independent (locked-look regression guar
   // CHEAP (one backface mesh per object). The perf budget at `low` is recovered from the
   // genuinely-expensive toggles (ao/godRays/shadowMapSize/dprCap/renderDistance),
   // NOT from the character outline. So charOutline must be TRUE at every tier — never a
-  // perf-downgrade casualty. (charRim — the fresnel onBeforeCompile patch — stays high-only.)
+  // perf-downgrade casualty. (The fresnel rim runs at every tier too: render/feedbackGrammar.js.)
   it('charOutline is ON at every quality tier (never dropped by a perf downgrade)', () => {
     for (const tier of ['low', 'med', 'high']) {
       expect(TIERS[tier].charOutline, `${tier}.charOutline must be true (tier-independent signature ink outline)`).toBe(true);

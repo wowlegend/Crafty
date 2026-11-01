@@ -6,8 +6,20 @@
 import * as THREE from 'three';
 
 // --- Art direction (re-tune here; Kevin's eye is the judge at re-baseline) ---
-export const TOON = { shadow: 0.55, lit: 1.0 }; // 2 bands, hard step at dotNL=0.5
-export const RIM = { color: '#bfe2ff', power: 2.5, strength: 0.35 }; // high tier only
+// 2 bands. three r172 samples the ramp at dotNL * 0.5 + 0.5 (gradientmap_pars_fragment), so with this 2-texel nearest
+// ramp the lit band is dotNL >= 0.
+export const TOON = { shadow: 0.55, lit: 1.0 };
+export const RIM = { color: '#bfe2ff', power: 2.5, strength: 0.35 }; // every tier (render/feedbackGrammar.js)
+
+// --- The contact flash (feedback-grammar plan M2): uFlash whitens the band facing the key light, the one directional
+// light (render/keyLight.js: the sun by day, the moon by night), and leaves the shadow band, so a hit reads as contact
+// without hiding the mob's shape. Cast shadow is ignored: a mob in shade still flashes on its lit side. 0 is the
+// identity, so the beast and the props that share this program are untouched.
+export const FLASH_GLSL = {
+  decl: 'uniform float uFlash;',
+  apply: 'float fgLit = 1.0;\n#if NUM_DIR_LIGHTS > 0\nfgLit = step(0.0, dot(normal, directionalLights[0].direction));\n#endif\n' +
+    'gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), uFlash * fgLit);\n',
+};
 export const OUTLINE = {
   color: '#0b0e14',
   // drei <Outlines> default mode (screenspace=false) -> `thickness` is ≈ constant
@@ -44,33 +56,27 @@ export function installRim(material, { color = RIM.color, power = RIM.power, str
     uRimColor: { value: new THREE.Color(color) },
     uRimPower: { value: power },
     uRimStrength: { value: strength },
+    uFlash: { value: 0 },
   };
   material.onBeforeCompile = (shader) => {
-    shader.uniforms.uRimColor = material.userData.rim.uRimColor;
-    shader.uniforms.uRimPower = material.userData.rim.uRimPower;
-    shader.uniforms.uRimStrength = material.userData.rim.uRimStrength;
+    Object.assign(shader.uniforms, material.userData.rim);
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nuniform vec3 uRimColor;\nuniform float uRimPower;\nuniform float uRimStrength;'
+        `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimPower;\nuniform float uRimStrength;\n${FLASH_GLSL.decl}`
       )
       .replace(
         '#include <dithering_fragment>',
-        // vNormal + vViewPosition are standard varyings in three lit materials (toon included)
+        // vNormal + vViewPosition are standard varyings in three lit materials (toon included); `normal` and
+        // `directionalLights` are in scope in the toon program's main().
         'float rimDot = 1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0);\n' +
         'gl_FragColor.rgb += uRimColor * pow(rimDot, uRimPower) * uRimStrength;\n' +
-        '#include <dithering_fragment>'
+        `${FLASH_GLSL.apply}#include <dithering_fragment>`
       );
   };
   // All rim materials share ONE compiled program (perf): stable cache key.
   material.customProgramCacheKey = () => 'mobToonRim';
   return material;
-}
-
-// --- Hit-flash allow-list: only flash lit body materials; never the outline
-// ShaderMaterial or the basic-material eyes. (Replaces the name!=="eye" guard.)
-export function flashableMaterial(mat) {
-  return !!mat && (mat.isMeshStandardMaterial === true || mat.isMeshToonMaterial === true);
 }
 
 /**
