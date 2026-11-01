@@ -201,7 +201,12 @@ ceiling.
    constant, which B1 rewrites; its return check needs a held view at the form's end; its wait for the form to end is a
    PRESENCE, not swallowed. (d)'s restart check needs health to come back after the second hit's 4 s; it passed today
    because nothing regenerates. (e) reads D3's swell as the store's bloom window, 300 ms or more past the kill, and its
-   sky check needs a rush to have happened, since no rush read as no cut. (g): the `ambientAttempts` contract is the
+   sky check needs a rush to have happened, since no rush read as no cut. A cut is now measured against each frame's
+   time: the sky's own clock (`readSkyLight` `cycle`) moving further in one frame than the rush's 60 units a second could
+   pan it, where the sun's height step it replaced would read a slow page's pan as a cut (one local run drew 3 frames a
+   second); a rush drawn slower than a frame every 0.25 s is a PRESENCE, too slow to tell. (c)'s recorded red takes any
+   time for the camera's return: the first frame off the held view came at 1.36 to 1.76 s in four runs and at 3.59 and
+   3.68 s in two, on a loaded machine; why it moved is not measured, and B1's window replaces it. (g): the `ambientAttempts` contract is the
    player's live position, a dry run (it places nothing, so no mob cap or budget is spent between the two batches) and
    one entry per attempt; the warded batch must reach the ward's edge (16-30 m) as its presence; the lantern is bought
    for the Forge's price through `buyForgeOffer` (`goods:lantern`), so L3 joins the beat's units as the task script has
@@ -214,23 +219,27 @@ ceiling.
    player unless named, and the init script refuses an argument with none (finding 13; S1, S2 red). The head run's two
    flake sightings are on their rows, with the light-pool fall the dynamic review read (`e362323e`).
 
-493. **The record against the game: every beat showed every recorded red under the opt-in.** Run locally with
-   `FIRST_NIGHT_AWAITING=1` (Chromium, the Playwright-managed dev server on 4179), the reds by beat: (a) the brazier lit
-   at Start, intensity 1.6, and the same after G; `hearthLit` null. (b) no siege; no wedge ahead or behind; no bearing
-   for the sector; the one stand-in husk that placed went from 28.1 to 25.6 m off the Hearth and from 41 to 36.4 m off
-   the player in 20 s, no march; the horn once at the crossing and once on the load. (c) back at the eye at 1.76 s of a
-   14 s form, not held at its end, `playerPosition` 4.00 m off the body. (d) 0.0 HP/s from 4.1 to 7.0 s of calm; held to
-   5.5 s after the second hit, and no regeneration. (e) no captain; the stand-in killed by the real click, inside the
-   swing's reach; no day within 6 s, no rush in the sky log (56 frames), `lastRewardedNight` 0, no keyed notice after
-   the kill, the bloom window 0 ms. (f) no slot, so nothing to select; the death 12 m from the lantern's place rose 20.2
-   m from it, the other two 0.0 m from the Hearth; nothing to mine. (g) the Forge answered `stale`; no slot; the three
-   reds of no `ambientAttempts` hook; nothing to mine. (h) no siege, the bar at 40, the line 0 times, no wave 3 on night
-   2. The first run found two instrument defects in steps phase 1 had never reached, which is finding 5's point: (b)'s
-   stand had no floor at 32 m east and its stand-in husks none 50 m out (the stand now takes the first floored column of
-   18 near square, the husks stand 28 m out), and (e)'s click, aimed before it, did not kill the captain (it is aimed on
-   its own mousedown, as `talents.spec.js` measured is needed). After each of (f)'s three respawns the input gate read
-   shut (finding 14, confirmed on the headless page). The default run, as CI has it: 8 skipped, the denominator test
-   passed.
+493. **The record against the game: every beat showed every recorded red under the opt-in.** The whole spec, run
+   locally on this round's last spec with `FIRST_NIGHT_AWAITING=1` (Chromium, the Playwright-managed dev server on 4179,
+   started at a load of 9.5): 9 passed in 5.8 minutes, the eight beats with 37 of 37 reds as recorded. By beat: (a) the
+   brazier lit at Start, intensity 1.6, and the same after G; `hearthLit` null. (b) no siege; no wedge ahead or behind;
+   no bearing for the sector; the stand-in husk drifted from 28.1 to 34.9 m off the Hearth, no march; the horn raised
+   once at the crossing and once on the load (shown on screen after the load: 0). (c) the camera back at the eye inside
+   the held window, not held at the form's end, `playerPosition` 4.00 m off the body. (d) 0.0 HP/s from 4.1 to 7.0 s of
+   calm; held to 5.5 s after the second hit, and no regeneration. (e) no captain; the stand-in killed by the real click
+   inside the swing's reach; no day within 6 s, no rush in the sky log (56 frames), `lastRewardedNight` 0, no keyed
+   notice after the kill, the bloom window 0 ms. (f) no slot, so nothing to select; the death 12 m from the lantern's
+   place rose 20.2 m from it, the other two 0.0 m from the Hearth; nothing to mine. (g) the Forge answered `stale`; no
+   slot; the three reds of no `ambientAttempts` hook; nothing to mine. (h) no siege, the bar at 40, the line 0 times, no
+   wave 3 on night 2. The default run, as CI has it: 8 skipped and the denominator test passed. The runs before it found
+   what phase 1's first-red stop hid, finding 5's point, each fixed at its cause: (b)'s stand had no floor at 32 m east
+   and its stand-in husks none 50 m out (the stand takes the first floored column of 18 near square; the husks stand
+   28 m out); (e)'s click, aimed before it, did not kill the captain (it is aimed on its own mousedown, which
+   `talents.spec.js` measured is needed); (f)'s second death fell in the respawn's 5 s protection; the load's horn is
+   counted where it is raised (item 490); a march must close at every step (item 487); and (e)'s sky check measures a
+   cut against frame time (item 492). After each of (f)'s three respawns the input gate read shut (finding 14, confirmed
+   on the headless page). Two runs started over the load ceiling of 28 (at 41 and 66) and were stopped within a minute;
+   another, started at 26 under a load that rose to 98, saw (b)'s crossing not come in 15 s, which did not recur.
 
 494. **The boot chunk after round 2: 648,684 B, 3,816 B under the ceiling.** Measured on this round's build: 648,622 B
    before (item 480; no source change since) and 648,684 B after, the notice id and the bar's drawn state (+62 B),

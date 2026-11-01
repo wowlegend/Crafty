@@ -1,7 +1,7 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { HEARTH_Y, HEARTH_FIRE } from '../../src/world/homeAnchor.js';
-import { HALF_CYCLE_UNITS } from '../../src/game/dayNight.js';
+import { HALF_CYCLE_UNITS, CYCLE_UNITS } from '../../src/game/dayNight.js';
 import { EYE_HEIGHT_M, SWING_APEX_OVER_BODY_M } from '../../src/combat/swingOrigin.js';
 import { installNoticeLog, isHornKey } from '../../scripts/visual/_firstNight.mjs';
 import { BEATS, AWAITS, compareReds, redLine, unitsOf } from './_firstNightAwaits.js';
@@ -70,6 +70,7 @@ const REVEAL_SEC = 1.2; // the task script's B1 window: the held view from 1.2 s
 const SECTOR_DEG = 30; // a wave placed "from one bearing": within this of it, 20 m or more out
 const STAND_OFF_M = 32; // where (b) stands, square to the bearing: past every aggro range (game/mobArchetypes.js, 28 at most)
 const ATTEMPTS = 200;
+const RUSH_UNITS_PER_SEC = 60; // the task script's N6a: the dawn rush steps the clock 60 units a 1 s tick
 
 const BRAZIER = [2.4, HEARTH_Y + 0.5, 2.4]; // Terrain.jsx HomeAnchorRender: the brazier group on the plinth
 const BRAZIER_FIRE = [BRAZIER[0], BRAZIER[1] + HEARTH_FIRE.height, BRAZIER[2]];
@@ -605,7 +606,7 @@ beat('e', 'captain: his kill by a real click brings day within 6 s, the rush wit
     const step = () => {
       const sky = window.__craftyTest.call('readSkyLight');
       const s = window.useGameStore.getState();
-      log.push({ at: performance.now(), sunY: sky?.sunDirY ?? null, day: s.isDay, bloomAhead: (s.bloomSpikeUntil || 0) - performance.now() });
+      log.push({ at: performance.now(), cycle: sky?.cycle ?? null, day: s.isDay, bloomAhead: (s.bloomSpikeUntil || 0) - performance.now() });
       if (!window.__fnSkyDone) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -619,15 +620,29 @@ beat('e', 'captain: his kill by a real click brings day within 6 s, the rush wit
   const dayCame = await page.waitForFunction(() => window.useGameStore.getState().isDay === true, null, { timeout: 6000 }).then(() => true, () => false);
   red('day', dayCame && Date.now() - killedAt <= 6000, 'the captain\'s kill did not bring day within 6 s');
   await page.waitForTimeout(3000);
-  const sky = await page.evaluate(() => { window.__fnSkyDone = true; return window.__fnSky; });
-  presence(sky.length > 30 && sky.some((f) => f.sunY !== null), `the sky log read ${sky.length} frames, none with a sun: the instrument is blind`);
-  // A cut is the sun's height jumping more than a sixth of its night-to-day swing in one frame (60 units at once is 18
-  // degrees of the cycle; the followed rush moves about 1 unit a frame).
-  const rushed = sky.some((f) => !f.day) && sky.some((f) => f.day);
-  const steps = sky.slice(1).map((f, i) => Math.abs((f.sunY ?? 0) - (sky[i].sunY ?? 0)));
-  red('sky', rushed && Math.max(0, ...steps) < 0.15, rushed
-    ? `the sky cut during the rush: the sun's height jumped ${Math.max(...steps).toFixed(3)} in one frame`
-    : `no dawn rush to read: the sky log never saw day (${sky.length} frames)`);
+  const log = await page.evaluate(() => { window.__fnSkyDone = true; return window.__fnSky; });
+  const sky = log.filter((f) => Number.isFinite(f.cycle));
+  presence(sky.length >= 10, `the sky log read ${log.length} frames, ${sky.length} with the sky's own clock: the instrument is blind`);
+  // A cut is the sky's clock (the fraction the frame was drawn at, Atmosphere.jsx readSkyLight) moving further in one
+  // frame than the fastest pan could, the rush's 60 units a second over that frame's time; measured per frame time, so a
+  // slow page cannot pass a pan off as a cut. Too slow a page cannot tell them apart at all, and says so.
+  const rushed = log.some((f) => !f.day) && log.some((f) => f.day);
+  const steps = sky.slice(1).map((f, i) => {
+    const dt = (f.at - sky[i].at) / 1000;
+    let du = (f.cycle - sky[i].cycle) * CYCLE_UNITS;
+    if (du > CYCLE_UNITS / 2) du -= CYCLE_UNITS;
+    if (du < -CYCLE_UNITS / 2) du += CYCLE_UNITS;
+    return { dt, du, pan: 2 * RUSH_UNITS_PER_SEC * dt + 6 };
+  });
+  if (rushed) {
+    const dts = steps.map((s) => s.dt).sort((a, b) => a - b);
+    const median = dts[Math.floor(dts.length / 2)];
+    presence(median <= 0.25, `the page drew a frame every ${median.toFixed(2)} s through the rush: too slow to tell a cut from a pan`);
+  }
+  const cut = steps.find((s) => Math.abs(s.du) > s.pan);
+  red('sky', rushed && !cut, rushed
+    ? `the sky cut during the rush: its clock moved ${cut.du.toFixed(0)} units in one ${cut.dt.toFixed(2)} s frame, where a pan moves ${cut.pan.toFixed(0)} at most`
+    : `no dawn rush to read: the sky log never saw day (${log.length} frames)`);
   const after = await page.evaluate(readNight);
   red('reward', after.lastRewardedNight === 1, `the dawn reward is not counted once for night 1 (lastRewardedNight ${after.lastRewardedNight})`);
   const keys = await noticesSince(page, mark);
@@ -635,7 +650,7 @@ beat('e', 'captain: his kill by a real click brings day within 6 s, the rush wit
   const lantern = keys.findIndex((k) => /lantern/i.test(k));
   red('payoff', keys.filter((k) => /^notice\.dawn/.test(k)).length === 1 && dawn >= 0 && lantern > dawn,
     `the payoff is not one dawn notice and then the lantern line: ${JSON.stringify(keys)}`);
-  const swell = Math.max(0, ...sky.map((f) => f.bloomAhead));
+  const swell = Math.max(0, ...log.map((f) => f.bloomAhead));
   red('swell', swell >= 300, `no bloom swell after the kill: the store's bloom window reached ${swell.toFixed(0)} ms ahead at most (a swell holds 300 ms or more)`);
 });
 

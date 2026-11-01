@@ -37,7 +37,7 @@ export const AWAITS = Object.freeze({
     red('N5', 'horn', /^the horn sounded 1 time at the crossing and 1 time on a load into night/),
   ]),
   c: Object.freeze([
-    red('B1', 'held', /^the camera is back at the eye at 1\.\d+ s of a [\d.]+ s form/),
+    red('B1', 'held', /^the camera is back at the eye at [\d.]+ s of a [\d.]+ s form/),
     red('B1', 'return', /^the camera was not held to the form's end/),
     red('B1', 'eye', /^playerPosition left the body by [\d.]+ m during the form/),
   ]),
