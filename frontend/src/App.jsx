@@ -299,13 +299,15 @@ function GameApp({ experienceSystem }) {
       {/* The world is being built: shown under the title, and in play when Start is clicked before the spawn chunk is up.
           A still caption at the foot of the screen, not a layer over the canvas: in play the page must drain every pointer
           update the lock sends it, and on a software compositor a layer covering the live canvas left it unable to, most
-          of all a translucent, blurred, animated one (DECISIONS 2026-10-31 items 370-371; tests/e2e/start-before-built.spec.js). */}
+          of all a translucent, blurred, animated one (DECISIONS 2026-10-31 items 370-371; tests/e2e/start-before-built.spec.js).
+          The caption sits on a small solid plate because the unbuilt world behind it is bright fog: bare text read 1.02:1
+          there (DECISIONS 2026-10-31 item 380). */}
       {!isWorldBuilt && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-50 flex flex-col items-center">
-          <h2 className="text-3xl font-bold text-white mb-2 font-mono tracking-widest" style={{ textShadow: '0 0 10px rgba(74, 222, 128, 0.8), 0 2px 8px rgba(0, 0, 0, 0.9)' }}>
-            {t('world.generating')}
-          </h2>
-          <p className="text-green-400 font-mono text-sm" style={{ textShadow: '0 1px 8px rgba(0, 0, 0, 0.9)' }}>{t('world.buildingTerrain')}</p>
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-50 flex justify-center">
+          <div className="flex flex-col items-center bg-panel border-chrome border-ink rounded-md shadow-elev-md px-6 py-3">
+            <h2 className="text-3xl font-bold text-text mb-1 font-mono tracking-widest">{t('world.generating')}</h2>
+            <p className="text-success font-mono text-sm">{t('world.buildingTerrain')}</p>
+          </div>
         </div>
       )}
 

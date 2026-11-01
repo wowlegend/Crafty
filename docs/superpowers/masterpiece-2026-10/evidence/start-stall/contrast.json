@@ -1,0 +1,62 @@
+{
+ "what": "The world-building caption in play, a Start clicked before the world was built (chunk meshes held 12 s after the lock), production build, Chromium new headless on Apple M3 Max (ANGLE Metal), 1280x800 at DPR 2. fg: median of glyph pixels within RGB distance 48 of the CSS colour; bg: median of a ring 2-6 CSS px outside the text box; worst: against the ring pixel at the 10th percentile of luminance distance. WCAG 2 relative luminance. Frames: caption-before.jpg, caption-after.jpg (downscaled to 1280 wide).",
+ "measured": "2026-11-01T03:10Z",
+ "before": {
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+  "state": {
+   "lock": true,
+   "started": true,
+   "built": false,
+   "held": 96
+  },
+  "headline": {
+   "css": "#ffffff",
+   "glyphPixels": 11016,
+   "fg": "#ffffff",
+   "ringPixels": 12464,
+   "bg": "#ebb4be",
+   "contrast": 1.78,
+   "worstBg": "#ecb5bf",
+   "worst": 1.76
+  },
+  "subtitle": {
+   "css": "#4ade80",
+   "glyphPixels": 2739,
+   "fg": "#4ade80",
+   "ringPixels": 12128,
+   "bg": "#ebb3bd",
+   "contrast": 1.03,
+   "worstBg": "#ecb4bf",
+   "worst": 1.02
+  }
+ },
+ "after": {
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+  "state": {
+   "lock": true,
+   "started": true,
+   "built": false,
+   "held": 102
+  },
+  "headline": {
+   "css": "#ececef",
+   "glyphPixels": 10522,
+   "fg": "#ececef",
+   "ringPixels": 12464,
+   "bg": "#2a2420",
+   "contrast": 12.99,
+   "worstBg": "#2a2420",
+   "worst": 12.99
+  },
+  "subtitle": {
+   "css": "#7fe0a0",
+   "glyphPixels": 2413,
+   "fg": "#7fe0a0",
+   "ringPixels": 12128,
+   "bg": "#2a2420",
+   "contrast": 9.53,
+   "worstBg": "#2a2420",
+   "worst": 9.53
+  }
+ }
+}
