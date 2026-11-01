@@ -19,7 +19,7 @@
 
 ---
 
-## 2026-10-31 (lane start-stall) — [LOOP] a Start clicked before the world is built: the stall named, the world-building screen a still caption
+## 2026-10-31 (lane start-stall) — [LOOP] a Start clicked before the world is built: the stall named, the world-building screen a still caption, and the touch-tap flake's cause
 
 Registry `REVIEW:l10:music-e2e-title-hang` (MED): on CI's software renderer a title Start clicked before the spawn chunk
 was built stopped the page answering, and two Chromium processes grew to the runner's 16 GB (item 306). This lane found
@@ -121,6 +121,29 @@ server, one browser at a time from 21:00Z, on ports 4291 and 4292.
    to look at), a change to the pointer-lock entry path that this lane did not make: the recovery overlay and the
    no-stranded-player invariant of `.claude/rules/input-and-pointer-lock.md` gain a dimension, and that wants its own lane
    and gates. The lane's QUESTION.md asks the command session for that ruling.
+
+377. **The touch taps the caption broke, and the harness input under them.** PR #76's CI (run 41255314244, two attempts)
+   failed `panels.spec.js:83`, the phone tray tap, 6 of 6 and the touch Pause tap of `pause-freezes-world.spec.js:217` 3
+   of 6, each with a canvas over the button, against about 2 of 7 first attempts of the tray tap on other PRs that
+   night. An A/B on the runner put it on this lane (run 41259967132): with main's loading screen restored the tray tap
+   passed 4 of 4 and the touch Pause 4 of 4; with the caption, 0 of 4 and 2 of 4. Run 41261223279 named the mechanism:
+   with the caption the world-ready auto-lock (`App.jsx`, 100 ms after the spawn chunk) was granted and the game started
+   under it, and the tap's `pointerdown` carried clientX/clientY 0,0, where Playwright's hit-target check found the
+   canvas and blocked the tap on every retry; with main's screen the same request was refused (`pointerlockerror`) and
+   the tap landed 3 of 3. Pointer Lock 2.0 refuses a request made without transient activation unless the document
+   released a lock itself with `exitPointerLock()` (`requestPointerLock`, step 3, w3c.github.io/pointerlock, read
+   2026-11-01); the grant came from Playwright running every `page.evaluate` as a user gesture (`frame-cap.spec.js` says
+   how that was found), and the caption builds the world sooner (the lock asked for 7 to 10 s after load, against 13 to
+   20 s), inside the activation the test's own wait had opened. So the flake those rows chased was never the title's
+   canvas, and the fix is the harness's: `tests/e2e/_fixtures.js` now refuses, in a touch context, a lock that no
+   trusted gesture asked for, as a conforming browser does (`4fc42a61`; desktop contexts unchanged). Proof, run
+   41262061859 on that tree: the tray tap 6 of 6 and the touch Pause 4 of 4 with it, the tray tap 0 of 3 with its
+   install line removed (the touch Pause passed 2 of 2 there: it is a race), and every other Chromium touch spec 26 of
+   26 with it. `4fc42a61`'s trailer says the touch Pause went 0 of 4 in run 41259967132; it went 2 of 4 there, against 4
+   of 4. The four flake rows (`REVIEW:w2d:pause-tap-title-canvas`, `REVIEW:e2e-flakes:panels-phone-tray-tap-timeout`,
+   `REVIEW:e2e-flakes:hud-at-rest-tracker-tap-canvas`, `REVIEW:e2e-flakes:touch-gear-tap-canvas-intercepts`) get the
+   finding and stay open for their acceptance's ten clean CI runs. Not measured: a real touch browser that has a pointer
+   (a Chromium tablet with a mouse) after a Start before the build.
 
 ## 2026-10-31 (registry v2) — [LOOP] one list of open work, cleaned and kept clean: schema v2, lanes as rows, closed is final, and the gates that hold it
 
