@@ -269,18 +269,23 @@ export const EnhancedMagicSystem = React.memo(function EnhancedMagicSystemRender
     // in useFrame keeps it there), and (3) fires a seeded GPU spark burst at the impact
     // point so the frame shows the real spray (the GPUSparkSystem capture-phase fix makes
     // it visible at uTime=0). Fully deterministic: fixed inputs + seeded RNG + frozen clock.
-    useGameStore.setState({ spawnDeterministicCast: (opts = {}) => {
-      const spellType = opts.spellType || 'fireball';
-      const spell = SPELL_TYPES[spellType];
-      if (!spell) return;
-      // v7-S3.5a: isolate each deterministic cast so the capture's per-element frames don't accumulate
-      // (capture casts fireball, then ice/lightning/arcane in sequence; without this clear each later
-      // frame would also show every prior cast). Capture-only path; harmless in the single-cast case.
+    // v7-S3.5a: isolate each deterministic cast so the capture's per-element frames don't accumulate
+    // (capture casts fireball, then ice/lightning/arcane in sequence; without this clear each later
+    // frame would also show every prior cast). Capture-only path; harmless in the single-cast case.
+    const endCast = () => {
       projectilesRef.current = [];
       setProjectiles([]);
       setTelegraphs([]);
       setSpellImpacts([]);
       setChainArcs([]);
+    };
+    // The lookbook's unstage() (render/lookbookSeam.js) ends a staged cast before the world is let go: a projectile left
+    // flying would strike the next mobs staged in front of the eye.
+    useGameStore.setState({ endDeterministicCast: endCast, spawnDeterministicCast: (opts = {}) => {
+      const spellType = opts.spellType || 'fireball';
+      const spell = SPELL_TYPES[spellType];
+      if (!spell) return;
+      endCast();
       const muzzle = new THREE.Vector3(...(opts.muzzle || [0, 141.4, -4.2]));
       const projPos = new THREE.Vector3(...(opts.projectile || [0, 141.0, -8.5]));
       const impactPos = new THREE.Vector3(...(opts.impact || [0, 140.6, -12.5]));

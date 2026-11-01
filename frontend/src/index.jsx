@@ -61,6 +61,7 @@ import { ecs, mobsQuery } from './ecs/world.js';
 import { skyFrameRef } from './render/mood.js';
 import { handNodeCount } from './render/viewmodel.js';
 import { worldNow } from './game/worldClock.js';
+import { _roots } from '@react-three/fiber';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
 
@@ -92,6 +93,8 @@ function boot(installLookbookSeam) {
       // The boss system installs this only on a ?lookbook=1 page; read at the call, after App has mounted it.
       spawnDragon: (o) => useGameStore.getState().lookbookSpawnDragon?.(o),
       worldNow, // a staged windup is planted on the world clock
+      keyDir: () => skyFrameRef.current.keyDir,
+      roots: () => _roots, // frame() finds the game's scene among them
     });
   }
 

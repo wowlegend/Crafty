@@ -6,7 +6,8 @@
 // off and pins the sun at noon. So the probe needs to pose the camera, stand the player and turn their head, set the
 // time of day, make input live, clear the hostiles in the player's face, list the mobs a frame could show, read GPU
 // time per post pass, and stage a mob held in one combat moment (a windup, a hit) with the world frozen around it
-// (stage(), for the feedback grammar's danger and contact frames) in the production build — and nothing else.
+// (stage(), for the feedback grammar's danger and contact frames), and read what else a frame holds (frame(), so a shot
+// with anything the stage did not put there is marked invalid) in the production build — and nothing else.
 //
 // TWO WAYS TO FRAME A SHOT. pose() pins the camera for an elevated hero shot (below). stand() and look() frame what a
 // player sees instead: they move the player's body and turn the camera the way mouse look does (input/pointerLook.js
@@ -41,6 +42,7 @@ import {
   lookbookHandPose, lookbookPassesOff, lookbookDragonHold, _resetLookbookStateForTest,
 } from './lookbookState.js';
 import { WINDUP_MS } from '../game/attackTelegraph.js';
+import { Vector3 } from 'three';
 
 let _passTimer = null; // the page-wide handle from render/passTimer.js, once the probe asked for timings
 
@@ -50,7 +52,11 @@ export const STAGE_MOMENTS = Object.freeze(['idle', 'windup', 'hit', 'cast']);
 const STAGE_WINDUP_RAMP = 0.8; // how far through its windup a staged mob is held (game/attackTelegraph.js windupRamp)
 const STAGE_HOLD_MS = 600000; // the world freeze's cap; unstage() ends it at once
 // What stage() put in the world: the mobs, whether the per-frame hit stamp runs, and whether the world is held for it.
-const _stage = { mobs: [], stamping: false, holding: false };
+const _stage = { mobs: [], stamping: false, holding: false, cast: false };
+const FRAME_M = 60; // how far from the eye frame() looks for mobs and spells drawn in view
+const MATCH_M = 1.5; // a drawn mob stands on its live ECS mob within this (the render damp lags a walking mob)
+const _p = new Vector3();
+const _v = new Vector3();
 
 /** The poses dragon() can hold the dragon in: at rest, each attack's tell partway through its windup (render/BossEntity.jsx
  *  draws its ground decal and its glow), and staggered. */
@@ -207,15 +213,17 @@ function finite(v, name) {
  *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>,
  *          sunDir?: () => number[], handNodes?: () => number,
  *          spawnDragon?: (o: {position?: number[]}) => {position: number[], ground: number|null},
- *          worldNow?: () => number}} deps  `hostiles`: the
+ *          worldNow?: () => number, keyDir?: () => number[], roots?: () => Map<any, {store: any}>}} deps  `hostiles`: the
  *          ECS mob query, every mob (the seam picks the hostiles out). `sunDir`: the sun's direction this frame
  *          (render/mood.js skyFrameRef). `handNodes`: the objects mounted in the viewmodel's hands group
  *          (render/viewmodel.js handNodeCount). `spawnDragon`: the boss system's lookbook spawn (world/bossSystem.js).
- *          `worldNow`: the world clock (game/worldClock.js), which a staged windup is planted on.
+ *          `worldNow`: the world clock (game/worldClock.js), which a staged windup is planted on. `keyDir`: the key
+ *          light's direction this frame, the sun by day and the moon by night (render/mood.js skyFrameRef). `roots`:
+ *          React Three Fiber's roots (its `_roots`), where frame() finds the scene the game camera draws.
  */
 export function installLookbookSeam(win, {
   store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir, handNodes,
-  spawnDragon, worldNow,
+  spawnDragon, worldNow, keyDir, roots,
 }) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   const unposed = (verb) => {
@@ -223,6 +231,21 @@ export function installLookbookSeam(win, {
   };
   const body = () => store.getState().playerRigidBodyRef?.current ?? null;
   const camera = () => store.getState().gameCamera ?? null;
+  // The scene the game camera draws: the R3F root whose camera it is.
+  const sceneOf = (cam) => {
+    for (const r of roots?.()?.values() ?? []) {
+      const s = r?.store?.getState?.();
+      if (s?.camera === cam) return s.scene ?? null;
+    }
+    return null;
+  };
+  // A world point in the camera's view, in front of it and within FRAME_M.
+  const inView = (cam, p) => {
+    if (p.distanceTo(cam.position) > FRAME_M) return false;
+    if (_v.copy(p).applyMatrix4(cam.matrixWorldInverse).z >= 0) return false;
+    _v.copy(p).project(cam);
+    return Math.abs(_v.x) <= 1 && Math.abs(_v.y) <= 1;
+  };
   win.__craftyLookbook = Object.freeze({
     /** Pin the camera: { position: [x,y,z], lookAt: [x,y,z], fov? }. Throws on a malformed pose. */
     pose: (p) => { setPose(p); return copyPose(lookbookPose()); },
@@ -382,6 +405,7 @@ export function installLookbookSeam(win, {
           direction: [fx, -0.05, fz],
         });
         if (!_stage.holding) { st.triggerHitstop(STAGE_HOLD_MS); _stage.holding = true; }
+        _stage.cast = true;
         return { id: null, position: at };
       }
       const before = new Set(hostiles());
@@ -407,8 +431,12 @@ export function installLookbookSeam(win, {
       }
       return { id: mob.id ?? null, position: [mob.position.x, mob.position.y, mob.position.z] };
     },
-    /** Remove every staged mob (no kill, XP or loot) and end the world's hold. Returns how many it removed. */
+    /** End a staged cast (the spell system's own clear: its projectile, telegraph and impact), remove every staged mob
+     *  (no kill, XP or loot), then end the world's hold: a spell left flying would strike the next mobs staged in front
+     *  of the eye. Returns how many mobs it removed. */
     unstage: () => {
+      if (_stage.cast) store.getState().endDeterministicCast?.();
+      _stage.cast = false;
       const n = _stage.mobs.length;
       for (const m of _stage.mobs) removeEntity?.(m);
       _stage.mobs = [];
@@ -419,6 +447,34 @@ export function installLookbookSeam(win, {
         _stage.holding = false;
       }
       return n;
+    },
+    /** What a frame holds besides the stage, for the probe's validity check, read from what is DRAWN: every mob model
+     *  (MobModel's group, named 'mob') in the game camera's view within FRAME_M, each matched to the live ECS mob it
+     *  stands on (type, staged, hostile, health) or reported with `entity: false` when none is (a model left drawn
+     *  after its mob was removed; a bound ally too, which the lookbook's world has none of); and how many spells are
+     *  drawn in view (projectile heads and impact pops, named 'spell'). `{ mobs: null, spells: null }` when the build
+     *  hands the seam no scene. */
+    frame: () => {
+      const cam = camera();
+      if (!cam) throw new Error('lookbook: frame() before the game camera exists');
+      const scene = sceneOf(cam);
+      if (!scene) return { mobs: null, spells: null };
+      cam.updateMatrixWorld();
+      const live = hostiles ? [...hostiles()] : [];
+      const mobs = [];
+      let spells = 0;
+      scene.traverse((o) => {
+        if (o.name !== 'mob' && o.name !== 'spell') return;
+        o.getWorldPosition(_p);
+        if (o.name === 'spell') { if (inView(cam, _p)) spells += 1; return; }
+        const e = live.find((m) => m?.position && Math.hypot(m.position.x - _p.x, m.position.z - _p.z) < MATCH_M && Math.abs(m.position.y - _p.y) < MATCH_M);
+        _p.y += 1; // the body, not the feet
+        if (!inView(cam, _p)) return;
+        mobs.push(e
+          ? { entity: true, type: e.type ?? null, staged: _stage.mobs.includes(e), hostile: isLiveHostile(e), health: e.health ?? null, maxHealth: e.maxHealth ?? null }
+          : { entity: false, type: null, staged: false, hostile: null, health: null, maxHealth: null });
+      });
+      return { mobs, spells };
     },
     /** What the probe records per shot. */
     info: () => {
@@ -456,6 +512,9 @@ export function installLookbookSeam(win, {
         hostiles: hostiles && (cam || t) ? hostileReach(hostiles(), cam ? cam.position.toArray() : [t.x, t.y, t.z]) : null,
         // Where the sun is, so a shot can face it (GodRays shows only near it); null when the build hands no reader.
         sun: sunDir ? sunBearing(sunDir()) : null,
+        // The key light's direction (toward it), the sun by day and the moon by night: a hit shot turns the mob so one
+        // visible face is in the lit band. Null when the build hands no reader.
+        key: keyDir ? copy3(keyDir()) : null,
         // The passes switched off, and the postprocessing effects that must show skipped in the chain while they are.
         passesOff: { names: [...lookbookPassesOff()].sort(), effects: lookbookEffectNames(lookbookPassesOff()) },
         // The fight a frame shows: whether the dragon is up, the pose the seam holds it in, and where it is.
@@ -474,4 +533,5 @@ export function _resetLookbookForTest() {
   _stage.mobs = [];
   _stage.stamping = false;
   _stage.holding = false;
+  _stage.cast = false;
 }

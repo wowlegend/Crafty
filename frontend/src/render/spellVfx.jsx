@@ -99,7 +99,8 @@ const EnhancedSpellProjectile = React.memo(({ projectile }) => {
     <group>
       {/* S1-D POLISH: the LAYERED energy body (hot inner core + saturated outer glow),
           replacing the single flat emissive sphere. Tracks the head via groupRef. */}
-      <group ref={groupRef}>
+      {/* name: what the lookbook's frame() counts as a spell in view (render/lookbookSeam.js) */}
+      <group ref={groupRef} name="spell">
         <SpellProjectileCore projectile={projectile} />
       </group>
 
@@ -419,7 +420,7 @@ const SpellImpactPop = React.memo(({ impact }) => {
   });
 
   return (
-    <group position={impact.position}>
+    <group position={impact.position} name="spell">
       {/* expanding shockwave ring (element-glow hue) on the ground plane (XZ) — shared base */}
       <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.35, 0.55, 40]} />

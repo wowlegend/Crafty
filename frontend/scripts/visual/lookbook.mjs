@@ -110,7 +110,7 @@ import {
 } from './_lookbookPage.mjs';
 import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
-  shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
+  shotVerdict, eyeShotVerdict, clipVerdict, combatVerdict, litTurn, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
   servedBuildProblem, PASS_ARMS, PASS_TIMES, PASS_REPS, PASS_TARGET, PASS_LOOK_PAIRS, PASS_MAX_LOAD,
   passWindowPlan, windowMedian, passDifferential, passVerdict, admittedInstruments, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
   altDifferential, PASS_ALT_SKIP_MS, windowReadings, passWindowWhy, poseWhy, passRendererProblem, checkoutState, medianOf,
@@ -374,11 +374,16 @@ const BRAZIER_CYCLE = 0.75;
 
 /** The combat stage (--sets combat; feedback-grammar plan M7): at eye level from the Hearth, a mob staged by the seam in
  *  front of the eye and held in one moment (stage(): the world frozen, a windup at 0.8 of its ramp, or a hit renewed
- *  every frame), at each COMBAT_CYCLES time; then the GL draws per frame with none and with four zombies staged, so a
- *  unit that changes what a mob draws states its per-mob cost. */
+ *  every frame), at each COMBAT_CYCLES time; then the GL draws per frame with none, with four zombies and with four
+ *  ember elites staged, so a unit that changes what a mob draws states its per-mob cost. A frame is valid only when it
+ *  holds nothing the stage did not put there (_lookbook.mjs combatVerdict), and a control frame with a hostile spawned
+ *  beside the staged one, not by the stage, must come out invalid, or the check is blind and every frame says so. */
 const COMBAT_CYCLES = [0.3, 0.75];
 const COMBAT_HEADING = 120;
 const COMBAT_PITCH = -8;
+const COMBAT_CLEAR_M = 40; // hostiles removed before each combat shot: past the 14 m far shot
+const ELITE_TYPES = ['zombie', 'skeleton', 'spider', 'skitterling', 'duskhound', 'moss_brute', 'emberhusk']; // every hostile type can roll one
+const ELITE_DISTANCE = (type) => (type === 'moss_brute' ? 5 : 3.5); // the brute's crest leaves the frame's top at 3.5 m
 const COMBAT_SHOTS = Object.freeze([
   // A spell held in flight 4 m out (the seam's 'cast': the spell system's deterministic cast), first, before any mob is
   // staged at that spot.
@@ -389,15 +394,46 @@ const COMBAT_SHOTS = Object.freeze([
   { name: 'windup-duskhound', type: 'duskhound', moment: 'windup', distance: 3.5 },
   { name: 'windup-skitterling', type: 'skitterling', moment: 'windup', distance: 3.5 },
   { name: 'hit-zombie', type: 'zombie', moment: 'hit', distance: 3.5 },
+  // Turned so one visible face is in the key light's lit band and the other in its shadow band (litTurn), so the frame
+  // shows contact whitening the lit band and the shadow band keeping the body's colour.
+  { name: 'hit-zombie-lit', type: 'zombie', moment: 'hit', distance: 3.5, lit: true },
   { name: 'windup-zombie-far', type: 'zombie', moment: 'windup', distance: 14 },
-  // Elites (W3-A F5): an ember-touched duskhound's crest, and the siege captain's crest and banner, turned to show it.
-  { name: 'idle-duskhound-ember', type: 'duskhound', moment: 'idle', distance: 3.5, elite: 'ember' },
+  // Elites (W3-A F5): every hostile type's ember crest, and the siege captain's crest and banner (a husk at the first
+  // tiers, a brute after), turned to show it.
+  ...ELITE_TYPES.map((type) => ({ name: `idle-${type}-ember`, type, moment: 'idle', distance: ELITE_DISTANCE(type), elite: 'ember' })),
   { name: 'windup-zombie-captain', type: 'zombie', moment: 'windup', distance: 4, yawDeg: 140, elite: 'captain' },
+  ...['emberhusk', 'moss_brute'].map((type) => ({ name: `idle-${type}-captain`, type, moment: 'idle', distance: ELITE_DISTANCE(type) + 0.5, yawDeg: 140, elite: 'captain' })),
 ]);
+const TOAST_WAIT_MS = 6000; // ui/notifications.js TOAST_MS (4 s) and the stack's exit
+// A lit-band hit shot looks along the first of these headings whose best turn leans each visible face at least
+// LIT_MIN_SPLIT toward or away from the key light (the e2e's bar is 0.25), else along the best one, and says so.
+const LIT_HEADINGS = [120, 90, 150, 60, 180];
+const LIT_MIN_SPLIT = 0.3;
 const COMBAT_DRAW_MS = 1500;
+
+const toastCount = (page) => page.evaluate(() => (document.querySelector('[data-testid="notification-stack"]')
+  || document.querySelector('.absolute.top-20.right-4.space-y-2'))?.children.length ?? 0);
 
 async function shootCombat(page, report, dir, target, facts) {
   const lb = (verb, a) => page.evaluate(([v, x]) => window.__craftyLookbook[v](x), [verb, a]);
+  // Wait out the toasts a new time of day raises (a night's siege warning), so a shot is not invalid for one.
+  const toastsGone = async () => {
+    for (let t = 0; t < TOAST_WAIT_MS && (await toastCount(page)) > 0; t += 250) await delay(250);
+  };
+  // What the frame holds at the shot, and whether the stage's cast is gone after unstage().
+  // A build from before frame() reads nothing, and its every frame says so ('frame contents not read').
+  const frameOf = () => page.evaluate(() => window.__craftyLookbook.frame?.() ?? { mobs: null, spells: null });
+  const verdictOf = async (cast, staged, after) => {
+    const frame = await frameOf();
+    const toasts = await toastCount(page);
+    await lb('unstage');
+    await delay(250); // a frame to unmount what unstage() removed
+    const post = await frameOf();
+    // What the stage left behind: live mobs within 1 m of where it stood (unstage removes what it staged).
+    const left = staged ? (await page.evaluate(() => window.__craftyLookbook.mobs()) || [])
+      .filter((m) => Math.hypot(m.position[0] - staged.position[0], m.position[2] - staged.position[2]) < 1).map((m) => m.type) : [];
+    return { frame, toasts, spellsAfter: post.spells, ...combatVerdict({ cast, after, frame, toasts, spellsAfter: post.spells, left }) };
+  };
   const draws = async () => {
     await page.evaluate(() => window.__glDraws?.reset());
     await delay(COMBAT_DRAW_MS);
@@ -415,14 +451,42 @@ async function shootCombat(page, report, dir, target, facts) {
     await lb('look', { heading: COMBAT_HEADING, pitch: COMBAT_PITCH });
     await setCycle(page, c);
     await delay(SETTLE_MS);
+    await toastsGone();
+    if (c === COMBAT_CYCLES[0]) {
+      // THE CONTROL: a zombie spawned through the store beside the staged one is an unstaged hostile in view. A verdict
+      // that does not say so is a blind check, and then no combat frame of this run is called valid.
+      await clearHostiles(page, COMBAT_CLEAR_M);
+      await play(page);
+      await holdTier();
+      const staged = await lb('stage', { type: 'zombie', distance: 3.5, moment: 'idle' });
+      const [x, y, z] = staged.position;
+      const spawned = await page.evaluate(([px, py, pz]) => window.useGameStore.getState().spawnMob(px, pz, 'zombie', py - 0.5), [x + 1.2, y, z + 1.2]);
+      await delay(700);
+      const v = await verdictOf(false, staged, await info(page));
+      await clearHostiles(page, COMBAT_CLEAR_M);
+      const seen = v.why.some((w) => w.startsWith('unstaged hostile'));
+      report.combatControl = { spawned, why: v.why, seen };
+      console.log(`lookbook combat control ${target.id}: ${seen ? 'the stray zombie was seen (invalid, as it must be)' : `BLIND: ${JSON.stringify(v.why)}`}`);
+    }
     for (const shot of COMBAT_SHOTS) {
       const t0 = Date.now();
-      await clearHostiles(page);
+      await clearHostiles(page, COMBAT_CLEAR_M);
       await play(page);
       await holdTier();
       await setCycle(page, c);
+      let lit = null;
+      if (shot.lit) {
+        const key = (await info(page)).key;
+        for (const h of LIT_HEADINGS) {
+          const t = litTurn(h, key);
+          if (t && (!lit || t.split > lit.split)) lit = { ...t, heading: h };
+          if (t && t.split >= LIT_MIN_SPLIT) break;
+        }
+        if (!lit) { report.notes.push(`combat ${shot.name} at ${c}: no key light read, so no lit turn`); continue; }
+        await lb('look', { heading: lit.heading, pitch: COMBAT_PITCH });
+      }
       let staged = null;
-      try { staged = await lb('stage', { type: shot.type, distance: shot.distance, moment: shot.moment, yawDeg: shot.yawDeg ?? 0, elite: shot.elite ?? null }); }
+      try { staged = await lb('stage', { type: shot.type, distance: shot.distance, moment: shot.moment, yawDeg: lit ? lit.yawDeg : shot.yawDeg ?? 0, elite: shot.elite ?? null }); }
       catch (e) { report.notes.push(`combat ${shot.name} at ${c}: stage() refused: ${String(e.message).slice(0, 160)}`); continue; }
       await passTimes(page, { reset: true });
       await delay(700);
@@ -430,26 +494,31 @@ async function shootCombat(page, report, dir, target, facts) {
       await page.screenshot({ path: join(dir, file) });
       const after = await info(page);
       const pt = await passTimes(page);
-      await lb('unstage');
-      // What the stage left behind: live mobs within 1 m of where it stood (unstage removes what it staged).
-      const left = staged ? (await page.evaluate(() => window.__craftyLookbook.mobs()) || [])
-        .filter((m) => Math.hypot(m.position[0] - staged.position[0], m.position[2] - staged.position[2]) < 1).map((m) => m.type) : [];
-      const why = [after.active ? null : 'input not live', after.isAlive ? null : 'player dead', left.length ? `left behind: ${left}` : null].filter(Boolean);
-      report.combat.push({ file, cycle: c, ...shot, staged, valid: why.length === 0, why, ...facts(after, t0, pt) });
+      const v = await verdictOf(shot.moment === 'cast', staged, after);
+      if (lit) await lb('look', { heading: COMBAT_HEADING, pitch: COMBAT_PITCH });
+      const why = [...v.why, ...(report.combatControl?.seen === false ? ['the check failed its control'] : []),
+        ...(lit && lit.split < 0.25 ? [`no heading put the key light to the side (best split ${lit.split.toFixed(2)})`] : [])];
+      report.combat.push({ file, cycle: c, ...shot, ...(lit ? { lit } : {}), staged, frame: v.frame, toasts: v.toasts, spellsAfter: v.spellsAfter,
+        valid: why.length === 0, why, ...facts(after, t0, pt) });
       console.log(`lookbook combat ${target.id} ${file}: ${why.length ? `INVALID ${why.join('; ')}` : 'valid'}`);
     }
     if (c === COMBAT_CYCLES[0]) {
-      await clearHostiles(page);
+      // Draws per frame with none, four plain zombies and four ember-elite zombies staged: the elites' boxes' cost.
+      const four = {};
+      await clearHostiles(page, COMBAT_CLEAR_M);
       await holdTier();
       const none = await draws();
-      for (const side of [-3, -1, 1, 3]) {
-        try { await lb('stage', { type: 'zombie', distance: 6, moment: 'idle', side }); } catch (e) { report.notes.push(`combat draws: ${String(e.message).slice(0, 120)}`); }
+      for (const elite of [null, 'ember']) {
+        for (const side of [-3, -1, 1, 3]) {
+          try { await lb('stage', { type: 'zombie', distance: 6, moment: 'idle', side, elite }); } catch (e) { report.notes.push(`combat draws: ${String(e.message).slice(0, 120)}`); }
+        }
+        four[elite ?? 'plain'] = { draws: await draws(), staged: await lb('unstage') };
       }
-      const four = await draws();
-      const n = await lb('unstage');
-      report.combatDraws = { none, four, staged: n, perMob: none && four && n ? (four.median - none.median) / n : null,
+      const per = (k) => (none && four[k].draws && four[k].staged ? (four[k].draws.median - none.median) / four[k].staged : null);
+      report.combatDraws = { none, four: four.plain.draws, staged: four.plain.staged, perMob: per('plain'),
+        fourEmber: four.ember.draws, stagedEmber: four.ember.staged, perEmber: per('ember'),
         note: 'per frame at the GL context, nametags included (a hostile within 30 m is tagged)' };
-      console.log(`lookbook combat draws ${target.id}: none ${none?.median} four ${four?.median} per mob ${report.combatDraws.perMob}`);
+      console.log(`lookbook combat draws ${target.id}: none ${none?.median} four ${four.plain.draws?.median} per mob ${report.combatDraws.perMob}; four ember ${four.ember.draws?.median} per ember elite ${report.combatDraws.perEmber}`);
     }
   }
 }

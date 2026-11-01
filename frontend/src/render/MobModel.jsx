@@ -248,7 +248,8 @@ const MobModel = React.memo(({ entity }) => {
   });
 
   return (
-    <group ref={groupRef} position={[entity.position.x, entity.position.y, entity.position.z]} rotation={[0, entity.rotation, 0]}>
+    // name: what the lookbook's frame() counts as a mob drawn in view (render/lookbookSeam.js)
+    <group ref={groupRef} name="mob" position={[entity.position.x, entity.position.y, entity.position.z]} rotation={[0, entity.rotation, 0]}>
       <group ref={modelRef}>
         {/* Body */}
         <mesh castShadow receiveShadow position={[0, bodyH / 2, 0]}>
