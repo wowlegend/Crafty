@@ -33,7 +33,7 @@ Lane task tables live in their PRs and plans. T6 and T22 (done), and T11 and T14
 | T7 | iPad: WebKit probe of the PROD build, frames opened | lookbook iPad frames DONE (`docs/superpowers/masterpiece-2026-10/evidence`); `ipad-probe.mjs` itself still unrun (registry `ACTIVE_PLAN:T7`, backlog) |
 | T23 | Deep audit follow-through: the critic's leads (healer, skeleton arrows, camera in rock) and the corners no hunter read | open, paused: the twelve fix lanes landed; what is left is the rows naming lane `ACTIVE_PLAN:T23` |
 
-**Paused, and where each resumes** (no lane runs until the pause ends):
+**Paused, and where each resumes** (no new lane starts; the review tool's runs below are the one thing still due):
 - **W3-A, the First Night** (`LANE:W3-A`, branch `feat/w3a-first-night`, task script
   `docs/superpowers/plans/2026-11-01-w3a-first-night-tasks.md`): PR C stopped after phase 2a. Next units in order: N5,
   then N6a, V2, U3, B1, R1 and J1. N5 carries the beat (b) wave-identity fix and the two sector notes (a flagged sector
@@ -41,11 +41,12 @@ Lane task tables live in their PRs and plans. T6 and T22 (done), and T11 and T14
 - **L13, the stuck-in-solid remainder** (`LANE:L13-stuck-in-solid-remainder`): part 2 landed; one row is open,
   `REVIEW:l4:gate-reach-round1`, on two halves no gate pins from above: a spawn wait of 3.3 s and a resume hold of
   6.5 s still pass every spec.
-- **The sovereign review tool** (AB lane; Crafty's command session owns its shape): v1 is in its review rounds in a
-  separate session. Its runs on chunks 5-render and 6-audio-scene-rest are pending (registry
-  `AUDIT:replica-1101:chunks-5-6`); their findings land later in their own small landing.
+- **The sovereign review tool** (AB lane; Crafty's command session owns its shape), not paused: Kevin asked that v1,
+  once ready, run on chunks 5 and 6. v1 is in its review rounds in a separate workflow; its runs on 5-render and
+  6-audio-scene-rest are pending (registry `AUDIT:replica-1101:chunks-5-6`), and their findings land in their own small
+  landing. With that, the wrap-up is complete.
 
-**Next:** when Kevin ends the pause: run `npm run orient`, then resume W3-A at N5 (its brief first), with the sovereign
-review's chunk 5 and 6 findings landed beside it. Each lane brief names a lane-private scratch directory for every file
+**Next:** land the review tool's chunk 5 and 6 findings when they come. When Kevin ends the pause: run
+`npm run orient`, then resume W3-A at N5 (its brief first). Each lane brief names a lane-private scratch directory for every file
 it writes and then reads (AB episode 1224), and a lane reports leftover processes read-only; the sweep is the command
 session's (DECISIONS 2026-11-01 item 536).

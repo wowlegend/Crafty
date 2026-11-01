@@ -1484,8 +1484,8 @@ landings, the ultrareview chunks 4-6 records (`cf815ac4`) and the review tabs' r
 (`3a2c1534`, under `docs/superpowers/audits/2026-11-01-ultrareview/`).
 
 What is open is the registry (`memory/registry.jsonl`; `npm run orient` prints its counts). What resumes first, and
-from where, is the cursor's "Paused" block: W3-A at N5, the one L13 row left, and the sovereign review tool's runs on
-chunks 5 and 6, whose findings land on their own. The rest of this section below is history from August.
+from where, is the cursor's "Paused" block: W3-A at N5 and the one L13 row left. The one thing still due before the
+pause is complete is the sovereign review tool's runs on chunks 5 and 6, whose findings land on their own. The rest of this section below is history from August.
 
 **⚠️ 2026-08-05 — THE COMPOSITOR IS INTERMITTENT.** It came back on its own after nine dead iterations (no
 reboot, uptime 8d 23h), stayed up for roughly ONE HOUR (~03:11-04:00), and was dead again by ~04:20 with
