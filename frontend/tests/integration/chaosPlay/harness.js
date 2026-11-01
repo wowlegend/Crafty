@@ -602,7 +602,7 @@ function walkOut(sb, k, jump, t0) {
   let vy = 0, out = false;
   for (let i = 0; i < ESCAPE_FRAMES && !out; i++) {
     sb.w.step();
-    const g = kcc.computedGrounded();
+    const g = supportedGround(kcc, sb.w, sb.body, sb.collider, sb.filter);
     if (jump && g) vy = jumpVelocity(formLocomotion(null)); else if (g) vy = GLUE_VELOCITY; else vy = applyGravity(vy, 1, DT);
     moveKinematic(sb.body, kcc, sb.collider, { x: Math.cos(a) * s, y: vy * DT, z: Math.sin(a) * s }, 0, sb.filter);
     const e = sb.body.nextTranslation();

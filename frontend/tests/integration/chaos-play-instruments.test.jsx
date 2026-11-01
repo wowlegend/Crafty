@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
-  makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, leftClick, buildRay, lookDir, mulberry32, STONE,
+  makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, leftClick, buildRay, lookDir, mulberry32, STONE, AIR,
   LAND_TOP, checkEscape, writeSave, loadSave, LOAD_RELEASE_FRAMES, voidReset, groundUnder, DEEP_SEABED, clipInto, recovered,
   CLIP_RECOVERY_FRAMES, finishSession,
 } from './chaosPlay/harness.js';
@@ -126,6 +126,31 @@ describe('the chaos-play instruments see what they report on', () => {
     setCell(S, x + 3, LAND_TOP, z, STONE);
     useGameStore.setState({ worldBlocks: new Map([[`${x + 3}_${LAND_TOP}_${z}`, STONE]]) });
     expect(escape(S), 'a block of the player\'s own that opens nothing read as their way out').toEqual({ free: false, by: null });
+  });
+
+  // REVIEW:chaos-play:rim-wedge: a chaos cave session (120 Hz, lag 0, seed 1, frame 360) once read the body at
+  // (-4.55, 30.61, -6.32), sunk into the rim of a 1 x 1 pit it had dug under the tunnel's two-high ceiling, and neither
+  // walk nor jump moved it. The pit is dug here, one and two deep, and the body stood at that spot and round it, as the
+  // session read it (at the sighting's own spot that is 0.06 m into the rim) and settled for a second: the escape test,
+  // which jumps only where the game's grounding lets it (game/grounding.js supportedGround), reads each one walked out of.
+  it('a body sunk into the rim of a 1 x 1 pit dug under the tunnel\'s two-high ceiling walks out, at 60 and 120 Hz', () => {
+    const spots = [[-4.55, -6.32], [-4.6, -6.4], [-5.5, -6.5], [-4.7, -6.2], [-5.45, -6.1], [-4.5, -7.5], [-5.2, -6.25]];
+    const read = [];
+    for (const hz of [60, 120]) for (const [x, z] of spots) for (const deep of [1, 2]) for (const settle of [false, true]) {
+      const S = makeSession({ spot: 'cave', rnd: mulberry32(1), hz, lag: 0, tol: TOL });
+      for (let d = 0; d < deep; d++) setCell(S, Math.floor(x), LAND_TOP - 1 - d, Math.floor(z), AIR);
+      expect(solidAt(S, Math.floor(x), LAND_TOP + 2, Math.floor(z)), 'SETUP: the pit is not under the tunnel\'s ceiling').toBe(true);
+      S.p.body.setTranslation({ x, y: settle ? LAND_TOP + 1.2 : 30.61, z }, true);
+      S.p.body.collider(0).setTranslation(S.p.body.translation());
+      for (let i = 0; i < (settle ? hz : 0); i++) tick(S, {});
+      const e = escape(S);
+      read.push({ hz, x, z, deep, settle, by: e.by, depth: +deepestSolid(S).depth.toFixed(3) });
+    }
+    expect(read.length, 'SETUP: not every placement was read').toBe(2 * spots.length * 2 * 2);
+    // Stood where the session read it, the capsule is 0.06 m into the rim: the sunk state itself, not one near it.
+    const sunk = read.filter((r) => !r.settle && r.x === -4.55 && r.z === -6.32);
+    expect(sunk.map((r) => r.depth > TOL), `SETUP: the sighting's spot does not stand the capsule in the rim ${JSON.stringify(sunk)}`).toEqual([true, true, true, true]);
+    expect(read.filter((r) => r.by !== 'walk'), 'a body in the rim of a pit under the ceiling could not walk or jump out').toEqual([]);
   });
 
   it('I1 counts a capsule 0.04 m into a wall (between TOL and the shallowest trap the gate exists for, 0.05 m)', () => {
