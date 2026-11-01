@@ -19,6 +19,54 @@
 
 ---
 
+## 2026-11-01 (W3-A PR A) — [LOOP] one feedback grammar: danger at the edge, contact on the lit band, magic as a solid core
+
+The W3-A task script's PR A (F0-F5), a re-cut at `eff58e9a` of the feedback-grammar plan
+(`docs/superpowers/plans/2026-10-27-crafty-feedback-grammar.md`) M1, M2, M4, M5 and M7, and the siege plan's Move E.
+Branch `feat/w3a-feedback-grammar`. Each call below was checked against the code at HEAD before it was taken.
+
+420. **The lookbook's combat stage holds a moment with the world's own freeze, not a `lookHold` field.** The plan had
+   `mobLook` honour an `entity.lookHold` set by the seam and the DEV e2e. `stage()` (render/lookbookSeam.js, the lazy
+   chunk) instead freezes the world through the store's `triggerHitstop` (so the AI worker neither moves the mob nor
+   replaces its windup), plants `windupUntil` at 0.8 of the ramp on the world clock, and renews `lastHit` every frame
+   for a hit: the game code reads only the fields it already reads, and no test branch sits in the per-frame look.
+   The same stage holds a spell (`moment: 'cast'`, the spell system's deterministic cast) and an elite's rank. Draws
+   per frame are counted at the WebGL context (`scripts/visual/_glDrawCounter.mjs`), because renderer.info resets at
+   every render() call and postprocessing calls it once per pass.
+421. **Danger is an edge colour, plain danger red, and the rim runs at every tier.** A windup carries the ink outline
+   and the rim's colour from rest to `#ff3a00` over the ramp squared; the rim's strength and power do not ramp (a box
+   face has no fresnel edge, plan amendment 2) and the body takes no emissive. The plan's M1 option (b) is taken: the
+   edge is about sRGB (0.95, 0.25, 0.13) through the Neutral tone map and does not bloom, so the eyes stay a mob's only
+   glow. The 4 Hz throb is dropped (the monotonic ramp tells the timing). `charRim` is deleted from `render/quality.js`
+   (MobModel was its only reader); the iPad's low tier now draws the rim. The plan's mood rim (moon-white at night) is
+   not built: at HEAD `moodRef` is the storm and obsidian overlay, not night (`render/mood.js` header).
+422. **Contact is about 70 ms of white on the band facing the key light, a white edge, and a 50 ms squash.** It
+   supersedes the 300 ms whole-body flood (colour and emissive). FLASH holds 70 ms and at least one drawn frame; SQUASH
+   50 ms and at least two frames, through 1, 0.6, 0.25, so it lasts about 50 ms at 120 Hz and at 30 fps. The flash is a
+   term in the one rim program (`characterStyle.js FLASH_GLSL`), identity at 0 for the beast and the props. Reduced
+   motion keeps the white edge only. MobModel writes uniforms only, so `render/mobFlash.js` (the authored-colour
+   restore the flood needed), its gate and `flashableMaterial` are deleted, and an authored emissive survives. The key
+   light is the moon at night (`render/keyLight.js`), so the plan's elevation fallback is not needed.
+423. **Only a hostile's eyes glow, and identity costs no draw.** The eyes are red lifted to 1.25x the bloom threshold
+   by the bloom pass's own luminance weights (`render/hdrGain.js`, which is now the one home of `BLOOM_THRESHOLD`;
+   GameScene passes it). The plan's part tones were a flush plate and a strap box per mob, each a mesh and an ink hull
+   on every mob of a 40-mob night; they are instead a lighter head and darker legs on parts every mob already has
+   (`render/mobTones.js`), so the unit adds no part, draw or program.
+424. **A spell is a solid core ringed in ink under one additive glow.** The silhouette is now opaque and
+   depth-written with the mobs' ink outline; the two additive white-hot core spheres (depthTest off) and the bolt's
+   five white filaments are deleted, and the bolt, the sigil's accent ring and its motes are solid. Mounted draws per
+   projectile: fire 5 to 4, ice 5 to 4, lightning 15 to 13, arcane 12 to 11 (F4's commit body says fire 5 to 5: wrong,
+   the mounted count is 4). Lightning's strobe lever drove the deleted core's opacity, so the bolt no longer flickers.
+   The plan's merged bolt and sigil geometries and puff pool are row 49's draw cut, and the impact grammar (plan M6: a
+   mark, a ground ring, voxel debris) is deferred to `MASTERPIECE:one-feedback-grammar/c`.
+425. **Elites wear an ember crest and the captain a banner (Move E), drawn by MobModel from `entity.elite`.**
+   `src/night/eliteLook.js` returns the boxes in mobFeatures' vocabulary, each with no shadow; MobModel imports it
+   directly (index), because it reads `entity.elite` at mount; PR C's spawner sets the field. The crest's emissive is
+   `#FF7A2A` at 0.6, under the bloom threshold, so it reads at night without competing with the eyes.
+426. **PR A nets fewer index bytes than main.** 647,757 B on main; F0 +12, F1 +13, F2 +383, F3 +335, F4 -1,651 (the
+   deleted layers and duplicated material props), F5 +624: 647,473 B, 284 B under main, against the task script's
+   400 B allowance. The ceiling (652,500 B) is unchanged.
+
 ## 2026-10-31 (registry S6) — [LOOP] a lane takes main in the documented way and the commit goes through: S6 reads MERGE_HEAD while a merge is unfinished
 
 Found by the start-stall lane (`fix/start-before-built-stall`), which could not merge main without `--no-verify` and
