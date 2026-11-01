@@ -9,7 +9,7 @@
 // unwired stance still ends as the verdict.
 //
 // WHAT THIS DOES NOT CHECK: that the husk is aggro'd or close (the specs stage it), or what the stance itself does across
-// a long frame (registry REVIEW:w2b:stance-clocks-long-frame: nothing drives that).
+// a long frame (src/game/combatStance.test.js drives one 3.5 s frame through stanceFrame).
 
 /** Installed into the page before boot (page.addInitScript; page functions are serialised and close over nothing):
  *  defines window.__stanceEngage(id, medianMs, wallMs), which resolves { ok, ms, gameS } once the stance is engaged at

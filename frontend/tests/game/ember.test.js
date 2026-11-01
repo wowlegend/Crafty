@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 import {
   EMBER_MAX, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST, PLACE_GAIN, DAILY_BUILD_CAP,
   clampEmber, canAfford, emberForKill, emberForPlace, dailyCap, accrueBuild, readBuildDay, migrateBanks, emberFromSave,
+  emberMarks, duskNotice,
 } from '../../src/game/ember.js';
+import { KEY_MAP } from '../../src/game/keyMap.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 
 // EMBER (DECISIONS 2026-10-28 W1-H item 5; plan docs/superpowers/plans/2026-10-28-crafty-w2f-ember.md). One bar
@@ -178,5 +180,36 @@ describe('an old save\'s four banks become one', () => {
     expect(emberFromSave(undefined, 33), 'a save with no slice borrowed the session\'s ember').toBe(0);
     expect(emberFromSave(null, 90)).toBe(0);
     expect(emberFromSave({ ember: 33 }, 90), 'the control: a save with a slice reads its own').toBe(33);
+  });
+});
+
+// REVIEW:w2f:ember-bar-no-readiness: the one bar marks the price of each Aspect verb unlocked (the four retired bars named
+// theirs), and the dusk warning says a full bar wakes the beast once the roar is unlocked. The talent each verb needs is
+// KEY_MAP's (its verb rows), the fuse riding the snare's key and talent.
+describe('the readiness the bar and the dusk warning show', () => {
+  const talentOf = (verb) => KEY_MAP.find((r) => r.verb === verb).talent;
+  const ALL = { [talentOf('grab')]: 1, [talentOf('imbue')]: 1, [talentOf('snare')]: 1, [talentOf('roar')]: 1 };
+
+  it('emberMarks: one mark per unlocked verb at its price, ascending; none unlocked, none', () => {
+    expect(emberMarks({})).toEqual([]);
+    expect(emberMarks(null)).toEqual([]);
+    expect(emberMarks(ALL)).toEqual([
+      { verb: 'grab', cost: GRAB_COST }, { verb: 'imbue', cost: IMBUE_COST }, { verb: 'snare', cost: SNARE_COST },
+      { verb: 'fuse', cost: FUSE_COST }, { verb: 'roar', cost: ROAR_COST },
+    ]);
+    expect(emberMarks({ [talentOf('snare')]: 1 }), 'the snare\'s talent unlocks the fuse with it').toEqual([
+      { verb: 'snare', cost: SNARE_COST }, { verb: 'fuse', cost: FUSE_COST }]);
+    expect(emberMarks({ [talentOf('roar')]: 1, soulbind_wide: 1 }), 'a talent that is not a verb\'s marks nothing')
+      .toEqual([{ verb: 'roar', cost: ROAR_COST }]);
+    expect(emberMarks({ [talentOf('grab')]: 0 }), 'a talent at rank 0 is not unlocked').toEqual([]);
+  });
+
+  it('duskNotice: the roar\'s line once the roar is unlocked, on its key with a keyboard and on none on touch, else the plain warning', () => {
+    const roarKey = KEY_MAP.find((r) => r.verb === 'roar').key;
+    expect(duskNotice({})).toEqual({ key: 'notice.dusk' });
+    expect(duskNotice({ [talentOf('grab')]: 1, [talentOf('snare')]: 1 })).toEqual({ key: 'notice.dusk' });
+    expect(duskNotice({ [talentOf('roar')]: 1 }))
+      .toEqual({ key: 'notice.dusk.roar', vars: { how: { key: 'notice.keyHint', vars: { key: roarKey } } } });
+    expect(duskNotice({ [talentOf('roar')]: 1 }, true)).toEqual({ key: 'notice.dusk.roar', vars: { how: '' } });
   });
 });

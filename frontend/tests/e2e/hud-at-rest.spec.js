@@ -83,6 +83,21 @@ async function readPage({ ids, optional, extra, keys, touch, plate, centre }) {
   return { hud, controls, reraised, notices, late: keys.filter((k) => !shown(k)), at: performance.now() };
 }
 
+/** In the page: the ember bar's price marks (ui/EmberBar.jsx) read against the bar's own track: each mark's cost, whether
+ *  it is lit, where its centre sits along the track (0 at the track's left edge, 1 at its right), and whether it lies on
+ *  screen inside the bar. null when the bar is not drawn. */
+function readEmberMarks() {
+  const bar = document.querySelector('[data-testid="ember-bar"]');
+  if (!bar) return null;
+  const b = bar.getBoundingClientRect();
+  return [...bar.querySelectorAll('[data-testid="ember-mark"]')].map((el) => {
+    const r = el.getBoundingClientRect(), t = el.parentElement.getBoundingClientRect();
+    return { cost: Number(el.getAttribute('data-cost')), lit: el.getAttribute('data-lit') === 'true',
+      at: (r.x + r.width / 2 - t.x) / t.width, px: t.width,
+      shown: r.width > 0 && r.height > 0 && r.x >= b.x - 0.5 && r.right <= b.right + 0.5 && r.y >= b.y - 0.5 && r.bottom <= b.bottom + 0.5 };
+  });
+}
+
 const intersects = (a, b) => !(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y);
 const pairs = (list) => {
   const out = [];
@@ -285,6 +300,28 @@ for (const vp of [
         return at;
       };
       await check('at rest', []);
+
+      // The ember bar marks the price of each Aspect verb unlocked (game/ember.js emberMarks) and lights those the bar
+      // pays for. A fresh profile has none unlocked: no marks. With all four Aspects and 30 ember: grab 25 and imbue 30
+      // lit, snare 35, fuse 50 and the roar 100 not, each mark at its price along the track (within 3 px).
+      const talentsBefore = await page.evaluate(() => window.useGameStore.getState().unlockedTalents);
+      const none = await page.evaluate(readEmberMarks);
+      expect(none, `SETUP: no ember bar on screen at ${vp.name}`).not.toBeNull();
+      expect(none, `a fresh profile's ember bar carries price marks at ${vp.name}`).toEqual([]);
+      await page.evaluate(() => window.useGameStore.setState((st) => ({ ember: 30,
+        unlockedTalents: { ...st.unlockedTalents, voidhand_grasp: 1, elemancer_imbue: 1, soulbind_snare: 1, wildheart_roar: 1 } })));
+      let marks = null;
+      await expect.poll(async () => { marks = await page.evaluate(readEmberMarks); return marks?.length; }, { timeout: 5000 }).toBe(5)
+        .catch(() => { throw new Error(`the ember bar does not mark the five unlocked prices at ${vp.name}: ${JSON.stringify(marks)}`); });
+      console.log(`hud-at-rest ${vp.name} ember marks: ${JSON.stringify(marks.map((m) => [m.cost, m.lit, +m.at.toFixed(3), Math.round(m.px)]))}`);
+      expect(marks.map((m) => [m.cost, m.lit]), `the ember marks' prices or lit states at ${vp.name}`)
+        .toEqual([[25, true], [30, true], [35, false], [50, false], [100, false]]);
+      for (const m of marks) {
+        expect.soft(Math.abs(m.at - m.cost / 100) * m.px, `the ${m.cost} mark sits off its price along the track at ${vp.name}: ${JSON.stringify(m)}`).toBeLessThanOrEqual(3);
+        expect.soft(m.shown, `the ${m.cost} mark is not on screen inside the ember bar at ${vp.name}: ${JSON.stringify(m)}`).toBe(true);
+      }
+      await check('at rest with the ember marks', []);
+      await page.evaluate((t) => window.useGameStore.setState({ ember: 25, unlockedTalents: t }), talentsBefore);
 
       // Hold the world (as raiseTarget does) so no kill, claim or achievement raises a notice of its own beside the staged ones.
       await page.evaluate(() => window.useGameStore.getState().triggerHitstop(60000));

@@ -12,6 +12,9 @@ export const stance = {
   // where stanceFrame last saw the body, and the real seconds of that frame's step: a body further from it than any
   // mover covers in that step was teleported (combatStance.js stanceFrame)
   bodyX: 0, bodyY: 0, bodyZ: 0, bodyStepS: 0, bodySeen: false,
+  // the stance's own clock (ms), which the calm and the stall clocks read: each frame adds the world clock's advance, at
+  // most the frame's step; and the world clock's reading it last saw, null before the first frame (combatStance.js stanceFrame)
+  clockMs: 0, worldSeenMs: null,
 };
 
 /** The stall clocks: mob id -> { ax, az, at, seen } (combatStance.js stanceStep). */

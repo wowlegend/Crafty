@@ -160,14 +160,17 @@ function installTouchCombatHelpers() {
       const c = cam().position;
       return Math.hypot(c.x - H.stand.x, c.z - H.stand.z) < 0.5;
     },
-    // The calm on the wall clock (CALM_MS), then the exit blend on the game's capped step (EXIT_S): combat-stance.spec.js
-    // idle(), whose reasons apply. Returns w, or null when the page stopped advancing game time (SETUP).
+    // The calm on the stance's own clock (CALM_MS of readStance().clockMs), then the exit blend on the game's capped step
+    // (EXIT_S): combat-stance.spec.js idle(), whose reasons apply. Returns w, or null when the page stopped advancing
+    // either clock (SETUP).
     async idle() {
       H.killHostiles(40);
       const t0 = performance.now();
       const calmBy = 2000 + 300 + 2 * H.median;
       let st = call('readStance');
-      while (performance.now() - t0 < calmBy && st?.engaged) { await frame(); st = call('readStance'); }
+      const c0 = st?.clockMs;
+      while (st?.engaged && st.clockMs - c0 < calmBy && performance.now() - t0 < 120000) { await frame(); st = call('readStance'); }
+      if (st?.engaged && st.clockMs - c0 < calmBy) return null;
       if (st?.engaged) { await frame(); await frame(); st = call('readStance'); }
       if (!st || st.engaged) return st?.w;
       const g0 = st.atS + st.stepS;
@@ -321,7 +324,7 @@ test.describe('combat on touch', () => {
     const stick = { x: Math.round(vp.width * 0.15), y: Math.round(vp.height * 0.7) };
     for (const [label, where, dy, intent] of [['1 (stick down, husk ahead)', 'ahead', 60, 'moveB'], ['1b (stick up, husk behind)', 'behind', -60, 'moveF']]) {
       const w = await page.evaluate(() => window.__touchCombat.idle());
-      expect(w, `SETUP: case ${label}: the game stopped advancing its exit blend`).not.toBeNull();
+      expect(w, `SETUP: case ${label}: the game stopped advancing the stance's clock or its exit blend`).not.toBeNull();
       expect(w, `the stance never left before case ${label}`).toBe(0);
       expect(await page.evaluate(() => window.__touchCombat.home()), `SETUP: case ${label}: the player could not be put back on the stand point`).toBe(true);
       const sp = await page.evaluate((wh) => window.__touchCombat.spawnZombie(wh, 5), where);

@@ -111,6 +111,160 @@ branch `feat/w3a-first-night`. The rest of PR C (U1 onward) is the next phase. I
    health; the second run killed a spider, lowest health 61 %, 8 s engaged. Those numbers are a bot's on a build with
    no siege, a smoke, not J1's verdict.
 
+---
+
+## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
+
+The 2026-11-01 W3-A task script's "PR B" (it lives on branch `feat/w3a-first-night` until that lane lands), branch
+`feat/w3a-small-fixes` from `3442443d`, PR #80. Each gate went red before its fix: the unit and jsdom gates locally, the
+two e2e cases (I1, U2) on CI first (run 41287676192 at `e0b8a5cb`: hud-at-rest "the ember bar does not mark the five
+unlocked prices ... []" at every layout; build-placement "held Q did not turn the right click on a chest into a
+placement", the control's interact seen first). The looks were shot on the M3 Max: the lookbook's self set on the
+production build (D1), and throwaway probes on the dev server with a real key or the store's own hit (F6, U2, B2),
+deleted after; the frames are in `docs/superpowers/masterpiece-2026-10/evidence/w3a-small-fixes/`.
+
+440. **The pad by the Hearth's fire is gated through the night on the terrain stone, and the brazier's light is amber;
+   the midnight maroon on screen is not fixed by it.** `colour-script-gates` G2b: the pad lit by `HEARTH_FIRE` at 0.5, 1
+   and 2 m, terrain stone, f 0.44 to 1.06, chroma at most 0.025 wherever the model's hue lies within 20 deg of maroon's
+   band (the screen reads 10 to 20 deg redder: DECISIONS 2026-10-28, the landing lifecycle entry, item 21 (d)). Red on
+   the orange `#FF8A2A`; green on amber `#FFB050` (worst 0.0221); a lavender twilight that every other case passes is red
+   here. On screen (the lookbook's `self-brazier-110` at midnight, the pad left of the brazier on the maroon rule): 48.5%
+   before, 45.9% after; throwaway builds: the fire off 4.7%, a warm white `#FFE2A8` 39.4%, amber at 2.6 56.6%. Whatever
+   its colour, what the fire adds to the dark pad on screen carries green at about a quarter of the light's own
+   green-to-red ratio and almost no blue, so any warm light on the violet night pad reads magenta-red; the model does not
+   reproduce that. `REVIEW:light:g2-pad-coverage` closes (its acceptance is the gate); `REVIEW:light:midnight-brazier-maroon`
+   stays open with the numbers. Amber ships because the gate needs a fire it passes and the screen moves the right way, a
+   little; the night key and the display's dark end are the light lane's next question, not a small fix. Commit `f88147b1`.
+   (G2b's claim is narrowed to the model, and the open row goes to W3-A unit L1: item 454.)
+441. **The stance keeps its own clock: each frame adds the world clock's advance, at most the frame's step.** A frame
+   longer than `MAX_FRAME_STEP_SEC` moves the world clock its whole length and every mover the cap; counted whole, one
+   3.5 s CI hitch stalled a husk still walking in and spent the calm (`REVIEW:w2b:stance-clocks-long-frame`). The two
+   e2e idles that waited out the calm on the wall clock wait on the stance's clock. Commit `7fc0224b`.
+442. **Being hit kicks the camera away from the blow.** `game/cameraKick.js` `hurtKick(angle)` turns the hurt profile's
+   back push by the store's `lastHitDir.angle` (a hit from the right throws the view left; from behind, forward; with no
+   source, back as before), same size. The look, in the running game through `damagePlayer` with a source position: a
+   hit from the left moved the camera +0.079 m along its right on the frame after, a hit from the right -0.072 m, both
+   gone in about 0.25 s, beside the edge glow on the hit side. Subtle by design, as the hurt kick was. `OPEN_ITEMS:OI-37`.
+   Commit `1aad531a`. (The no-source case was false after a sourced hit: item 448.)
+443. **Held C with a right click places where the click would open a chest or cast at a mob; Alt is not used.** The row
+   named Alt. Under a pointer lock on Windows, Chromium released the lock when Alt was pressed and released (Chromium
+   commit 560e652, bug 40734020, suppressed from main@{#1577353}, 2026-01-30); Firefox on Windows raises its menu bar on
+   Alt (bugzilla 1574057); Alt+D takes the address bar on Windows and Linux. Ctrl+W closes the tab and Shift is the
+   dodge. Q, the first pick, is a panel key item 96 (2026-10-29) retired, which `keyMap.test.js` and `taught-keys-gates`
+   hold unbound. C is bound to nothing. The intent `forcePlace` is set by the keydown and cleared by the keyup and on
+   blur; the router places on the right button with the hands free wherever the build ray met terrain in reach. Touch is
+   desktop only: the cast button fires on the lift, so a long press would turn a held cast into a placement, and
+   real-device feel is Kevin's. `QUEUE:Q26/b`. Commits `bf412b84` (the e2e, red first on Q), `d4b22d9d`. (Cmd and Ctrl
+   let go of C: item 449; a forced block at a mob's feet: item 450.)
+444. **The ember bar marks each unlocked Aspect verb's price and lights the ones it pays for; the dusk warning names the
+   roar once it is unlocked.** Grab 25, imbue 30, snare 35, fuse 50, roar 100, from KEY_MAP's verb rows (the fuse rides
+   the snare's talent); "A full ember bar wakes the beast (R)." in en and zh-CN. Judged on frames at 1280x800 and
+   390x844: the notches read as lit and dim at a glance, but the slim track beside its label is 78 px wide on the
+   desktops and iPads and 30 px on phones (hud-at-rest, CI run 41289153753), so the three cheap prices sit within 8 and
+   3 px of each other and which verb a notch is cannot be read from the bar; the keys are taught in the controls panel.
+   `REVIEW:w2f:ember-bar-no-readiness`. Commits `e0b8a5cb` (the e2e, red first), `d2c066f7`. (That row closes
+   superseded, not done, and the touch line names no key: items 451, 452.)
+445. **Each beast form stands on the floor its own capsule rests on, from the entrance's first frame.** The parts hang in
+   an inner group at `formLift(element, scale)`: the lowest point of the boxes (each turned by its rotation) on the
+   floor that halfHeight + radius + `CONTROLLER_OFFSET` puts under the centre, at every scale of the entrance. The outer
+   group stays `FEET_OFFSET` under the centre, so the first-person test and the DEV hook `frameBeastReveal` read as
+   before and `devtest/devBridge.js` (in flight in PR A) is untouched. The gate's reference is real Rapier's rest height
+   (0.77, 1.12, 0.97, 1.25 m). In the running game, a real roar on R: before, the bull's and the golem's lowest boxes
+   stood 0.21 and 0.35 m over the ground under the body; after, 0.000 for all four. From the reveal's hold, above and
+   behind, a gap of that size is hard to see by eye: the measurement carries it. `REVIEW:w2e-follow:beast-feet-per-form`.
+   Commit `0f9c9b4c`.
+446. **PR B nets +2,290 B of index against about 400 B of shares; the ceiling is not raised.** Main was 649,123 B at
+   `3442443d` (1,366 B over the plan's 647,757), and PR B leaves 651,413 B: V1 +146, F6 +112, D1 0, I1 +410 (the KEY_MAP
+   row and two strings), U2 +1,037 (two sentences of about 220 B, the marks and the helpers), B2 +585 (the rotated
+   lowest point and the per-frame lift). That leaves 1,087 B under 652,500 for PR C, whose C0 must free correspondingly
+   more before its index units land. (The command session's ruling and round 2's bytes: item 453.)
+447. **A flake row for input-live.spec.js:72's victory case** (`REVIEW:e2e-flakes:input-live-victory-scrim-intercepts`,
+   LANE:flakes): CI run 41282171902 (PR #77 at `3442443d`), shard 5/8, attempt 1 timed out clicking Keep exploring
+   because the victory overlay's own `z-modal` scrim intercepted the pointer; retry #1 passed. First sighting. The same
+   run's light-pool.spec.js first-attempt failure (programs 97 to 98, the point lights held at 5) is a sighting in
+   `REVIEW:w2f:light-pool-first-attempt-programs`. PR B's own green run (41289153753, `d2c066f7`) retried four cases on
+   code it does not touch: three known rows take the sighting (heavy-melee's release, combat-touch's spawn race,
+   quest-text's held world), and music-bus.spec.js:74's Mute All wait gets a row of its own
+   (`REVIEW:e2e-flakes:music-bus-mute-all-wait`).
+
+Items 448 to 458 are the second review round (a static and a dynamic review of `3442443d..3e3decc7`). Each code item's
+gate went red before its fix, or, where the code already did what the item decides (450), its mutants did; every gate
+commit carries a `Mutation-Proof:` trailer with two comment-only identity mutants that survived.
+
+448. **A hit with no source kicks straight back; item 442's "with no source, back as before" was false.** `damagePlayer`
+   stamped a hit with no attacker position (a projectile, the dragon's fireball impact, its lava) with the previous
+   hit's angle, so after a mob's blow from the left a projectile threw the view sideways with no back push (the dynamic
+   review, through the real `damagePlayer`). The stamp's angle is now null for such a hit: the kick keeps the hurt
+   profile, and the edge glow (`ui/DamageDirection.jsx`) shows nothing for it instead of the old side, cutting short a
+   glow still fading from a sourced hit. `player-hurt-kick-gates` drives the real `damagePlayer` on the real Player and
+   Rapier. Commit `cf84f202`.
+449. **C cannot stay held.** On macOS a key let go while Cmd is down sends no keyup (Mozilla bug 1299553; Chromium issue
+   40880986, where Chromium has since forwarded those keyups behind a killswitch), so a Cmd+C, or a C held into a Cmd
+   press, kept `forcePlace` on and every right click at a chest or a mob placed (the static review, item 7). Any keydown
+   with Cmd or Ctrl down, the modifier's own included, lets go of C, and a C pressed with one is copy and sets nothing;
+   any C keyup lets go, whatever its modifiers; a blur and a hidden tab already cleared every held intent and are now
+   gated for C. A C held through a Cmd press must be pressed again. The first version let go on the MetaLeft and
+   MetaRight keyups and turned `keyMap.test.js`'s reverse gate red ("handled but advertised nowhere"): the commit hook
+   runs only the tests that statically import a staged file, and that test reads `Components.jsx` as text. A release
+   guard is not a binding, so the gate stays as it is and the release moved to the keydown. The Alt comment in
+   `Components.jsx` now names Chromium's fix (commit 560e652, main@{#1577353}, 2026-01-30). Commits `f4259473`,
+   `64611843`.
+450. **A forced block aimed at a mob's feet is placed, and the mob stands on it.** Terrain nearer than the mob already
+   places without C, so what C adds is a block at or beyond the mob: under its feet or on the wall behind it, never
+   "the wall between them", as `verbRouter.js` had it (the static review, item 4). Placed, not refused: `placeAtHit`
+   refuses only the player's own capsule, because a cell the player fills holds them for good (item 132, 2026-10-30),
+   while a mob whose cell is filled is lifted onto the block by its floor rule (`game/mobFloor.js`), as with any block
+   built under a mob, and walks off it. Refusing it would need the mobs' positions in the executor for a case that
+   strands no one. `force-place-mob-cell-gates` drives the router, `placeAtHit`, the click's cuboid and the snap
+   AIWorkerSystem makes, on real Rapier over the real mesher's ground, before the re-mesh and after. Commit `5cf3c6d5`.
+451. **`REVIEW:w2f:ember-bar-no-readiness` closes superseded, not done.** Its title asks which verb the bar can pay for;
+   `hud-at-rest` reads each mark's price and whether it is lit, and on a 30 px phone track the 25, 30 and 35 marks sit
+   within 3 px, so a player cannot tell which notch is which verb (the static review, item 2). The command session's
+   ruling was to reopen it in this branch, where alone it is closed; `registry-append-only` R2 refuses a reopen on the
+   pushed range (`3e3decc7..` the head, where it is closed at the base), and a push never skips that check. So it closes
+   `superseded:REVIEW:w3a-pr-b:ember-marks-name-no-verb`, a new open row (LOW, LANE:W3-A) whose acceptance is that
+   check, and main never sees it closed as done. The U2 marks and the dusk line stay.
+452. **On touch the dusk line names no key.** The roar is a sector of the Aspect ring there, so "(R)" named a key the
+   device lacks (the static review, item 8). `duskNotice` takes the touch UI's predicate (`isTouchUIMode`): the line's
+   `{how}` is `notice.keyHint`, " (R)" or "（R）", with a keyboard, and empty on touch. The gate reads the words the toast
+   shows in en and zh-CN on both. The Aspect unlock toast's "press R" (`game/aspectHints.js`) has the same shape and is
+   not changed here. Commit `fd4d8b47`.
+453. **The index budget, reconciled with the command session's ruling.** The ruling (session record, 2026-11-01): PR B's
+   growth is accepted, and PR C's C0 frees at least 2,500 B before PR C's index units land. Item 446's numbers stand
+   for round 1 (651,413 B; the builder's QUESTION.md, which said +2,311 B and 651,434 B, was a draft and is corrected
+   to them). Round 2 nets +102 B (651,515 B), and main's PR A, merged in, adds its +105 B (item 436): 651,620 B at
+   this round's head, 880 B under 652,500. The task script's units after PR B share about 4.7 KB of index and C0
+   frees 2,500 B, a net of about 2.2 KB against those 880 B, so PR C fits only if C0 frees about 3,800 B or its units
+   come in under their shares.
+454. **G2b's claim is narrowed to the colour model; the midnight brazier stays open, for W3-A unit L1.** G2b reads the
+   model's pad by the fire, not the screen, which still reads it maroon at midnight under amber (item 440). Its test
+   name, its blind-spot note (which had kept history: the old orange's numbers) and the `HEARTH_FIRE` comment now say
+   so; `REVIEW:light:g2-pad-coverage` stays closed on its acceptance with that said in its note, and
+   `REVIEW:light:midnight-brazier-maroon` stays open, owned by W3-A's lights unit L1 (the command session's ruling).
+   Commit `f1c78a5e`.
+455. **Doc drift.** `stanceStep`'s `nowMs` named the world clock; `stanceFrame` passes the stance's own clock since
+   item 441, and the comment now says so. Commit `f1c78a5e`.
+456. **A row for the lookbook's self set, which rests every beast form at the human rest height**
+   (`REVIEW:w3a-pr-b:lookbook-self-human-rest-height`, LOW, LANE:W3-E; the static review, item 1). The body rests at
+   0.5 + 0.4 + 0.05 = 0.95 m, and since B2 each form's lowest box sits at 0.95 minus its own rest (halfHeight + radius +
+   `CONTROLLER_OFFSET`): the comet's 0.77, 0.18 m afloat; the bull's 1.12, 0.17 m sunk; the hawk's 0.97, 0.02 m; the
+   golem's 1.25, 0.30 m. The game is right (item 445); the frames would show a gap that is not there. `lookbook.mjs`
+   is in flight in PR A, so the fix waits for W3-E.
+457. **Round 1's head run had no `ci ok`.** Run 41290740368 on `3e3decc7` reported success in 0 s with ten of its
+   twelve jobs, each carrying a completion time before its start time by GitHub's own record; `runtime reach (merged)`
+   and `ci ok`, which need the e2e matrix, were never created, so the PR stayed blocked (the dynamic review, item 1).
+   Nothing in `ci.yml` explains it; this round's push runs CI again on its own head.
+458. **Round 2's first run, read.** Run 41296767030 on `fcda6c6d` concluded success with all twelve jobs, `ci ok`
+   included. Two cases passed on retry, both on code this PR does not touch: heavy-melee.spec.js:45's charged release
+   (a sighting in `REVIEW:e2e-flakes:heavy-melee-release-nothing`) and feedback-grammar.spec.js:140's held hit, "0 of
+   12617" interior pixels white on the lit band (a first sighting, `REVIEW:e2e-flakes:feedback-grammar-lit-band-white`,
+   LANE:flakes). CodeQL, which `ci ok` does not read, raised one high alert (js/incomplete-sanitization) on the PR: the
+   dusk gate built a RegExp from a string with only `.`, `!` and `?` escaped; it reads `startsWith` now (`a53cb517`).
+   Main moved twice in the round, to `e5e1f745` (W3-A PR A) and `cf815ac4` (the ultrareview records), and each was
+   merged in; the second brought only DECISIONS and registry rows, so the index stays 651,620 B.
+
+---
+
 ## 2026-11-01 (ultrareview chunks 4-6) — [LOOP] the three parts of the game no review had read are reviewed: what the cloud delivered, what a local replica found beside it, and the rows filed
 
 Registry row AUDIT:critic:coverage-gaps/ultra asked for the deep review of the ui, render and audio-and-scene areas, the
