@@ -46,9 +46,12 @@ const readCanvasRatios = (page) =>
 // Playwright runs every page.evaluate as a user gesture (frame-cap.spec.js says how that was found), so an auto-lock that
 // fired inside the activation a read had just opened was granted on CI, and under the lock a tap's pointerdown carries
 // clientX/clientY 0,0: Playwright's hit-target check reads the canvas there and blocks every retry of the tap
-// (panels.spec.js:83, pause-freezes-world.spec.js:217; run 41261223279). Here a request goes through only inside a trusted
-// input event, or once the page has released a lock itself, as the spec allows. On Element.prototype, where the browser
-// defines it, so a spec that deletes the API (death-pointer-lock.spec.js, the iPad) deletes this with it.
+// (panels.spec.js:83, pause-freezes-world.spec.js:217; run 41261223279). Here a request goes through only while a trusted
+// input event is being dispatched, or once the page has released a lock itself. That is STRICTER than Chromium:
+// transient activation outlasts its event by a few seconds, so Chromium grants a lock asked for 1 s after a real tap and
+// this refuses it (PR #76's dynamic review, arms D and DF). So no touch spec here can show a touch Chromium taking the
+// world-ready auto-lock after a real tap; that path is REVIEW:start-stall:touch-start-auto-lock's. On Element.prototype,
+// where the browser defines it, so a spec that deletes the API (death-pointer-lock.spec.js, the iPad) deletes this with it.
 const lockOnTrustedGestureOnly = () => {
   const real = Element.prototype.requestPointerLock;
   if (typeof real !== 'function') return;
