@@ -289,6 +289,68 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
   });
 });
 
+/** The player dug these columns out of the world, every cell from y 0 up: the voxels deepestSolid reads and their
+ *  chunks' trimeshes, re-mounted as a React commit re-mounts them. Returns the undo for the voxels (the trimeshes are
+ *  made again by the next test's beforeEach). */
+function digColumns(cols) {
+  const undo = [];
+  for (const key of new Set(cols.map(([x, z]) => `${Math.floor(x / CHUNK_SIZE)}_${Math.floor(z / CHUNK_SIZE)}`))) {
+    const [cx, cz] = key.split('_').map(Number);
+    const was = grid.logical.get(key);
+    const b = was.slice();
+    for (const [x, z] of cols) {
+      if (Math.floor(x / CHUNK_SIZE) !== cx || Math.floor(z / CHUNK_SIZE) !== cz) continue;
+      for (let y = 0; y < 40; y++) b[voxelIndex(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE)] = 0;
+    }
+    grid.logical.set(key, b);
+    undo.push(() => grid.logical.set(key, was));
+    h.world.removeRigidBody(chunks.get(key).body);
+    const body = h.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE));
+    const m = generateMesh(cx, cz, b, undefined);
+    chunks.set(key, { body, collider: h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body) });
+  }
+  return () => undo.forEach((u) => u());
+}
+
+// A save made in a shaft the player dug through the world (a fall down it, or standing on its rim with the centre over
+// it): every chunk the load fit reads streams back, and the saved column answers nothing because there is nothing in it.
+// The hold waited its whole 10 s for that column and then sent the player to the origin spawn (registry
+// REVIEW:l6:load-hold-empty-column). Once the chunks round it have answered, the load stands the player on the nearest
+// column that has ground.
+describe('a load whose saved column was dug out of the world stands the player beside it once its chunks answer', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: the save in a shaft through the world is let go within half a second, on the ground of a column beside it`, () => {
+      standPlayer(hz);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const saved = { x: -3.5, y: 20, z: 3.5 };
+      const undo = digColumns([[-4, 3]]);
+      try {
+        expect(groundProbe(saved.x - 0.1, saved.z - 0.1), 'SETUP: the dug column still answers').toBeNull();
+        for (const [x, z] of [[-5, 3], [-3, 3], [-4, 2], [-4, 4]]) {
+          expect(groundProbe(x, z), `SETUP: the column (${x}, ${z}) beside the shaft does not answer the land`).toBeCloseTo(LAND_TOP, 3);
+        }
+        load(saved, hz, 2);
+        let placedOn = null;
+        for (let i = 0; i < 12 * hz && placedOn === null; i++) {
+          frame(hz);
+          if (!useGameStore.getState().resumeSpawn) placedOn = i;
+        }
+        const held = placedOn === null ? null : +((placedOn + 1) / hz).toFixed(3);
+        const r = { held, ...playFrom(hz, placedOn, hz), voids: voidWarnings(warn) };
+        expect(placedOn, `SETUP: the hold never let the player go ${JSON.stringify(r)}`).not.toBeNull();
+        expect(held, `the hold waited for a column with nothing in it ${JSON.stringify(r)}`).toBeLessThanOrEqual(0.5);
+        expect(r.voids, `the player fell out of the world after the load ${JSON.stringify(r)}`).toBe(0);
+        expect(Math.hypot(r.end.x - saved.x, r.end.z - saved.z), `the player was not stood beside the shaft ${JSON.stringify(r)}`).toBeLessThan(1.5);
+        expect(r.end.y, `the player does not stand on the land beside the shaft ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+        expect(r.worst.depth, `the capsule reached into solid after the release ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
+        expect(r.worst.eyeIn, `the eye was in solid after the release ${JSON.stringify(r)}`).toBe(false);
+      } finally {
+        undo();
+      }
+    });
+  }
+});
+
 /** Whether the void guard said it fired (Components.jsx warns once a reset). */
 const voidWarnings = (warn) => warn.mock.calls.filter((c) => /fell into void/.test(String(c[0]))).length;
 const HOLD = { x: 0, y: SPAWN_FREEZE_Y, z: 0 };

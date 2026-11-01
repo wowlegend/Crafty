@@ -197,28 +197,61 @@ export const RESUME_PROBE_MAX_SEC = 10;
  *  while the chunk across a border had not streamed back yet read no ground there and stood the capsule 0.4 m into it
  *  (tests/integration/chaos-play-loads.test.jsx; chaos session origin, 120 Hz, lag 0, seed 5). */
 export function resumeColumnProbe(probe, r) {
+  return cornersAnswer(probe, r) ? probe(r.x, r.z) : null;
+}
+
+function cornersAnswer(probe, r) {
   for (const dx of [-LOAD_FIT_SPAN, LOAD_FIT_SPAN]) {
     for (const dz of [-LOAD_FIT_SPAN, LOAD_FIT_SPAN]) {
-      const y = probe(Math.floor(r.x + dx) + 0.4, Math.floor(r.z + dz) + 0.4);
-      if (!Number.isFinite(y)) return null;
+      if (!Number.isFinite(probe(Math.floor(r.x + dx) + 0.4, Math.floor(r.z + dz) + 0.4))) return false;
     }
   }
-  return probe(r.x, r.z);
+  return true;
+}
+
+// A SAVED COLUMN WITH NOTHING IN IT IS NOT A COLUMN STILL STREAMING. A save made in a shaft dug through the world answers
+// nothing once its chunks are back, and the hold waited its whole RESUME_PROBE_MAX_SEC for it, then sent the player to
+// the origin (registry REVIEW:l6:load-hold-empty-column). Every column inside the square the corners span lies in a chunk
+// a corner lies in (the square is 2 m wide, a chunk 16), so once the four corners answer, a column there that answers
+// nothing has nothing in it. The load then stands on the nearest of them that answers, at its middle, on its ground, once
+// the corners round that spot answer too (the fit reads as far round it). Cost: up to the square's nine columns and four
+// corners, on a frame the hold would otherwise have waited.
+/**
+ * Where a loaded save stands the base capsule when its column answered nothing in chunks that have answered: the middle
+ * of the nearest column inside the corners' square that answers, its centre the controller's offset over that column's
+ * ground; or null (the saved column answers, a chunk has not, or no column there answers).
+ *   probe  the ground probe (Terrain.jsx getMobGroundLevel); r  the saved centre
+ */
+export function resumeBesideEmptyColumn(probe, r) {
+  if (!cornersAnswer(probe, r) || Number.isFinite(probe(r.x, r.z))) return null;
+  let best = null;
+  for (let x = Math.floor(r.x - LOAD_FIT_SPAN); x <= Math.floor(r.x + LOAD_FIT_SPAN); x++) {
+    for (let z = Math.floor(r.z - LOAD_FIT_SPAN); z <= Math.floor(r.z + LOAD_FIT_SPAN); z++) {
+      const d = Math.hypot(x + 0.5 - r.x, z + 0.5 - r.z);
+      if (best && d >= best.d) continue;
+      const y = probe(x + 0.4, z + 0.4);
+      if (Number.isFinite(y)) best = { x: x + 0.5, z: z + 0.5, y, d };
+    }
+  }
+  if (!best || !cornersAnswer(probe, best)) return null;
+  return { x: best.x, y: best.y + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius + CONTROLLER_OFFSET, z: best.z };
 }
 
 // resume: the saved {x,y,z} (the body's centre when it was saved). physicsY: the ground probe AT THAT COLUMN — used only
 // as proof the column's colliders exist, never as the height (the player may have stood under a roof). Any answer is that
 // proof: the probe hits only a collider, and over the deep ocean the seabed lies at 6 to 10 (world/oceanProfile.js),
 // under the origin spawn's PROBE_MIN_Y, where a save made swimming was held 600 frames and then reset to the origin.
-// waitedSec: the seconds already held (before this frame); stepSec: this frame's step. Returns { place, hold }: hold = keep
-// the body there and wait (the caller adds stepSec to its wait); place = the saved centre, which the caller fits the base
-// capsule near (game/formFit.js fitLoadedSpot); neither = give up and use the origin spawn, on the frame whose step
-// reaches RESUME_PROBE_MAX_SEC.
-export function resolveResumeSpawn(resume, physicsY, waitedSec, stepSec = 0) {
+// waitedSec: the seconds already held (before this frame); stepSec: this frame's step; beside: resumeBesideEmptyColumn's
+// answer (the spot beside a saved column with nothing in it, or null). Returns { place, hold }: hold = keep the body there
+// and wait (the caller adds stepSec to its wait); place = the saved centre, or the spot beside it, which the caller fits
+// the base capsule near (game/formFit.js fitLoadedSpot); neither = give up and use the origin spawn, on the frame whose
+// step reaches RESUME_PROBE_MAX_SEC.
+export function resolveResumeSpawn(resume, physicsY, waitedSec, stepSec = 0, beside = null) {
   const usable = !!resume && [resume.x, resume.y, resume.z].every(Number.isFinite) && !isVoidFall(resume.y);
   if (!usable) return { place: null, hold: false };
   const loaded = Number.isFinite(physicsY);
   if (loaded) return { place: { x: resume.x, y: resume.y, z: resume.z }, hold: false };
+  if (beside) return { place: { x: beside.x, y: beside.y, z: beside.z }, hold: false };
   if (waitedSec + stepSec < RESUME_PROBE_MAX_SEC) return { place: null, hold: true };
   return { place: null, hold: false };
 }

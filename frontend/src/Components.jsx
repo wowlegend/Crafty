@@ -19,7 +19,7 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, resumeBesideEmptyColumn, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
 import { makeStuckWatch, stuckInRock } from './game/stuckInRock.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
@@ -1051,8 +1051,11 @@ export const Player = ({ isWorldBuilt }) => {
       //    follows it. Until the old world's wipe has committed the probe is not asked (store worldReloading).
       if (store.resumeSpawn) {
         const r = store.resumeSpawn;
-        const probeY = store.getMobGroundLevel && !store.worldReloading ? resumeColumnProbe(store.getMobGroundLevel, r) : null;
-        const resume = resolveResumeSpawn(r, probeY, resumeWaitRef.current, delta);
+        const probing = !!store.getMobGroundLevel && !store.worldReloading;
+        const probeY = probing ? resumeColumnProbe(store.getMobGroundLevel, r) : null;
+        // A saved column with nothing in it, once its chunks have answered: the spot beside it (resumeBesideEmptyColumn).
+        const beside = probing && !Number.isFinite(probeY) ? resumeBesideEmptyColumn(store.getMobGroundLevel, r) : null;
+        const resume = resolveResumeSpawn(r, probeY, resumeWaitRef.current, delta, beside);
         if (resume.hold) {
           resumeWaitRef.current += delta;
           rigidBodyRef.current.setTranslation({ x: r.x, y: r.y, z: r.z }, true);

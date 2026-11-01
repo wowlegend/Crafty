@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe, returnToSpawn, followBlindDrop,
+  isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe, resumeBesideEmptyColumn, resolveResumeSpawn,
+  returnToSpawn, followBlindDrop,
   spawnSpot, SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_SEC, SPAWN_EYE_OFFSET, SPAWN_FREEZE_Y,
 } from './spawnPlacement.js';
 import { CONTROLLER_OFFSET } from './kinematicMove.js';
@@ -278,5 +279,45 @@ describe('resumeColumnProbe', () => {
       expect(resumeColumnProbe(probe, { x: 15.95, y: 52, z: 0.5 }), `corner ${k} unanswered`).toBeNull();
     }
     expect(resumeColumnProbe(() => NaN, { x: 0.5, y: 52, z: 0.5 })).toBeNull();
+  });
+});
+
+describe('resumeBesideEmptyColumn', () => {
+  // The saved column (15, 0) is dug through the world; every other column answers the land at 51 except where a case
+  // says. The probe casts at (x + 0.1, z + 0.1), as Terrain.jsx's does, so a column is the floor of that.
+  const saved = { x: 15.5, y: 20, z: 0.5 };
+  const land = (holes = [], heights = {}) => (x, z) => {
+    const cx = Math.floor(x + 0.1), cz = Math.floor(z + 0.1);
+    if (holes.some(([hx, hz]) => hx === cx && hz === cz)) return null;
+    return heights[`${cx}_${cz}`] ?? 51;
+  };
+  const STAND = BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius + CONTROLLER_OFFSET;
+  it('stands the base capsule on the nearest column beside a saved column with nothing in it, at its middle', () => {
+    const at = resumeBesideEmptyColumn(land([[15, 0]]), saved);
+    expect(at).not.toBeNull();
+    expect(Math.hypot(at.x - saved.x, at.z - saved.z), JSON.stringify(at)).toBeCloseTo(1, 6);
+    expect([at.x % 1, at.z % 1].map((v) => Math.abs(v)), JSON.stringify(at)).toEqual([0.5, 0.5]);
+    expect(at.y).toBeCloseTo(51 + STAND, 6);
+    // The nearest wins over a higher one further off: (14, 0) stands 1 m away and (14, -1), 9 m higher, 1.41 m.
+    const near = resumeBesideEmptyColumn(land([[15, 0]], { '14_-1': 60 }), saved);
+    expect(near).toMatchObject({ x: 14.5, z: 0.5 });
+    expect(near.y).toBeCloseTo(51 + STAND, 6);
+  });
+  it('is null while the saved column answers, or a corner the fit reads has not answered', () => {
+    expect(resumeBesideEmptyColumn(land(), saved)).toBeNull();
+    for (const corner of [[14, -1], [14, 1], [16, -1], [16, 1]]) {
+      expect(resumeBesideEmptyColumn(land([[15, 0], corner]), saved), `corner ${corner}`).toBeNull();
+    }
+  });
+  it('is null when a corner round the spot beside has not answered (the fit reads as far round it)', () => {
+    // The spot is (16.5, 0.5) once 14 and 15 are dug at z 0; its corners reach column 17, which here answers nothing.
+    const probe = land([[15, 0], [14, 0], [15, -1], [15, 1], [17, -1]]);
+    expect(resumeBesideEmptyColumn(probe, saved)).toBeNull();
+  });
+  it('the hold lets go on the spot beside, and keeps the saved spot when the saved column answers', () => {
+    const beside = { x: 16.5, y: 51 + STAND, z: 0.5 };
+    expect(resolveResumeSpawn(saved, null, 0, 1 / 60, beside)).toEqual({ place: beside, hold: false });
+    expect(resolveResumeSpawn(saved, 51, 0, 1 / 60, beside)).toEqual({ place: saved, hold: false });
+    expect(resolveResumeSpawn(saved, null, 0, 1 / 60, null)).toEqual({ place: null, hold: true });
   });
 });

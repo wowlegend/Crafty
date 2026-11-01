@@ -48,7 +48,7 @@ import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/bea
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
 import { steadyEye, EYE_HEIGHT_M } from '../../../src/combat/swingOrigin.js';
 import { SEA_LEVEL, DEEP_FLOOR } from '../../../src/world/oceanProfile.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, resumeBesideEmptyColumn, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
 import { makeStuckWatch, stuckInRock } from '../../../src/game/stuckInRock.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
 import { buildSaveData, savePosition } from '../../../src/game/saveSchema.js';
@@ -252,8 +252,10 @@ function spawnBranch(S) {
   const store = useGameStore.getState();
   if (store.resumeSpawn) {
     const r = store.resumeSpawn;
-    const probeY = store.worldReloading ? null : resumeColumnProbe((x, z) => groundProbe(S, x, z), r);
-    const resume = resolveResumeSpawn(r, probeY, S.resumeWait, 1 / S.hz);
+    const probe = (x, z) => groundProbe(S, x, z);
+    const probeY = store.worldReloading ? null : resumeColumnProbe(probe, r);
+    const beside = store.worldReloading || Number.isFinite(probeY) ? null : resumeBesideEmptyColumn(probe, r);
+    const resume = resolveResumeSpawn(r, probeY, S.resumeWait, 1 / S.hz, beside);
     if (resume.hold) {
       S.resumeWait += 1 / S.hz;
       S.p.body.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
