@@ -68,8 +68,8 @@ closes the lane's leftovers and closes the lane row (advisory; a lane row left o
 | false-positive | a DECISIONS item | "False positive: " and the backticked command that shows it |
 
 The form of `closedBy` and the sentence its note must hold are S5; whether the reason convinces is advisory. A sha must
-be on HEAD's history (S6), or on MERGE_HEAD's while a merge is unfinished (the next section), which proves ancestry, not
-that it fixed the row. A DECISIONS reference is
+be on HEAD's history (S6), or on MERGE_HEAD's while a merge is unfinished ("Merging main into a lane"), which proves
+ancestry, not that it fixed the row. A DECISIONS reference is
 `DECISIONS <date> [(<tag>)] item[s] N` and names exactly one item (S7); when two entries of a date share a number, it
 names the entry's tag. A `duplicate:` or `superseded:` target is a row other than this one, and a duplicate's target is
 not itself a duplicate (S8). A decision closes done only on a DECISIONS item (S9). A Kevin row closes only as a
@@ -93,15 +93,25 @@ closure, note, kind, area, lane and acceptance (R4).
 
 ## Merging main into a lane
 
-Take main in with a plain two-parent merge (`git merge origin/main`, the way `CLAUDE.md` "Landing" says), and the commit
-goes through the hook. A merge commit's pre-commit runs while HEAD is still the lane's own tip, so S6 also counts a sha
-that `MERGE_HEAD` reaches, as long as `git rev-parse -q --verify MERGE_HEAD` resolves: the shas main added to the
-registry read as on the history before the merge commit exists. The allowance is that narrow. A sha on a branch the
-merge does not take in, or on no branch, still fails S6, and so does every sha once `git merge --abort` has run. A
-squash merge leaves no `MERGE_HEAD` and an octopus merge reads only its first merged commit, so neither gets the
-allowance. A red S6 during a merge therefore means a sha that no branch the merge brings in holds: fix the row, never
-`--no-verify`. A merge that brings in gate changes also meets the commit-msg hook, which wants a `Mutation-Proof:` line:
-write the one the earlier merges carry (`git log --merges`), that the gates are main's, proven where they landed.
+Take main in with a plain two-parent merge (`git merge origin/main`, the way `CLAUDE.md` "Landing" says). Which hook
+runs depends on how the merge ends (githooks(5), measured with git 2.55 in a scratch repo):
+
+- **A clean merge** commits inside `git merge` and runs no pre-commit hook: git runs `pre-merge-commit` for it, and
+  `.githooks/` holds only commit-msg, pre-commit and pre-push. Nothing checks S6 on it locally; CI is the first check.
+- **A merge that stops**, on a conflict or with `--no-commit`, is finished with `git commit`, and that commit does run
+  pre-commit. The commit tier reaches S6 only through `vitest related`, which follows static imports: it runs when a
+  staged `frontend/` file is one `registry-harvest.test.js` imports. It reads the registry in the working tree while
+  HEAD is still the lane's own tip, so S6 also counts a sha that `MERGE_HEAD` reaches: the shas main added to the
+  registry read as on the history before the merge commit exists.
+
+A merge is in progress when the merge-state file exists (`git rev-parse --git-path MERGE_HEAD`), and `MERGE_HEAD` is
+resolved only then: a branch or tag that happens to be named `MERGE_HEAD` gives no allowance. The allowance is that
+narrow. A sha on a branch the merge does not take in, or on no branch, still fails S6, and so does every sha once
+`git merge --abort` has run. A squash merge leaves no `MERGE_HEAD` and an octopus merge reads only its first merged
+commit, so neither gets the allowance. A red S6 during a merge therefore means a sha that no branch the merge brings in
+holds: fix the row, never `--no-verify`. The commit-msg hook runs on either ending, and a merge that brings in gate
+changes needs a `Mutation-Proof:` line there: write the one the earlier merges carry (`git log --merges`), that the
+gates are main's, proven where they landed.
 
 ## Landing beside the v2 migration
 
