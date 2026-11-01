@@ -204,7 +204,8 @@ ceiling.
    sky check needs a rush to have happened, since no rush read as no cut. A cut is now measured against each frame's
    time: the sky's own clock (`readSkyLight` `cycle`) moving further in one frame than the rush's 60 units a second could
    pan it, where the sun's height step it replaced would read a slow page's pan as a cut (one local run drew 3 frames a
-   second); a rush drawn slower than a frame every 0.25 s is a PRESENCE, too slow to tell. (c)'s recorded red takes any
+   second); a rush drawn slower than a frame every 0.25 s is a PRESENCE, too slow to tell. The rule is
+   `tests/e2e/_firstNightSky.js`, gated in `first-night-sky-gates` (S1-S3 red). (c)'s recorded red takes any
    time for the camera's return: the first frame off the held view came at 1.36 to 1.76 s in four runs and at 3.59 and
    3.68 s in two, on a loaded machine; why it moved is not measured, and B1's window replaces it. (g): the `ambientAttempts` contract is the
    player's live position, a dry run (it places nothing, so no mob cap or budget is spent between the two batches) and
@@ -220,8 +221,9 @@ ceiling.
    flake sightings are on their rows, with the light-pool fall the dynamic review read (`e362323e`).
 
 493. **The record against the game: every beat showed every recorded red under the opt-in.** The whole spec, run
-   locally on this round's last spec with `FIRST_NIGHT_AWAITING=1` (Chromium, the Playwright-managed dev server on 4179,
-   started at a load of 9.5): 9 passed in 5.8 minutes, the eight beats with 37 of 37 reds as recorded. By beat: (a) the
+   locally with `FIRST_NIGHT_AWAITING=1` (Chromium, the Playwright-managed dev server on 4179): 9 passed in 5.8 minutes,
+   started at a load of 9.5, and again on this round's last spec in 7.9 minutes, started at 25.8 under a load that rose
+   past 100; each time the eight beats with 37 of 37 reds as recorded. By beat (the first of those runs): (a) the
    brazier lit at Start, intensity 1.6, and the same after G; `hearthLit` null. (b) no siege; no wedge ahead or behind;
    no bearing for the sector; the stand-in husk drifted from 28.1 to 34.9 m off the Hearth, no march; the horn raised
    once at the crossing and once on the load (shown on screen after the load: 0). (c) the camera back at the eye inside

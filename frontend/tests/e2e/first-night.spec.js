@@ -7,6 +7,7 @@ import { installNoticeLog, isHornKey } from '../../scripts/visual/_firstNight.mj
 import { BEATS, AWAITS, compareReds, redLine, unitsOf } from './_firstNightAwaits.js';
 import { respawnCases, caseHolds, roseRight, distances } from './_firstNightRespawn.js';
 import { marches, READINGS } from './_firstNightMarch.js';
+import { skySteps, firstCut, medianFrameSec } from './_firstNightSky.js';
 
 // THE FIRST NIGHT, PLAYED (the W3-A task script's U0: docs/superpowers/plans/2026-11-01-w3a-first-night-tasks.md; the
 // brief's acceptance 1; DECISIONS 2026-11-01 (W3-A PR C) items 482 and 485-492). Eight beats, each its own test of 120 s
@@ -622,24 +623,18 @@ beat('e', 'captain: his kill by a real click brings day within 6 s, the rush wit
   await page.waitForTimeout(3000);
   const log = await page.evaluate(() => { window.__fnSkyDone = true; return window.__fnSky; });
   const sky = log.filter((f) => Number.isFinite(f.cycle));
-  presence(sky.length >= 10, `the sky log read ${log.length} frames, ${sky.length} with the sky's own clock: the instrument is blind`);
-  // A cut is the sky's clock (the fraction the frame was drawn at, Atmosphere.jsx readSkyLight) moving further in one
-  // frame than the fastest pan could, the rush's 60 units a second over that frame's time; measured per frame time, so a
-  // slow page cannot pass a pan off as a cut. Too slow a page cannot tell them apart at all, and says so.
+  presence(log.length >= 2 && log[0].day === false, `the sky log read ${log.length} frames, the first ${log[0]?.day ? 'by day' : 'unread'}: it cannot see the night end`);
+  // A cut is the sky's own clock moving further in one frame than the rush could pan it over that frame's time
+  // (tests/e2e/_firstNightSky.js, gated on its own); a rush drawn on too few or too slow frames cannot tell a cut from a
+  // pan at all, and says so. Whether day came at all needs only the frames either side of it.
   const rushed = log.some((f) => !f.day) && log.some((f) => f.day);
-  const steps = sky.slice(1).map((f, i) => {
-    const dt = (f.at - sky[i].at) / 1000;
-    let du = (f.cycle - sky[i].cycle) * CYCLE_UNITS;
-    if (du > CYCLE_UNITS / 2) du -= CYCLE_UNITS;
-    if (du < -CYCLE_UNITS / 2) du += CYCLE_UNITS;
-    return { dt, du, pan: 2 * RUSH_UNITS_PER_SEC * dt + 6 };
-  });
+  const steps = skySteps(sky, CYCLE_UNITS, RUSH_UNITS_PER_SEC);
   if (rushed) {
-    const dts = steps.map((s) => s.dt).sort((a, b) => a - b);
-    const median = dts[Math.floor(dts.length / 2)];
-    presence(median <= 0.25, `the page drew a frame every ${median.toFixed(2)} s through the rush: too slow to tell a cut from a pan`);
+    const median = medianFrameSec(steps);
+    presence(sky.length >= 10 && median !== null && median <= 0.25,
+      `the page drew ${sky.length} frames with the sky's own clock, one every ${median?.toFixed(2)} s, through the rush: too few or too slow to tell a cut from a pan`);
   }
-  const cut = steps.find((s) => Math.abs(s.du) > s.pan);
+  const cut = firstCut(steps);
   red('sky', rushed && !cut, rushed
     ? `the sky cut during the rush: its clock moved ${cut.du.toFixed(0)} units in one ${cut.dt.toFixed(2)} s frame, where a pan moves ${cut.pan.toFixed(0)} at most`
     : `no dawn rush to read: the sky log never saw day (${log.length} frames)`);
