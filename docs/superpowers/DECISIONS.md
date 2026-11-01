@@ -222,9 +222,9 @@ named in each commit's trailer, with an identity mutant beside each batch that s
 Round 3 (from `3967cf27`, after the round-2 static and dynamic reviews), items 520 to 525. Each code change went red
 first at 60 and 120 Hz, against real Rapier and, but for item 522, on the real Player; its mutants ran through
 `scripts/dev/mutate.sh` in a throwaway copy, with an identity mutant that survived, and are named in its commit.
-**Numbering:** W3-A PR C's entry below takes 520 on for its phase 2 on `feat/w3a-first-night`, which had not reached
-main when these were written (main held 494), so the two entries share numbers on this date: a reference to these
-names the tag, `DECISIONS 2026-11-01 (lane L13 part 2) item 520`.
+**Numbering:** W3-A PR C's entry below also numbers an item 520 for its phase 2 on `feat/w3a-first-night` (then 526
+on), which had not reached main when these were written (main held 494), so item 520 is the one number the two
+entries share on this date: a reference to this one names the tag, `DECISIONS 2026-11-01 (lane L13 part 2) item 520`.
 
 520. **The load's hold waits for every chunk the wider search reads** (`f3018532`, N1 of both reviews). Round 2's wider
    search (item 515) tests spots out to 1.4 m and its confirming balls read 0.42 m past them, 1.823 m, while the hold
