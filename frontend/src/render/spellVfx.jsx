@@ -244,10 +244,8 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
         // W2-T4: a jagged, FORKING bolt — a deterministic zig-zag of short tilted cylinder
         // segments (the crackle in flight) plus a couple of short fork branches near the
         // head, so the silhouette reads as a hot forked line, NOT a smooth cylinder.
-        // v7-S3.6: a THIN hot crackling WIRE -- thin tapered ADDITIVE (meshBasic) segments + forks
-        // (not fat lit cylinders) + a bright thin WHITE core filament, so the bolt reads as a pure
-        // electric line. The strobe (motion 'strobe') flickers the core intensity; glowShape 'none'
-        // already dropped the round glow sphere. Additive + toneMapped=false -> blooms as a hot line.
+        // A THIN crackling wire: thin tapered solid (meshBasic, depth-written) segments in the ink outline, and
+        // forks, under no glow shell (glowShape 'none'). The strobe (motion 'strobe') snaps its scale on each flash.
         return (
           <group renderOrder={0}>
             {BOLT_SEGMENTS.map((s, i) => (

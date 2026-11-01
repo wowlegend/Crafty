@@ -1,7 +1,7 @@
 // Character render language (S1-B M2b): PURE single source of truth for the
 // stylized mob/boss/prop look — a subtle 2-band toon gradient, a fresnel
-// rim-light shader patch, the inverted-hull outline config, and the hit-flash
-// material allow-list. No JSX / no R3F import here (keeps it node-testable);
+// rim-light shader patch with the contact flash's lit-band term, and the inverted-hull outline config. No JSX / no
+// R3F import here (keeps it node-testable);
 // the React <MobToonMaterial> wrapper lives in MobToonMaterial.jsx.
 import * as THREE from 'three';
 
@@ -50,7 +50,7 @@ export function getToonGradient() {
 }
 
 // --- Fresnel rim-light: additive view-dependent edge glow on a toon material.
-// Independent of emissive (which the mob hit-flash mutates), so no collision.
+// Independent of emissive, so an authored glow (an elite's ember crest) survives every look the rim carries.
 export function installRim(material, { color = RIM.color, power = RIM.power, strength = RIM.strength } = {}) {
   material.userData.rim = {
     uRimColor: { value: new THREE.Color(color) },
