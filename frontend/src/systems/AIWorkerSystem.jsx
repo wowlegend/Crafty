@@ -30,6 +30,7 @@ import { worldDelta, worldNow } from '../game/worldClock.js';
 import { takeTick } from '../game/frameStep.js';
 import { damageArgsForAttack } from '../game/mobDamage.js';
 import { buildMobPayload, applyMobUpdate } from '../game/mobStateSync.js';
+import { EVENTS, emit } from '../game/eventBus.js';
 
 // AIWorkerSystem -- bridges mob AI to a Web Worker at 15Hz (movement/attacks/aggro), processes
 // knockback main-thread, and runs the ambient hub-NPC routine. Extracted VERBATIM from
@@ -120,6 +121,7 @@ export const AIWorkerSystem = () => {
             // below also reads (game/mobStateSync.js). The growl above runs first because it needs the
             // OLD aggro value. windupUntil drives the render's charge pose; wanderRoll and the charge
             // latch only work if they come back next tick, which is what the shared list guarantees.
+            const windupBefore = entity.windupUntil;
             applyMobUpdate(entity, update);
             holdStagger(entity, worldNow()); // a reply from before a perfect dodge must not relight its windup (R8.1)
 
@@ -127,6 +129,10 @@ export const AIWorkerSystem = () => {
             // knockback shove, the first aggro tick — lands here, so the wall rule holds for all of them. It snaps
             // to the FLOOR under the feet, not the column top — a roof or a canopy (review #6, R7.1).
             snapMob(entity, store.getMobFloor, store.getMobGroundLevel, worldNow());
+            // A windup the stagger above has not cancelled, and not the one already winding: its voice plays at the mob.
+            if (entity.windupUntil > 0 && entity.windupUntil !== windupBefore) {
+              emit(EVENTS.windupStart, entity.type, [entity.position.x, entity.position.y, entity.position.z], entity);
+            }
           }
         }
       }

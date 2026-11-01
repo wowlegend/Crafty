@@ -30,6 +30,7 @@ import { seedClimate } from '../world/climate.js';
 import { BLOCK_ID } from '../world/blockIds.js';
 import { lanternsIn } from '../world/lanternIndex.js';
 import { worldNow } from '../game/worldClock.js';
+import { EVENTS, emit } from '../game/eventBus.js';
 
 // How long ONE attacker must wait before it can damage the player again. This was an inline 500 applied
 // to a single global timestamp, which made it a world-wide budget rather than a per-attacker cooldown —
@@ -925,7 +926,9 @@ export const useGameStore = create((set, get) => ({
     },
 
     gameTime: 0,
-    setGameTime: (timeArg) => set((state) => {
+    setGameTime: (timeArg) => {
+      let crossed = null; // the bus's moment, when this write crosses into night or day: [name, night, gameTime]
+      set((state) => {
         const newTime = typeof timeArg === 'function' ? timeArg(state.gameTime) : timeArg;
         // Flip isDay on a half-cycle BOUNDARY CROSSING (not an exact `% 600 === 0`
         // landing). Robust to any tick step + any resumed gameTime: a multi-step
@@ -941,6 +944,7 @@ export const useGameStore = create((set, get) => ({
             // Dawn empties the ember bar on this same crossing, for the same reason: the hook's isDay edge also fires on a
             // load, and a day save loaded at night would lose its bar (a pre-cut save its just-migrated banks for good).
             const enteringNight = crossedIntoNight(state.gameTime, newTime);
+            crossed = enteringNight ? [EVENTS.nightfall, state.nightCount + 1, newTime] : [EVENTS.dawn, state.nightCount, newTime];
             return {
                 gameTime: newTime,
                 isDay: !state.isDay,
@@ -950,7 +954,10 @@ export const useGameStore = create((set, get) => ({
             };
         }
         return { gameTime: newTime };
-    }),
+      });
+      // After the write, so a reactor told of the night reads the store already in it.
+      if (crossed) emit(crossed[0], crossed[1], crossed[2]);
+    },
 
     // Force the clock to a normalized TIME OF DAY in [0, 1), 0 = midnight, 0.5 = noon.
     //

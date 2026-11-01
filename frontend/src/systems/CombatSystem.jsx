@@ -166,7 +166,7 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         if (GameMethods.spawnDeathFx) {
           GameMethods.spawnDeathFx([entity.position.x, entity.position.y, entity.position.z], deathPos.y, db.color);
         }
-        emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z], attributionSource(source)); // M3.5 fan-out + B3-M1 attribution
+        emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z], attributionSource(source), entity); // M3.5 fan-out + B3-M1 attribution
         // M2 #7 death weight: defer removal behind a dissolve so a kill has WEIGHT (XP / spark / kill-bus
         // already fired this frame). The dying-sweep removes the corpse after the dissolve elapses.
         entity.dyingUntil = performance.now() + DEATH_DISSOLVE_MS;

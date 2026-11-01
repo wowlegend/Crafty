@@ -4,7 +4,7 @@
  * a second one needs no change at the emitter.
  *
  * The names are a closed set: subscribing to or emitting a name outside EVENTS throws, so a mistyped name fails where
- * it is written instead of becoming a moment nobody hears. Payloads are positional (up to three arguments, documented
+ * it is written instead of becoming a moment nobody hears. Payloads are positional (up to four arguments, documented
  * per event below). Each name's subscribers live in an array replaced on every subscribe and unsubscribe, so an emit
  * walks a snapshot without copying it: a subscriber added or removed during a dispatch takes effect from the next one,
  * and an emit allocates nothing. One throwing subscriber never stops the rest, and is reported (isolatedEffects.js).
@@ -12,7 +12,8 @@
 import { reportIsolatedFailure } from './isolatedEffects.js';
 
 export const EVENTS = Object.freeze({
-  /** (mobType: string, position: [x, y, z], source: 'player' | 'ally' | 'hazard') — a mob died. */
+  /** (mobType: string, position: [x, y, z], source: 'player' | 'ally' | 'hazard', entity) — a mob died; `entity` is the
+   *  dying mob itself, so a reactor can tell one mob from another by its id. */
   mobKill: 'mobKill',
   /** (level: number) — the player's level rose. */
   levelUp: 'levelUp',
@@ -20,6 +21,16 @@ export const EVENTS = Object.freeze({
   reward: 'reward',
   /** () — the win screen appeared. */
   victory: 'victory',
+  /** (night: number, gameTime: number) — the clock crossed into night `night` (store setGameTime; never a load). */
+  nightfall: 'nightfall',
+  /** (night: number, gameTime: number) — the clock crossed into the day after night `night` (setGameTime; never a load). */
+  dawn: 'dawn',
+  /** (mobType: string, position: [x, y, z], entity) — a mob's attack windup began (systems/AIWorkerSystem.jsx). */
+  windupStart: 'windupStart',
+  /** (night: number, wave: number, ids: number[]) — the siege director placed a wave (W3-A N5). */
+  siegeWave: 'siegeWave',
+  /** (night: number, captainId: number) — the captain fell and the siege broke (W3-A N6a). */
+  siegeBroken: 'siegeBroken',
 });
 
 const EMPTY = Object.freeze([]);
@@ -41,11 +52,11 @@ export function on(name, cb) {
 }
 
 /** Deliver `name` to every subscriber, in subscription order. */
-export function emit(name, a, b, c) {
+export function emit(name, a, b, c, d) {
   const list = listFor(name);
   for (let i = 0; i < list.length; i++) {
     try {
-      list[i](a, b, c);
+      list[i](a, b, c, d);
     } catch (error) {
       // one reactor failing must not silence the others, and must not go unseen either
       reportIsolatedFailure(`the ${name} event`, error);

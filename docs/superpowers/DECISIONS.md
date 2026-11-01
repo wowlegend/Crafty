@@ -287,6 +287,18 @@ ceiling.
    recorded red reads `hearthLit true before the press, true after` (it read `null` before this unit). The run that
    checked the record is item 498.
 
+497. **U1, the bus: the night's five moments, and the kill's entity.** `EVENTS` gains `nightfall` and `dawn`
+   (`(night, gameTime)`), emitted by `setGameTime` after its write on the same crossing that bumps `nightCount` or empties
+   the bar, so a reactor told of the night reads the store already in it and a load, a clock jump or a `nightCount` write
+   emits neither; `windupStart` (`(mobType, position, entity)`), emitted by `AIWorkerSystem`'s reply loop beside the
+   growl, for a windup that is new on the mob and that the perfect dodge's stagger did not just cancel (the check reads
+   the mob after `holdStagger`, so a voice never plays for a swing that is not coming), at the mob's snapped position;
+   and `siegeWave` and `siegeBroken`, named for N5 and N6a, which emit them. The bus carries four arguments now, and the
+   kill's fourth is the dying entity (`CombatSystem` `damageMob`), so the siege can match its captain by id.
+   Gated: `night-bus-gates` drives the three producers through the real store, `CombatSystem` and `AIWorkerSystem` (its
+   worker stubbed and its reply handed in): 3 of 3 red on the base, 8 mutants red, the identity survived;
+   `kill-attribution-gates`' emit shape now names the entity (its mutant red).
+
 ---
 
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor

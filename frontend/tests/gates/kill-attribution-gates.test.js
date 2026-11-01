@@ -50,7 +50,8 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
   it('the death emit threads source, normalised to the bus vocabulary', () => {
     // The bus publishes 'player' | 'ally' | 'hazard'; subscribers count quest kills and bank ember
     // off that string, so a burn kill has to arrive as a player kill rather than as a new fourth value.
-    expect(npc).toMatch(/emitMobKill\(entity\.type, \[entity\.position\.x, entity\.position\.y, entity\.position\.z\], attributionSource\(source\)\)/);
+    // The dying entity rides as the fourth argument (W3-A U1; tests/gates/night-bus-gates.test.jsx drives it).
+    expect(npc).toMatch(/emitMobKill\(entity\.type, \[entity\.position\.x, entity\.position\.y, entity\.position\.z\], attributionSource\(source\), entity\)/);
   });
 
   it('EVERY meter accrual subscriber filters on player kills (self-extending invariant)', () => {
