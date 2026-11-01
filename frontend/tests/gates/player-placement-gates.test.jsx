@@ -535,6 +535,43 @@ describe('a capsule reaching sideways into rock, its centre and lowest point cle
   }
 });
 
+// A save from before the invisible-box fix can hold a block in the cell over the body's centre, where the eye is: the
+// centre and the lowest point are in the open cell under it, so only the capsule's own reading sees it, and the player
+// is stood clear (tests/e2e/place-clear-of-player.spec.js plays it in the browser).
+describe('a block in the eye\'s cell, the centre and lowest point clear, does not hold the player', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: the body standing with a block in the cell over its centre is stood clear of it within a second`, () => {
+      standPlayer(hz);
+      const x = -5, z = 8, key = '-1_0';
+      const was = grid.logical.get(key);
+      const b = was.slice();
+      b[voxelIndex(x + CHUNK_SIZE, LAND_TOP + 1, z)] = genCell(x, LAND_TOP - 1, z);
+      grid.logical.set(key, b);
+      try {
+        remesh([key]);
+        const start = { x: x + 0.5, y: LAND_TOP + 0.95, z: z + 0.5 };
+        h.body.setTranslation(start, true);
+        h.world.propagateModifiedBodyPositionsToColliders();
+        expect(solidAt(grid, ...eyeCell(h.body)), 'SETUP: the eye is not in the block').toBe(true);
+        expect(solidAt(grid, x, LAND_TOP, z), 'SETUP: the centre\'s cell is in the rock').toBe(false);
+        let outAt = null;
+        for (let i = 0; i < hz && outAt === null; i++) {
+          frame(hz);
+          const r = reading();
+          if (r.depth <= TOL && !r.eyeIn) outAt = +((i + 1) / hz).toFixed(3);
+        }
+        for (let i = 0; i < hz / 2; i++) frame(hz);
+        const r = { outAt, end: at(), ...reading() };
+        expect(outAt, `the block in the eye's cell held the player for the whole second ${JSON.stringify(r)}`).not.toBeNull();
+        expect([r.depth <= TOL, r.eyeIn], `the player went back into the block ${JSON.stringify(r)}`).toEqual([true, false]);
+        process.stdout.write(`\nblock in the eye's cell ${hz} Hz: ${JSON.stringify(r)}\n`);
+      } finally {
+        grid.logical.set(key, was);
+      }
+    });
+  }
+});
+
 describe('the void guard fires under the world, never in it, and it and the respawn go back to the spawn one way', () => {
   it('a player on the deepest seabed (world/oceanProfile.js DEEP_FLOOR) stands and walks there, and is not reset to the origin', () => {
     const hz = 60;
