@@ -475,6 +475,63 @@ describe('the respawn over the dug corner stands the body\'s own capsule clear o
   }
 });
 
+/** Chunks meshed again from the voxels in `grid.logical`, as a React commit re-mounts them. */
+function remesh(keys) {
+  for (const key of keys) {
+    const [cx, cz] = key.split('_').map(Number);
+    h.world.removeRigidBody(chunks.get(key).body);
+    const body = h.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE));
+    const m = generateMesh(cx, cz, grid.logical.get(key), undefined);
+    chunks.set(key, { body, collider: h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body) });
+  }
+}
+
+// A capsule reaching sideways into rock with its centre and its lowest point in the open (registry
+// REVIEW:l13:sideways-reach-in-rock-unread): the stuck-in-rock watch reads only those two cells (game/stuckInRock.js), so
+// what moves this body out is the controller's own sweep. A respawn stood the bull 0.12 m into a column beside it, and a
+// column whose chunk had not answered when a body was stood beside it can stream in round the body's side the same way.
+// Here a column two blocks over the land stands beside the body, inside one chunk (x 5) and as the first column of the
+// chunk across a border (x 0, chunk 0_0 beside -1_0), and the body is put 0.1 m into it, standing, idle.
+describe('a capsule reaching sideways into rock, its centre and lowest point clear, is out of it within a second', () => {
+  for (const hz of [60, 120]) {
+    for (const [where, x0] of [['inside one chunk', 5], ['across a chunk border', 0]]) {
+      it(`${hz} Hz, ${where}: the capsule 0.1 m into a column beside it is out within 1 s`, () => {
+        standPlayer(hz);
+        const z = 8, key = `${Math.floor(x0 / CHUNK_SIZE)}_0`;
+        const was = grid.logical.get(key);
+        const b = was.slice();
+        for (const y of [LAND_TOP, LAND_TOP + 1]) b[voxelIndex(x0 - Math.floor(x0 / CHUNK_SIZE) * CHUNK_SIZE, y, z)] = genCell(x0, LAND_TOP - 1, z);
+        grid.logical.set(key, b);
+        try {
+          remesh([key]);
+          const start = { x: x0 - BASE_CAPSULE.radius + 0.1, y: LAND_TOP + 0.95, z: z + 0.5 };
+          h.body.setTranslation(start, true);
+          h.world.propagateModifiedBodyPositionsToColliders();
+          const first = reading();
+          const centreCell = [Math.floor(start.x), Math.floor(start.y), Math.floor(start.z)];
+          const lowCell = [Math.floor(start.x), Math.floor(start.y - 0.9 + 0.02), Math.floor(start.z)];
+          expect(first.depth, `SETUP: the capsule is not 0.1 m into the column ${JSON.stringify(first)}`).toBeCloseTo(0.1, 2);
+          expect([solidAt(grid, ...centreCell), solidAt(grid, ...lowCell)], 'SETUP: the centre or the lowest point is in the rock').toEqual([false, false]);
+          let outAt = null, worst = 0;
+          for (let i = 0; i < hz; i++) {
+            frame(hz);
+            const d = reading().depth;
+            if (outAt === null && d <= TOL) outAt = +((i + 1) / hz).toFixed(3);
+            if (outAt !== null) worst = Math.max(worst, d);
+          }
+          const r = { outAt, worst: +worst.toFixed(3), end: at(), start };
+          expect(outAt, `the capsule stayed in the column for the whole second ${JSON.stringify(r)}`).not.toBeNull();
+          expect(r.worst, `the capsule went back into the column after it was out ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
+          expect(Math.hypot(r.end.x - start.x, r.end.z - start.z), `the body was moved far from where it stood ${JSON.stringify(r)}`).toBeLessThan(0.5);
+          process.stdout.write(`\nsideways reach ${hz} Hz ${where}: ${JSON.stringify(r)}\n`);
+        } finally {
+          grid.logical.set(key, was);
+        }
+      });
+    }
+  }
+});
+
 describe('the void guard fires under the world, never in it, and it and the respawn go back to the spawn one way', () => {
   it('a player on the deepest seabed (world/oceanProfile.js DEEP_FLOOR) stands and walks there, and is not reset to the origin', () => {
     const hz = 60;
