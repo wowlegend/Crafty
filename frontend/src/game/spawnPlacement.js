@@ -254,7 +254,7 @@ export function resolveResumeSpawn(resume, physicsY, waitedSec, stepSec = 0, bes
   if (!usable) return { place: null, hold: false };
   const loaded = Number.isFinite(physicsY);
   if (loaded) return { place: { x: resume.x, y: resume.y, z: resume.z }, hold: false };
-  if (beside) return { place: { x: beside.x, y: beside.y, z: beside.z }, hold: false };
+  if (beside) return { place: beside, hold: false };
   if (waitedSec + stepSec < RESUME_PROBE_MAX_SEC - EPS) return { place: null, hold: true };
   return { place: null, hold: false };
 }
