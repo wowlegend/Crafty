@@ -15,7 +15,11 @@
 //    a frame that takes no step, which no click or rebuild can then slip past. That is every other frame at 120 Hz, and
 //    at any rate a frame whose accumulator is still under 1/60 s, which frame jitter makes at 60 Hz too;
 //  - a cuboid whose chunk trimesh has landed is removed after the next step, when that trimesh is indexed; removed at once,
-//    the cell would be open to the controller for the frame before the step.
+//    the cell would be open to the controller for the frame before the step;
+//  - a chunk whose mesh has landed, an empty one too, has answered while nothing is unindexed (`answered`): its trimesh, if
+//    it has one, is in the broad phase, so a ray that misses there misses ground that is not there. A column's own ray
+//    cannot tell that from a chunk not streamed in yet, and a load's hold read a corner column dug through the world as one
+//    (game/spawnPlacement.js cornersAnswer). Any unindexed collider holds every chunk back until the step: a frame at most.
 // Retirement goes by sequence: the click's update_block carries `seq`, the worker stamps every chunk_mesh with the last seq
 // it has applied (`editSeq`), and a mesh retires only its own chunk's cuboids with seq <= editSeq, so a mesh made for an
 // earlier message still in flight never retires a later cell. The worker keeps its last seq for as long as it lives, so
@@ -43,6 +47,7 @@ export function createPlacedCellColliders(world, rapier, nextSeq) {
   /** @type {{collider: object, cx: number, cz: number, seq: number, landed: boolean}[]} */
   const cells = [];
   const unindexed = [];
+  const chunks = new Set(); // `${cx}_${cz}` of every chunk whose mesh has landed
 
   const drop = (i) => {
     const { collider } = cells[i];
@@ -69,6 +74,7 @@ export function createPlacedCellColliders(world, rapier, nextSeq) {
      */
     landed(cx, cz, editSeq, trimesh) {
       for (const c of cells) if (c.cx === cx && c.cz === cz && c.seq <= editSeq) c.landed = true;
+      chunks.add(`${cx}_${cz}`);
       if (!trimesh) return;
       // A chunk's first trimesh is made on a body @react-three/rapier 2.2 creates at the origin and only then moves to
       // the chunk's place, and Rapier carries a body's move to its colliders at a step: until then the trimesh lies over
@@ -86,14 +92,18 @@ export function createPlacedCellColliders(world, rapier, nextSeq) {
     },
     /** The colliders made since the last step (cuboids and rebuilt trimeshes): the controller's sweep cannot see them. */
     unindexed: () => unindexed,
-    /** The chunk unloaded: its cuboids go with it. */
+    /** Whether chunk (cx, cz) has landed, with no collider made since the last step: its trimesh, if it has one, is indexed. */
+    answered: (cx, cz) => !unindexed.length && chunks.has(`${cx}_${cz}`),
+    /** The chunk unloaded: its cuboids go with it, and it has not answered until it lands again. */
     dropChunk(cx, cz) {
+      chunks.delete(`${cx}_${cz}`);
       for (let i = cells.length - 1; i >= 0; i--) if (cells[i].cx === cx && cells[i].cz === cz) drop(i);
     },
     /** The terrain was wiped (a world load) or unmounted. */
     clear() {
       for (let i = cells.length - 1; i >= 0; i--) drop(i);
       unindexed.length = 0;
+      chunks.clear();
     },
     /** How many placed cells are held solid by a cuboid. */
     size: () => cells.length,

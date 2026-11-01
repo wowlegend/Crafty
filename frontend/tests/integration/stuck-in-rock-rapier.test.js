@@ -59,6 +59,17 @@ describe('the stuck-in-rock recovery reads the centre at its rate, and moves a b
     }
   });
 
+  it('a body inside the rock a metre from its side is stood on the rock\'s top over where it is, not moved out of the side', () => {
+    // The capsule clears the side face at x 8 from x 8.41 on, 1.11 m off and inside the fit's wider search (formFit.js
+    // fitLoadedSpot), which takes a spot only along open cells; a centre in solid ground starts its move in the rock.
+    const world = scene();
+    const body = player(world, { x: 7.3, y: 4.5, z: 0.5 });
+    const { spot } = run(world, body, 60, 120);
+    expect(spot, 'SETUP: the body inside the rock was never moved').not.toBeNull();
+    expect([spot.by, +spot.x.toFixed(3), +spot.z.toFixed(3)], `the body was not stood on the rock's top over where it was ${JSON.stringify(spot)}`).toEqual(['column', 7.3, 0.5]);
+    expect(spot.y, 'the spot does not stand the capsule on the rock\'s top').toBeCloseTo(TOP + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius + 0.05, 3);
+  });
+
   it('a reading out of the rock starts the window over', () => {
     const hz = 60;
     const world = scene();
@@ -87,4 +98,58 @@ describe('the stuck-in-rock recovery reads the centre at its rate, and moves a b
     const { spot } = run(world, body, 60, 120);
     expect(spot.y, 'the form was stood as if it were the base capsule').toBeCloseTo(TOP + golem.halfHeight + golem.radius + 0.05, 3);
   });
+});
+
+/** A closed box of rock from x0 to x1, y0 to y1, z0 to z1, as the mesher closes a chunk: a trimesh, hollow inside. */
+function rockBox(world, x0, x1, y0, y1, z0, z1) {
+  return world.createCollider(RAPIER.ColliderDesc.trimesh(
+    new Float32Array([x0, y0, z0, x1, y0, z0, x1, y1, z0, x0, y1, z0, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1]),
+    new Uint32Array([0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 3, 7, 6, 3, 6, 2, 0, 4, 7, 0, 7, 3, 1, 2, 6, 1, 6, 5]),
+  ));
+}
+
+// ROCK MADE SINCE THE LAST WORLD STEP IS NOT READ AS OPEN. A chunk's trimesh made between steps is not in the broad phase
+// until the next step (world/placedCellColliders.js), so the fit's cell reads (formFit.js cellSolid) miss it, and a
+// capsule wholly inside it touches none of its faces: a recovery fitted on that frame stood the body inside rock that had
+// just landed beside it (the static review of lane L13 part 2's round 2, its N3). A block fills the body's eye cell and
+// rock walls it in but for its +x side, where the fit stands it clear; the rock that lands there fills that side.
+describe('the stuck-in-rock recovery never stands a body in rock that landed since the last world step', () => {
+  for (const hz of [60, 120]) {
+    it(`a chunk landing beside the body on the frame of the reading that would move it is read after the step (${hz} Hz)`, () => {
+      const boxedIn = () => {
+        const world = scene();
+        rockBox(world, 0, 1, TOP + 1, TOP + 2, 0, 1);
+        rockBox(world, -2, 0, TOP, TOP + 3, -2, 3);
+        rockBox(world, 0, 1, TOP, TOP + 3, -2, 0);
+        rockBox(world, 0, 1, TOP, TOP + 3, 1, 3);
+        return { world, body: player(world, { x: 0.5, y: TOP + 0.95, z: 0.5 }) };
+      };
+      const LANDS = [1, 4, TOP, TOP + 4, -8, 8];
+      const r = BASE_CAPSULE.radius, reach = BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
+      const inRock = (p) => p.x + r > LANDS[0] + 1e-3 && p.x - r < LANDS[1] && p.y + reach > LANDS[2] + 1e-3 && p.y - reach < LANDS[3] - 1e-3
+        && p.z + r > LANDS[4] && p.z - r < LANDS[5];
+      // Without the rock: the frame the recovery moves the body, and its spot, where the rock will land.
+      const control = (() => { const { world, body } = boxedIn(); return run(world, body, hz, 2 * hz); })();
+      expect(control.f, 'SETUP: the body walled in with a block in its eye\'s cell was never moved').not.toBeNull();
+      expect(inRock(control.spot), `SETUP: without the rock the body is not stood where it lands ${JSON.stringify(control)}`).toBe(true);
+      const rows = [];
+      for (const landsOn of [control.f - 2, control.f - 1, control.f]) {
+        const { world, body } = boxedIn();
+        const watch = makeStuckWatch();
+        let moved = null;
+        for (let f = 1; f <= 2 * hz && !moved; f++) {
+          const unindexed = f === landsOn ? [rockBox(world, ...LANDS)] : [];
+          const spot = stuckInRock(watch, world, RAPIER, body, 1 / hz, probeOf(world, body), unindexed);
+          if (spot) moved = { f, spot: { x: +spot.x.toFixed(3), y: +spot.y.toFixed(3), z: +spot.z.toFixed(3), by: spot.by } };
+          if (f === landsOn) world.step();
+        }
+        rows.push({ landsOn, ...moved });
+      }
+      for (const row of rows) {
+        expect(row.f, `the body was never moved ${JSON.stringify({ control, rows })}`).toBeDefined();
+        expect(inRock(row.spot), `the recovery stood the body in rock that landed on frame ${row.landsOn} ${JSON.stringify({ control, rows })}`).toBe(false);
+      }
+      expect(rows[2].f, `the reading the rock landed on was not read again on the frame after the step ${JSON.stringify({ control, rows })}`).toBe(control.f + 1);
+    });
+  }
 });

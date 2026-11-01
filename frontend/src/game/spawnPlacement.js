@@ -5,6 +5,7 @@ import { LOAD_FIT_SPAN } from './formFit.js';
 import { BASE_CAPSULE } from './beasts.js';
 import { placeBody, CONTROLLER_OFFSET } from './kinematicMove.js';
 import { resetStance } from './stanceState.js';
+import { chunkOf } from '../world/chunkLayout.js';
 
 export const SPAWN_FREEZE_Y = 120;      // hold in the sky until the world builds / on void-fall
 // THE SPAWN'S WAIT FOR ITS GROUND IS TIME, NOT FRAMES. Chunk streaming follows the camera (world/Terrain.jsx): two
@@ -22,6 +23,9 @@ export const SPAWN_PROBE_MAX_SEC = 6;
 export const SPAWN_FALLBACK_Y = 60;      // if the probe never resolves
 export const SPAWN_EYE_OFFSET = 1.2;     // player center this far above ground (instant land)
 const PROBE_MIN_Y = 15;                  // physicsY <= this is rejected (origin chunks still streaming)
+// A wait's frame steps summed in floating point fall a hair short of the seconds they add up to: 360 steps of 1/60 s make
+// 5.99999..., and the 6 s fallback came a frame late at 60 Hz, on the 361st (tests/gates/player-placement-gates.test.jsx).
+const EPS = 1e-9;
 
 // THE VOID LINE IS THE WORLD'S. Its cells run from y 0 up (world/chunkLayout.js), so no floor lies lower than the top of
 // the cells at y 0, at 1: a body standing anywhere in the world, on the deep seabed (world/oceanProfile.js DEEP_FLOOR, 6)
@@ -75,7 +79,7 @@ export function resolveSpawnGround(blockGroundY, physicsY, waitedSec, probeAvail
   if (!probeAvailable) return { groundY: SPAWN_FALLBACK_Y, retry: false, incFails: false };
   const invalid = physicsY == null || Number.isNaN(physicsY) || physicsY <= PROBE_MIN_Y;
   if (!invalid) return { groundY: physicsY, retry: false, incFails: false };
-  if (waitedSec + stepSec < SPAWN_PROBE_MAX_SEC) return { groundY: null, retry: true, incFails: true };
+  if (waitedSec + stepSec < SPAWN_PROBE_MAX_SEC - EPS) return { groundY: null, retry: true, incFails: true };
   return { groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true, blind: true };
 }
 
@@ -86,9 +90,9 @@ export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
 // from SPAWN_FALLBACK_Y down the hole, fell out of the world, and the void guard sent it back to wait again: nine resets in
 // a minute's idle (registry REVIEW:l4:origin-corner-dug-through-respawn-loop; tests/gates/player-placement-gates.test.jsx).
 // So when the wait runs out, the column nearest the corner within FALLBACK_REACH whose ground answers (above PROBE_MIN_Y,
-// the spawn's own rule) is stood on, at its middle. A column in a chunk that has not streamed in answers nothing either,
-// so this stands no player on ground that is not there; with none answering, the blind drop goes ahead and is followed
-// (followBlindDrop).
+// the spawn's own rule) is stood on, at its middle; a load beside a saved column with nothing in it searches the same
+// way. A column in a chunk that has not streamed in answers nothing either, so this stands no player on ground that is
+// not there; with none answering, the blind drop goes ahead and is followed (followBlindDrop).
 // THE CAPSULE IS THE BODY'S AS IT IS. A beast form outlives the void guard's reset (returnToSpawn ends none), and the
 // bull's radius (0.62 m) and the golem's (0.5 m), with the controller's offset, reach past the column's 0.5 m half-width:
 // stood on that column's ground alone, the bull went 0.12 m into a column beside it one block higher
@@ -97,16 +101,16 @@ export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
 // Cost: up to (2 x FALLBACK_REACH)^2 probes, and the up to nine the capsule reaches, once, on the frame the wait runs out.
 const FALLBACK_REACH = 8;
 
-/** The middle of the column nearest the spawn corner within FALLBACK_REACH whose ground answers, and its ground; or null. */
-function nearestAnsweringColumn(probe) {
+/** The middle of the column nearest `at` within FALLBACK_REACH whose ground answers above `min`, its ground and its
+ *  distance; or null. */
+function nearestAnsweringColumn(probe, at = { x: 0, z: 0 }, min = PROBE_MIN_Y) {
   let best = null;
-  for (let x = -FALLBACK_REACH; x < FALLBACK_REACH; x++) {
-    for (let z = -FALLBACK_REACH; z < FALLBACK_REACH; z++) {
-      const d = Math.hypot(x + 0.5, z + 0.5);
+  for (let x = Math.floor(at.x - FALLBACK_REACH); x <= at.x + FALLBACK_REACH; x++) {
+    for (let z = Math.floor(at.z - FALLBACK_REACH); z <= at.z + FALLBACK_REACH; z++) {
+      const d = Math.hypot(x + 0.5 - at.x, z + 0.5 - at.z);
       if (d > FALLBACK_REACH || (best && d >= best.d)) continue;
       const y = probe(x, z);
-      if (y == null || Number.isNaN(y) || y <= PROBE_MIN_Y) continue;
-      best = { x: x + 0.5, z: z + 0.5, y, d };
+      if (Number.isFinite(y) && y > min) best = { x: x + 0.5, z: z + 0.5, y, d };
     }
   }
   return best;
@@ -192,33 +196,60 @@ export function spawnCornerGround(probe) {
 export const RESUME_PROBE_MAX_SEC = 10;
 
 /** The ground probe at a loaded save's column (Terrain.jsx getMobGroundLevel, which casts at x + 0.1, z + 0.1), or null
- *  until the columns at the four corners of the square the load fit reads (game/formFit.js LOAD_FIT_SPAN round the
- *  saved centre) answer too. A chunk is 16 m wide, so those corners lie in every chunk the square touches: a fit run
+ *  until every chunk the load fit reads (game/formFit.js LOAD_FIT_SPAN round the saved centre) has answered: a fit run
  *  while the chunk across a border had not streamed back yet read no ground there and stood the capsule 0.4 m into it
- *  (tests/integration/chaos-play-loads.test.jsx; chaos session origin, 120 Hz, lag 0, seed 5). */
-export function resumeColumnProbe(probe, r) {
-  for (const dx of [-LOAD_FIT_SPAN, LOAD_FIT_SPAN]) {
-    for (const dz of [-LOAD_FIT_SPAN, LOAD_FIT_SPAN]) {
-      const y = probe(Math.floor(r.x + dx) + 0.4, Math.floor(r.z + dz) + 0.4);
-      if (!Number.isFinite(y)) return null;
-    }
-  }
-  return probe(r.x, r.z);
+ *  (tests/integration/chaos-play-loads.test.jsx; chaos session origin, 120 Hz, lag 0, seed 5).
+ *   answered  (cx, cz) => whether that chunk has landed and been stepped (world/placedCellColliders.js answered) */
+export function resumeColumnProbe(probe, answered, r) {
+  return cornersAnswer(answered, r) ? probe(r.x, r.z) : null;
+}
+
+// EVERY CHUNK WITHIN `span` OF THE CENTRE HAS ANSWERED, READ CHUNK BY CHUNK. A chunk is 16 m wide, so the corners of a
+// square no wider lie in every chunk it touches. The corners' columns were read once, and a corner column dug through the
+// world answers nothing, as one in a chunk not streamed in does: a save in a shaft two wide, or on the ground beside a
+// one-wide shaft under a corner, was held its whole RESUME_PROBE_MAX_SEC and sent to the origin (the dynamic review of
+// lane L13 part 2, its F1; tests/gates/player-placement-gates.test.jsx).
+function cornersAnswer(answered, r, span = LOAD_FIT_SPAN) {
+  const sides = [-span, span];
+  return sides.every((dx) => sides.every((dz) => answered?.(chunkOf(r.x + dx), chunkOf(r.z + dz))));
+}
+
+// A SAVED COLUMN WITH NOTHING IN IT IS NOT A COLUMN STILL STREAMING. A save made in a shaft dug through the world answers
+// nothing once its chunks are back, and the hold waited its whole RESUME_PROBE_MAX_SEC for it, then sent the player to
+// the origin (registry REVIEW:l6:load-hold-empty-column). Once the chunks the fit reads have answered, a saved column that
+// answers nothing has nothing in it, and the load stands on the nearest column within FALLBACK_REACH that answers, at its
+// middle, on its ground (nearestAnsweringColumn, the spawn fallback's search), once every chunk nearer the save than that
+// column has answered (a nearer column there may be ground still streaming in) and every chunk the fit reads round that
+// spot too. A shaft wider than that reach still holds and gives up for the origin. Cost: up to the reach's 200 columns, on
+// a frame the hold would otherwise have waited.
+/**
+ * Where a loaded save stands the base capsule when its column answered nothing in chunks that have answered: the middle
+ * of the nearest column that answers, its centre the controller's offset over that column's ground; or null (the saved
+ * column answers, a chunk has not, or no column within reach answers).
+ *   probe  the ground probe (Terrain.jsx getMobGroundLevel); answered  as resumeColumnProbe's; r  the saved centre
+ */
+export function resumeBesideEmptyColumn(probe, answered, r) {
+  if (!cornersAnswer(answered, r) || Number.isFinite(probe(r.x, r.z))) return null;
+  const best = nearestAnsweringColumn(probe, r, -Infinity);
+  if (!best || !cornersAnswer(answered, r, best.d) || !cornersAnswer(answered, best)) return null;
+  return { x: best.x, y: best.y + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius + CONTROLLER_OFFSET, z: best.z };
 }
 
 // resume: the saved {x,y,z} (the body's centre when it was saved). physicsY: the ground probe AT THAT COLUMN — used only
 // as proof the column's colliders exist, never as the height (the player may have stood under a roof). Any answer is that
 // proof: the probe hits only a collider, and over the deep ocean the seabed lies at 6 to 10 (world/oceanProfile.js),
 // under the origin spawn's PROBE_MIN_Y, where a save made swimming was held 600 frames and then reset to the origin.
-// waitedSec: the seconds already held (before this frame); stepSec: this frame's step. Returns { place, hold }: hold = keep
-// the body there and wait (the caller adds stepSec to its wait); place = the saved centre, which the caller fits the base
-// capsule near (game/formFit.js fitLoadedSpot); neither = give up and use the origin spawn, on the frame whose step
-// reaches RESUME_PROBE_MAX_SEC.
-export function resolveResumeSpawn(resume, physicsY, waitedSec, stepSec = 0) {
+// waitedSec: the seconds already held (before this frame); stepSec: this frame's step; beside: resumeBesideEmptyColumn's
+// answer (the spot beside a saved column with nothing in it, or null). Returns { place, hold }: hold = keep the body there
+// and wait (the caller adds stepSec to its wait); place = the saved centre, or the spot beside it, which the caller fits
+// the base capsule near (game/formFit.js fitLoadedSpot); neither = give up and use the origin spawn, on the frame whose
+// step reaches RESUME_PROBE_MAX_SEC.
+export function resolveResumeSpawn(resume, physicsY, waitedSec, stepSec = 0, beside = null) {
   const usable = !!resume && [resume.x, resume.y, resume.z].every(Number.isFinite) && !isVoidFall(resume.y);
   if (!usable) return { place: null, hold: false };
   const loaded = Number.isFinite(physicsY);
   if (loaded) return { place: { x: resume.x, y: resume.y, z: resume.z }, hold: false };
-  if (waitedSec + stepSec < RESUME_PROBE_MAX_SEC) return { place: null, hold: true };
+  if (beside) return { place: beside, hold: false };
+  if (waitedSec + stepSec < RESUME_PROBE_MAX_SEC - EPS) return { place: null, hold: true };
   return { place: null, hold: false };
 }

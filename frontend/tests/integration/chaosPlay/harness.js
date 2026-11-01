@@ -48,7 +48,7 @@ import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/bea
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
 import { steadyEye, EYE_HEIGHT_M } from '../../../src/combat/swingOrigin.js';
 import { SEA_LEVEL, DEEP_FLOOR } from '../../../src/world/oceanProfile.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, resumeBesideEmptyColumn, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
 import { makeStuckWatch, stuckInRock } from '../../../src/game/stuckInRock.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
 import { buildSaveData, savePosition } from '../../../src/game/saveSchema.js';
@@ -252,8 +252,10 @@ function spawnBranch(S) {
   const store = useGameStore.getState();
   if (store.resumeSpawn) {
     const r = store.resumeSpawn;
-    const probeY = store.worldReloading ? null : resumeColumnProbe((x, z) => groundProbe(S, x, z), r);
-    const resume = resolveResumeSpawn(r, probeY, S.resumeWait, 1 / S.hz);
+    const probe = (x, z) => groundProbe(S, x, z);
+    const probeY = store.worldReloading ? null : resumeColumnProbe(probe, S.cells.answered, r);
+    const beside = store.worldReloading || Number.isFinite(probeY) ? null : resumeBesideEmptyColumn(probe, S.cells.answered, r);
+    const resume = resolveResumeSpawn(r, probeY, S.resumeWait, 1 / S.hz, beside);
     if (resume.hold) {
       S.resumeWait += 1 / S.hz;
       S.p.body.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
@@ -361,7 +363,7 @@ function playerFrame(S, input) {
   const speed = input.forward ? moveSpeed(loco) : 0;
   const d = { x: (look.x * speed + S.kb.x) * dt, y: S.vy * dt, z: (look.z * speed + S.kb.z) * dt };
   FORM_SWAP.consume(S);
-  moveKinematic(body, kcc, body.collider(0), d, 0, filter, S.cells.unindexed());
+  moveKinematic(body, kcc, body.collider(0), d, filter, S.cells.unindexed());
   for (let i = 0; i < kcc.numComputedCollisions(); i++) {
     const c = kcc.computedCollision(i);
     if (c && Math.abs(c.normal1.y) < 0.3) { S.stats.wallContactFrames++; break; }
@@ -424,6 +426,7 @@ export function clipInto(S, p) {
  *  body had clipped, and whether the spot is near where it clipped, not the origin. */
 export function recovered(S, spot) {
   S.stats.stuckRecoveries++;
+  if (spot.by === 'column') S.stats.stuckToColumnTop++; // the fit's last resort: through any rock over the body
   S.recent.push(`f${S.f} stood clear of the rock at ${JSON.stringify(vec(spot))}`);
   if (!S.clip) {
     note(S, 'I7', { why: 'a stuck-in-rock recovery fired on a player who had not clipped', spot: vec(spot) });
@@ -600,21 +603,27 @@ function walkOut(sb, k, jump, t0) {
   let vy = 0, out = false;
   for (let i = 0; i < ESCAPE_FRAMES && !out; i++) {
     sb.w.step();
-    const g = kcc.computedGrounded();
+    const g = supportedGround(kcc, sb.w, sb.body, sb.collider, sb.filter);
     if (jump && g) vy = jumpVelocity(formLocomotion(null)); else if (g) vy = GLUE_VELOCITY; else vy = applyGravity(vy, 1, DT);
-    moveKinematic(sb.body, kcc, sb.collider, { x: Math.cos(a) * s, y: vy * DT, z: Math.sin(a) * s }, 0, sb.filter);
+    moveKinematic(sb.body, kcc, sb.collider, { x: Math.cos(a) * s, y: vy * DT, z: Math.sin(a) * s }, sb.filter);
     const e = sb.body.nextTranslation();
     out = Math.hypot(e.x - t0.x, e.z - t0.z) >= ESCAPE_M || Math.abs(e.y - t0.y) >= ESCAPE_M;
   }
   sb.w.removeCharacterController(kcc);
   return out;
 }
-/** The player's own blocks near the body: cells the store's worldBlocks holds as placed (a nonzero block) and the world
- *  still holds solid, within OWN_REACH on each axis. */
-const OWN_REACH = 4;
+/** The player's own blocks that bound the capsule: cells the store's worldBlocks holds as placed (a nonzero block) and the
+ *  world still holds solid, within one cell of the cells the capsule fills, from the cell its feet are in up. Mined, a
+ *  shell the player built round themselves opens beside or above them. A floor of their own under the feet is not mined:
+ *  mining it drops the body out of whatever holds it, so a wedge of generated ground on a placed floor read as an own
+ *  shell, and within 4 m on every axis any own block nearby could open a wedge it does not bound (registry
+ *  REVIEW:chaos-play:own-block-escape-hides-wedge). */
 function ownCells(S, t0) {
   const out = [];
-  const near = ({ x, y, z }) => Math.abs(x + 0.5 - t0.x) <= OWN_REACH && Math.abs(y + 0.5 - t0.y) <= OWN_REACH && Math.abs(z + 0.5 - t0.z) <= OWN_REACH;
+  const c = S.p.body.collider(0), r = c.radius(), hh = c.halfHeight();
+  const x0 = Math.floor(t0.x - r) - 1, x1 = Math.floor(t0.x + r) + 1, z0 = Math.floor(t0.z - r) - 1, z1 = Math.floor(t0.z + r) + 1;
+  const y0 = Math.floor(t0.y - hh - r), y1 = Math.floor(t0.y + hh + r) + 1;
+  const near = ({ x, y, z }) => x >= x0 && x <= x1 && z >= z0 && z <= z1 && y >= y0 && y <= y1;
   for (const [k, v] of useGameStore.getState().worldBlocks) {
     if (!v) continue;
     const [x, y, z] = k.split('_').map(Number);
@@ -960,7 +969,7 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
       originColumnEdits: 0, wallContactFrames: 0, swaps: 0, swapsUnderCeiling: 0, swapsAgainstWall: 0, swapsRefused: 0, formExits: 0,
       clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, ownShellOut: 0,
       saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0,
-      voidResets: 0, framesUnderOldVoidLine: 0, shaftDigs: 0, shaftsThroughWorld: 0, clips: 0, clippedFrames: 0, stuckRecoveries: 0, blindDropsFollowed: 0 },
+      voidResets: 0, framesUnderOldVoidLine: 0, shaftDigs: 0, shaftsThroughWorld: 0, clips: 0, clippedFrames: 0, stuckRecoveries: 0, stuckToColumnTop: 0, blindDropsFollowed: 0 },
   };
   S.cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
   S.edits = createCellEdits((msg) => workerEdit(S, msg));

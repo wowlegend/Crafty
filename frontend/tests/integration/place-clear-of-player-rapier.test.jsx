@@ -208,7 +208,7 @@ function frame(P, { mx = 0, mz = 0, jump = false, hz = 60 } = {}) {
   if (jump && grounded) P.vy = JUMP_VELOCITY;
   else if (grounded) P.vy = GLUE_VELOCITY;
   else P.vy = applyGravity(P.vy, 1, dt);
-  moveKinematic(P.body, P.kcc, P.collider, { x: mx * BASE_MOVE_SPEED * dt, y: P.vy * dt, z: mz * BASE_MOVE_SPEED * dt }, 0, P.filter, P.cells?.unindexed());
+  moveKinematic(P.body, P.kcc, P.collider, { x: mx * BASE_MOVE_SPEED * dt, y: P.vy * dt, z: mz * BASE_MOVE_SPEED * dt }, P.filter, P.cells?.unindexed());
   for (let s = 0; s < Math.round(dt / DT); s++) {
     P.world.step();
     P.cells?.afterStep();
@@ -412,14 +412,10 @@ describe('a right-click never puts a block inside the player (real Rapier, real 
     const S = makeScene();
     const bull = BEAST_FORMS.ice;
     expect(bull.radius, 'SETUP: the bull is no wider than the base capsule').toBeGreaterThan(BASE_CAPSULE.radius + 0.1);
-    // Swapped as Components.jsx swaps it: the shape set in place, and the body lifted by the half-height's growth only
-    // (Math.max(0, target.halfHeight - current halfHeight), folded into that frame's moveKinematic), which is 0 for the
-    // bull: its half-height is shorter, so its lower end sits in the ground cell (registry
-    // REVIEW:fix-invisible-box:beast-swap-in-ground). The guard must read that shape where it is.
-    const lift = Math.max(0, bull.halfHeight - BASE_CAPSULE.halfHeight);
-    expect(lift, 'SETUP: the game lifts the bull, unlike the swap this test was written against').toBe(0);
+    // The shape set in place where the body stands, with no fit (game/formFit.js places the game's swap): the guard must
+    // read the shape the body has, wherever it is.
     S.p.collider.setShape(new RAPIER.Capsule(bull.halfHeight, bull.radius));
-    moveKinematic(S.p.body, S.p.kcc, S.p.collider, { x: 0, y: GLUE_VELOCITY * DT, z: 0 }, lift, S.p.filter);
+    moveKinematic(S.p.body, S.p.kcc, S.p.collider, { x: 0, y: GLUE_VELOCITY * DT, z: 0 }, S.p.filter);
     S.p.world.step();
     for (let i = 0; i < 30; i++) frame(S.p);
     const beside = { hitPoint: new THREE.Vector3(5.5, LAND_TOP, 8.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0) };
@@ -577,7 +573,7 @@ describe('a placed cell is solid to the player from the click, however late its 
   it('on a frame that took no world step (120 Hz), the guard tests where the body is going as well as where it was stepped', () => {
     const S = makeScene({ x: 4.5, z: 8.5, edits: STEP });
     // One 120 Hz frame's walk at the step, given to the body and not yet stepped.
-    moveKinematic(S.p.body, S.p.kcc, S.p.collider, { x: -BASE_MOVE_SPEED / 120, y: 0, z: 0 }, 0, S.p.filter);
+    moveKinematic(S.p.body, S.p.kcc, S.p.collider, { x: -BASE_MOVE_SPEED / 120, y: 0, z: 0 }, S.p.filter);
     const pending = S.p.body.translation().x - S.p.body.nextTranslation().x;
     expect(pending, 'SETUP: no move is pending').toBeGreaterThan(0.1);
     expect(depth(S, CELL), 'SETUP: the stepped capsule already reaches the cell').toBe(0);
@@ -648,6 +644,19 @@ describe('a placed cell is solid to the player from the click, however late its 
     expect(real.seen.listed, 'SETUP: the far chunk\'s new trimesh is not handed to the cut').toEqual([real.seen.far]);
     expect(real.walk, `the far chunk's first trimesh, at x ${real.seen.xAtSweep} when the sweep ran, cut the walk over the origin to ${real.walk.toFixed(3)} of ${open.toFixed(3)} m`).toBeCloseTo(open, 4);
     expect(real.S.recs.get(key).collider.translation().x, 'SETUP: the far chunk\'s trimesh is not at its place after the step').toBe(FAR[0] * CHUNK_SIZE);
+
+    // Two far chunks streaming in together, first-mounted in one commit in that one window: the second lands with the
+    // first's trimesh already listed, and its own trimesh must be put where its body is as well.
+    const key2 = [FAR[0] + 1, FAR[1]].join('_');
+    const two = thirdWalk((S) => {
+      S.chunks.set(key, highLand());
+      S.chunks.set(key2, highLand());
+      mountChunks(S, [{ key, editSeq: 0 }, { key: key2, editSeq: 0 }]);
+      const far = [key, key2].map((k) => S.recs.get(k).collider);
+      return { listed: S.cells.unindexed().map((c) => c.handle), far: far.map((c) => c.handle), xAtSweep: far.map((c) => c.translation().x) };
+    });
+    expect(two.seen.listed, 'SETUP: the two far chunks\' new trimeshes are not both handed to the cut').toEqual(two.seen.far);
+    expect(two.walk, `two far chunks' first trimeshes, at x ${two.seen.xAtSweep.join(' and ')} when the sweep ran, cut the walk over the origin to ${two.walk.toFixed(3)} of ${open.toFixed(3)} m`).toBeCloseTo(open, 4);
   });
 
   it('between its trimesh landing and the next step, a ray at the placed cell still meets it', () => {

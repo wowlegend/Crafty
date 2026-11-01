@@ -19,7 +19,7 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, resumeBesideEmptyColumn, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
 import { makeStuckWatch, stuckInRock } from './game/stuckInRock.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
@@ -1051,8 +1051,13 @@ export const Player = ({ isWorldBuilt }) => {
       //    follows it. Until the old world's wipe has committed the probe is not asked (store worldReloading).
       if (store.resumeSpawn) {
         const r = store.resumeSpawn;
-        const probeY = store.getMobGroundLevel && !store.worldReloading ? resumeColumnProbe(store.getMobGroundLevel, r) : null;
-        const resume = resolveResumeSpawn(r, probeY, resumeWaitRef.current, delta);
+        const probing = !!store.getMobGroundLevel && !store.worldReloading;
+        // Which chunks have answered: the placed-cell registry's, which Terrain.jsx tells each chunk mesh that lands.
+        const answered = GameMethods.placedCells?.answered;
+        const probeY = probing ? resumeColumnProbe(store.getMobGroundLevel, answered, r) : null;
+        // A saved column with nothing in it, once its chunks have answered: the spot beside it (resumeBesideEmptyColumn).
+        const beside = probing && !Number.isFinite(probeY) ? resumeBesideEmptyColumn(store.getMobGroundLevel, answered, r) : null;
+        const resume = resolveResumeSpawn(r, probeY, resumeWaitRef.current, delta, beside);
         if (resume.hold) {
           resumeWaitRef.current += delta;
           rigidBodyRef.current.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
@@ -1067,8 +1072,7 @@ export const Player = ({ isWorldBuilt }) => {
           // can hold a spot in a wall or under the ground (the old Save button's rounded camera).
           // The collider goes with it (game/kinematicMove.js placeBody): the next frame sweeps from the fitted spot, not
           // from the held one in the wall.
-          const spot = fitLoadedSpot(world, rapier, rigidBodyRef.current, resume.place, store.getMobGroundLevel, { unindexed: GameMethods.placedCells?.unindexed() });
-          const at = { x: spot.x, y: spot.y, z: spot.z };
+          const at = fitLoadedSpot(world, rapier, rigidBodyRef.current, resume.place, store.getMobGroundLevel, { unindexed: GameMethods.placedCells?.unindexed() });
           placeBody(world, rigidBodyRef.current, at);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
           camera.position.set(at.x, at.y + EYE_HEIGHT_M, at.z);
@@ -1123,7 +1127,8 @@ export const Player = ({ isWorldBuilt }) => {
       }
       if (!standAt) standAt = stuckInRock(stuckWatchRef.current, world, rapier, body, delta, store.getMobGroundLevel, GameMethods.placedCells?.unindexed());
       if (standAt) {
-        console.warn('Player was in the rock; stood clear where they were.');
+        // The fit's last resort stands the body on its column's top through whatever rock is over it: said apart.
+        console.warn(standAt.by === 'column' ? 'Player was in the rock; stood on its column\'s top, through the rock over it.' : 'Player was in the rock; stood clear where they were.');
         placeBody(world, body, standAt);
         body.setLinvel({ x: 0, y: 0, z: 0 }, true);
         velocityY.current = 0;
@@ -1476,7 +1481,7 @@ export const Player = ({ isWorldBuilt }) => {
     // it is ground the capsule stands and stalls on for its 2 s.
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
-      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, 0, filterPredicate, GameMethods.placedCells?.unindexed(),
+      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, filterPredicate, GameMethods.placedCells?.unindexed(),
         rapier.QueryFilterFlags.EXCLUDE_DYNAMIC);
     }
 
