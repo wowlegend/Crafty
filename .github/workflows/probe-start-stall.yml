@@ -1,0 +1,65 @@
+name: probe start-stall
+
+# THROWAWAY PROBE WORKFLOW (lane start-stall, fix round 3). It runs on this lane's own branch and is removed by the lane's
+# next commit; it never reaches main with a live trigger. It proves the reworked tests/e2e/start-before-built.spec.js
+# (carried in ci-probe/ and copied into place on the runner) on the runner: the shipped outlined caption 8 times, and the mutants
+# the late arm's answered-only floors must keep red or green (a slow leak twice, an identity edit twice) beside the rest once
+# each, through scripts/dev/mutate-e2e.sh, which applies it, runs the spec and restores it (nothing mutated is committed).
+# mutate-e2e.sh is patched on the runner to stream the spec's output as it runs (tee), so every 2 s sample reaches the log
+# even when a runner is shut down; the memory line lists the four largest processes.
+on:
+  push:
+    branches: [fix/start-before-built-stall]
+    paths: [ci-probe/**, .github/workflows/probe-start-stall.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: probe-start-stall-${{ github.sha }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  prove:
+    name: start-before-built ${{ matrix.case }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [outline-a, outline-b, e1, silence, slowleak, slowleak2, nobuild, nolock, e0, e0b]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Prove
+        env:
+          CASE: ${{ matrix.case }}
+        run: |
+          (while true; do echo "[mem] $(date -u +%T) used/total MB $(free -m | awk 'NR==2{print $3"/"$2}') avail $(free -m | awk 'NR==2{print $7}') top: $(ps -eo rss=,comm= --sort=-rss | head -4 | awk '{printf "%s %dMB; ", $2, $1/1024}')"; sleep 10; done) &
+          SPEC=tests/e2e/start-before-built.spec.js
+          cp ../ci-probe/start-before-built.spec.js "$SPEC"
+          sed -i 's|^npx playwright test "$SPEC" --reporter=line --retries=0 > "$OUT" 2>&1$|npx playwright test "$SPEC" --reporter=line --retries=0 2>\&1 \| tee "$OUT"|' scripts/dev/mutate-e2e.sh
+          grep -c 'tee "$OUT"' scripts/dev/mutate-e2e.sh
+          case "$CASE" in
+            outline-a|outline-b) npx playwright test "$SPEC" --repeat-each=4 --retries=0 --reporter=list ;;
+            raw) python3 ../ci-probe/arm.py variant raw && npx playwright test "$SPEC" --repeat-each=4 --retries=0 --reporter=list ;;
+            *) M="$RUNNER_TEMP/mutant"
+               python3 ../ci-probe/arm.py mutant "$CASE" "$M"
+               sh scripts/dev/mutate-e2e.sh "$(cat "$M/subj")" "$SPEC" "$(cat "$M/label")" "$(cat "$M/old")" "$(cat "$M/new")" $(cat "$M/mode") ;;
+          esac
