@@ -62,11 +62,18 @@ export function makeStuckWatch() {
  *   body       the player's kinematic body; its collider(0) is the shape it has now (a beast form's too)
  *   stepSec    this frame's step
  *   probe      the ground probe (Terrain.jsx getMobGroundLevel), for the column-top fallback
- *   unindexed  the colliders made since the last world step (world/placedCellColliders.js), which queries cannot see yet
+ *   unindexed  the colliders made since the last world step (world/placedCellColliders.js), which queries cannot see yet:
+ *              no reading is taken while there are any
  */
 export function stuckInRock(watch, world, rapier, body, stepSec, probe, unindexed) {
   watch.sinceRead += stepSec;
   if (watch.sinceRead < STUCK_CHECK_SEC - EPS) return null;
+  // A READING WAITS FOR THE WORLD STEP AFTER A COLLIDER IS MADE. A chunk's trimesh made since the last step is not in the
+  // broad phase (world/placedCellColliders.js), so cellSolid's rays miss it and a capsule wholly inside it touches none of
+  // its faces: a body moved on that frame was stood inside rock that had just landed beside it, at 60 and 120 Hz
+  // (tests/integration/stuck-in-rock-rapier.test.js; the static review of lane L13 part 2's round 2, its N3). The
+  // reading is taken on the first frame with nothing unindexed; the next step clears the list.
+  if (unindexed && unindexed.length) return null;
   const since = watch.sinceRead;
   watch.sinceRead = 0;
   const at = body.translation();
