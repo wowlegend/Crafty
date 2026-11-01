@@ -267,6 +267,32 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
     expect(r.end.y, `the player does not stand on the saved column's top ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
   });
 
+  it('a load\'s hold waits for the chunk across a border 1.01 m off, inside the reach of the fit\'s confirming balls', () => {
+    // The fit reads the colliders out to its reach plus a confirming ball's radius (game/formFit.js: 0.6 m and 0.4 x 1.033
+    // + 0.01 m, 1.023 m in all), so a border 1.01 m from the saved centre is inside it; the corners must reach it too
+    // (registry REVIEW:chaos-play:corner-probe-span-short).
+    const hz = 60;
+    standPlayer(hz);
+    const late = chunks.get('-1_0');
+    h.world.removeRigidBody(late.body);
+    chunks.delete('-1_0');
+    const saved = { x: -8.5, y: LAND_TOP + 0.95, z: 17.01 };
+    load(saved, hz, 2);
+    expect(groundProbe(saved.x, saved.z - 1.0), 'SETUP: the column a metre short of the border has not answered').toBeCloseTo(LAND_TOP, 3);
+    expect(groundProbe(saved.x, saved.z - 1.15), 'SETUP: the column across the border answers').toBeNull(); // the probe casts 0.1 m on
+    for (let i = 0; i < 20; i++) {
+      frame(hz);
+      expect(useGameStore.getState().resumeSpawn, `the hold let the player go on frame ${i} with chunk -1_0, 1.01 m off, not back ${JSON.stringify(at())}`).toEqual(saved);
+    }
+    mountChunk('-1_0');
+    let placedOn = null;
+    for (let i = 0; i < 5 && placedOn === null; i++) {
+      frame(hz);
+      if (!useGameStore.getState().resumeSpawn) placedOn = i;
+    }
+    expect(placedOn, `the hold did not let the player go once chunk -1_0 was back ${JSON.stringify(at())}`).not.toBeNull();
+  });
+
   it('a load whose column never streams in is held the same time at 60 and 120 Hz, longer than the origin spawn\'s wait, then gives up for the origin', () => {
     // A save far outside the loaded chunks: its column never answers, so the hold runs to its end (game/spawnPlacement.js
     // resolveResumeSpawn). The wait is time, so a 120 Hz display holds as long as a 60 Hz one.

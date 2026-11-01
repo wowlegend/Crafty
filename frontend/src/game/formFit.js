@@ -24,15 +24,20 @@ const RISE = 0.15; // the furthest lift above the kept lower end
 // 0.36 m); a capsule moved down into the ground still crosses its top face, so it is refused, never placed inside.
 const DROP = 0.4;
 const MARGIN = 0.01; // the clearance the placed capsule keeps from every collider
+// The confirming balls' radius over the capsule's (clearTest says why they are there): balls half a radius apart grown by
+// the sliver left between neighbours, 3.2 % of the radius.
+const BALL_GROWTH = 1.033;
 
 // A loaded save's spot (fitLoadedSpot) is searched wider: the Save button before DECISIONS 2026-10-30 item 153 wrote the
 // camera rounded to whole metres, so a save on disk can stand the centre up to 0.5 m sideways into a wall and up to 1.17 m
 // above the body (the eye is 0.67 m over the centre). Wider than REACH is safe there only because each spot's own cell
 // is asked whether it is solid ground (cellSolid), which the form swap's short reach stands in for.
 const LOAD_REACH = 0.6;
-/** How far sideways from a loaded save's centre the fit reads the colliders: the capsule's radius past its reach. The
- *  resume hold waits until every chunk within it has answered (game/spawnPlacement.js resumeColumnProbe). */
-export const LOAD_FIT_SPAN = BASE_CAPSULE.radius + LOAD_REACH;
+/** How far sideways from a loaded save's centre the fit reads the colliders: a confirming ball's radius past its reach,
+ *  the furthest any query reaches. The resume hold waits until every chunk within it has answered
+ *  (game/spawnPlacement.js resumeColumnProbe); spanned by the capsule's radius alone it stopped 2.3 cm short, and a border
+ *  in that band was fitted against unstreamed (tests/gates/player-placement-gates.test.jsx). */
+export const LOAD_FIT_SPAN = LOAD_REACH + BASE_CAPSULE.radius * BALL_GROWTH + MARGIN;
 const LOAD_RISE = 0.6;
 const LOAD_DROP = 1.2;
 const LOAD_FALLBACK_GAP = 0.05; // the drop onto the column's top when nothing near the saved spot is clear
@@ -68,7 +73,7 @@ function clearTest(world, rapier, body, shape, { filter, unindexed } = {}) {
   // neighbours (3.2 % of the radius), cover the capsule; they are asked only of a spot the capsule query passed.
   const gap = shape.radius / 2;
   const n = Math.max(1, Math.ceil((2 * shape.halfHeight) / gap));
-  const ball = new rapier.Ball(shape.radius * 1.033 + MARGIN);
+  const ball = new rapier.Ball(shape.radius * BALL_GROWTH + MARGIN);
   return (p) => {
     if (blocked(capsule, p)) return false;
     for (let i = 0; i <= n; i++) {
