@@ -530,6 +530,7 @@ export const useGameStore = create((set, get) => ({
     spawnEnemyProjectile: null, // systems/EnemyProjectileSystem.jsx
     triggerGPUSparks: null, // world/GPUSparkSystem.jsx
     spawnDeterministicCast: null, // EnhancedMagicSystem.jsx, for the visual fixtures (devtest/devBridge.js)
+    endDeterministicCast: null, // EnhancedMagicSystem.jsx, for the lookbook's unstage() (render/lookbookSeam.js)
     onNightSurvived: null, // QuestSystem.jsx: the night quest's counter
     onLevelChanged: null, // QuestSystem.jsx: the level quest's counter, called by SimpleExperienceSystem.jsx
     // The primary action's seams (input/primaryInput.js): the touch overlay presses and releases through them.

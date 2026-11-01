@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { MOB_TYPES } from '../game/mobTypes';
-import { mobFeatures, hasHostileEyes } from '../game/mobFeatures';
+import { hasHostileEyes } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
 import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
 import { isStaggered, staggerPose } from '../game/perfectDodge.js';
@@ -13,16 +13,17 @@ import { dissolvePose, DEATH_DISSOLVE_MS } from '../game/deathFx';
 import { worldDelta, worldNow } from '../game/worldClock.js';
 import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
-import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
+import { OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
-import { rememberAuthoredColor, restoreAuthoredColor } from './mobFlash.js';
+import { mobLook, applyMobLook } from './feedbackGrammar.js';
+import { mobTones, HOSTILE_EYE } from './mobTones.js';
+import { drawnFeatures } from '../night/eliteLook.js';
 import { featureColor } from '../game/mobFeatures.js';
 import { VILLAGER_GREETINGS } from '../game/villagerGreetings.js';
 import { useT } from '../i18n/i18n.js';
 
 // MobModel + HealthBar — the mob render cluster, extracted BYTE-EXACT from SimplifiedNPCSystem.jsx
-// (S3-M6 NPC de-monolith). OUTLINE_RIM_STRENGTH moved here (its only user). NPCSystem imports MobModel.
-const OUTLINE_RIM_STRENGTH = RIM.strength;
+// (S3-M6 NPC de-monolith). NPCSystem imports MobModel.
 
 // Mob-distinctness T3: a feature box's shade from its `tone` hint — 'bone' = a pale off-white (horns,
 // ribs), 'dark' = the body color crushed ~55% (shoulder slabs, moss-crown), else the body color.
@@ -43,19 +44,26 @@ const MobModel = React.memo(({ entity }) => {
   const [headW, headH, headD] = entity.headSize || mobConfig.headSize;
 
   // Mob-distinctness T3: per-type silhouette feature boxes (pure game/mobFeatures), derived from the
-  // body dims. Empty for unfeatured types (pig/zombie/villager/spider) -> zero render change for them.
+  // body dims. Empty for unfeatured types (pig, spider) -> zero render change for them.
+  // An elite's crest and a captain's banner join them (src/night/eliteLook.js); `entity.elite` is set at spawn.
   const features = useMemo(
-    () => mobFeatures(entity.type, { bodyW, bodyH, bodyD, headW, headH, headD }),
-    [entity.type, bodyW, bodyH, bodyD, headW, headH, headD],
+    () => drawnFeatures(entity.type, entity.elite, { bodyW, bodyH, bodyD, headW, headH, headD }),
+    [entity.type, entity.elite, bodyW, bodyH, bodyD, headW, headH, headD],
   );
+
+  // Two more tones on parts the mob already has (render/mobTones.js): a lighter head, darker legs.
+  const tones = useMemo(() => mobTones(entity.color), [entity.color]);
 
   const qualityTier = useGameStore(state => state.qualityTier) || 'low';
   const q = TIERS[qualityTier] || TIERS.low;
-  const rimStrength = q.charRim ? OUTLINE_RIM_STRENGTH : 0;
 
-  const hitColor = useMemo(() => new THREE.Color('#ffffff'), []);
-  const blackColor = useMemo(() => new THREE.Color('#000000'), []);
-  const chargeColor = useMemo(() => new THREE.Color('#ff3a00'), []); // M2 #4: telegraph charge glow (danger red-orange)
+  // This mob's look this frame and its contact sequence (render/feedbackGrammar.js), written into its materials below.
+  // `visit` is made once, so the per-frame traverse allocates nothing.
+  const look = useMemo(() => {
+    const l = { seq: {}, outline: new THREE.Color(), rim: new THREE.Color() };
+    l.visit = (child) => { if (child.material) applyMobLook(child.material, l); };
+    return l;
+  }, []);
 
   const [dialogue, setDialogue] = useState(null);
 
@@ -128,6 +136,10 @@ const MobModel = React.memo(({ entity }) => {
     // Cover-seeking shield aura: transient visibility from the worker-mutated field (memo-proof).
     if (coverAuraRef.current) coverAuraRef.current.visible = !!entity.isCoverSeeking;
 
+    // The look this frame (render/feedbackGrammar.js): contact (a 70 ms flash on the lit band, a white edge, a 50 ms
+    // squash, all by the feedback dial), else a stagger, else a windup heating the edge, else rest.
+    mobLook(entity, performance.now(), wnow, useGameStore.getState().juiceIntensity ?? 1, look.seq, look);
+
     // 2. Squash & Tilt Flinch Animation
     if (modelRef.current) {
       if (entity.dyingUntil) {
@@ -142,10 +154,9 @@ const MobModel = React.memo(({ entity }) => {
       const hitElapsed = entity.lastHit ? (performance.now() - entity.lastHit) : Infinity;
       if (hitElapsed < 250) {
         const t = hitElapsed / 250;
-        const wave = Math.sin(t * Math.PI); // sine curve 0 -> 1 -> 0
-        const scaleY = 1.0 - wave * 0.15; // Y squishes down to 0.85
-        const scaleXZ = 1.0 + wave * 0.1; // X/Z swells to 1.10
-        modelRef.current.scale.set(scaleXZ, scaleY, scaleXZ);
+        const wave = Math.sin(t * Math.PI); // sine curve 0 -> 1 -> 0, the tilt's 250 ms
+        // The contact squash: Y to 0.85 and X/Z to 1.10 at its peak, over about 50 ms after the flash.
+        modelRef.current.scale.set(1 + look.squash * 0.1, 1 - look.squash * 0.15, 1 + look.squash * 0.1);
 
         // Tilt the model in the direction it was hit (entity.hitDirection = away-from-player, world),
         // converted into the model's facing-local frame. Falls back to a flat back-lean if no dir yet.
@@ -178,39 +189,9 @@ const MobModel = React.memo(({ entity }) => {
       }
     }
 
-    // 3. Handle hit flash visually
-    const isHit = entity.lastHit && (performance.now() - entity.lastHit < 300);
-    // M2 #4: telegraph charge glow -- ramps the body emissive up toward the strike (not while hit-flashing).
-    const charging = !isHit && !isStaggered(entity, wnow) && entity.windupUntil && wnow < entity.windupUntil;
-    const chargeI = charging
-      ? (0.6 + 0.4 * Math.sin(wnow * 0.025)) * windupRamp(wnow, entity.windupUntil, WINDUP_MS) ** 2 * 1.5
-      : 0;
-    
-    groupRef.current.traverse((child) => {
-      // Only flash lit body materials (Standard/Toon). The drei outline mesh
-      // (BackSide ShaderMaterial, exposes a `.color` uniform) and the basic-material
-      // eyes must NOT be mutated, or the outline color would be clobbered each frame.
-      if (child.isMesh && flashableMaterial(child.material) && child.material.name !== "eye") {
-         // Record this material's OWN authored colour before the first flash ever touches it, then
-         // restore to THAT. The old line copied `baseColor` — the body colour — into every flashable
-         // material, so feature tones authored by featureColor() ('#e6dcc4' for bone, a 0.55-scaled base
-         // for dark) were stomped flat by the first hit and never came back. Invisible to the visual
-         // baselines, because damage has to be inflicted before it shows.
-         rememberAuthoredColor(child.material);
-         if (isHit) child.material.color.copy(hitColor);
-         else restoreAuthoredColor(child.material);
-         if (isHit) {
-           child.material.emissive.copy(hitColor);
-           child.material.emissiveIntensity = 1.5;
-         } else if (charging) {
-           child.material.emissive.copy(chargeColor);
-           child.material.emissiveIntensity = chargeI;
-         } else {
-           child.material.emissive.copy(blackColor);
-           child.material.emissiveIntensity = 0;
-         }
-      }
-    });
+    // 3. Write the look into the hulls and the rim materials: uniforms only, never a colour or an emissive, so every
+    // part keeps its authored tone and the toon bands stay readable.
+    groupRef.current.traverse(look.visit);
 
     // 4. Procedural Mob Animations & IK — gait speed reads the DAMPED group motion (moves every
     // frame), not the raw entity position (15Hz authority steps: zero delta on 3 of 4 frames
@@ -267,18 +248,19 @@ const MobModel = React.memo(({ entity }) => {
   });
 
   return (
-    <group ref={groupRef} position={[entity.position.x, entity.position.y, entity.position.z]} rotation={[0, entity.rotation, 0]}>
+    // name: what the lookbook's frame() counts as a mob drawn in view (render/lookbookSeam.js)
+    <group ref={groupRef} name="mob" position={[entity.position.x, entity.position.y, entity.position.z]} rotation={[0, entity.rotation, 0]}>
       <group ref={modelRef}>
         {/* Body */}
         <mesh castShadow receiveShadow position={[0, bodyH / 2, 0]}>
           <boxGeometry args={[bodyW, bodyH, bodyD]} />
-          <MobToonMaterial color={entity.color} rimStrength={rimStrength} />
+          <MobToonMaterial color={entity.color} />
           {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
         </mesh>
         {/* Head */}
         <mesh castShadow receiveShadow position={[0, bodyH + headH / 2, bodyD / 3]}>
           <boxGeometry args={[headW, headH, headD]} />
-          <MobToonMaterial color={entity.color} rimStrength={rimStrength} />
+          <MobToonMaterial color={tones.head} />
           {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
         </mesh>
         {/* Eyes for hostile mobs */}
@@ -286,11 +268,11 @@ const MobModel = React.memo(({ entity }) => {
           <>
             <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
               <boxGeometry args={[0.15, 0.1, 0.02]} />
-              <meshBasicMaterial name="eye" color="#ff0000" />
+              <meshBasicMaterial color={HOSTILE_EYE} />
             </mesh>
             <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
               <boxGeometry args={[0.15, 0.1, 0.02]} />
-              <meshBasicMaterial name="eye" color="#ff0000" />
+              <meshBasicMaterial color={HOSTILE_EYE} />
             </mesh>
           </>
         )}
@@ -309,7 +291,7 @@ const MobModel = React.memo(({ entity }) => {
             {/* Protruding nose */}
             <mesh castShadow receiveShadow position={[0, bodyH + headH / 2 - 0.1, bodyD / 3 + headD / 2 + 0.06]}>
               <boxGeometry args={[0.12, 0.25, 0.15]} />
-              <MobToonMaterial color="#d2b48c" rimStrength={rimStrength} />
+              <MobToonMaterial color="#d2b48c" />
               {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
             </mesh>
           </>
@@ -317,10 +299,10 @@ const MobModel = React.memo(({ entity }) => {
         {/* Legs */}
         {(entity.legMode ? entity.legMode !== 'spider' : entity.type !== 'spider') ? (
           <>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={tones.leg} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={tones.leg} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={tones.leg} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={tones.leg} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
           </>
         ) : (
           [...Array(8)].map((_, i) => (
@@ -328,7 +310,7 @@ const MobModel = React.memo(({ entity }) => {
               Math.cos((i / 8) * Math.PI * 2) * 0.8, 0, Math.sin((i / 8) * Math.PI * 2) * 0.8
             ]} rotation={[0, 0, Math.PI / 4]}>
               <boxGeometry args={[0.1, 0.8, 0.1]} />
-              <MobToonMaterial color={entity.color} rimStrength={rimStrength} />
+              <MobToonMaterial color={tones.leg} />
               {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
             </mesh>
           ))
@@ -337,9 +319,9 @@ const MobModel = React.memo(({ entity }) => {
             body-local frame, same toon material + inverted-hull outline as the body so the creature
             reads as ONE form; `tone` shades them. Empty for unfeatured types (no render change). */}
         {features.map((f, i) => (
-          <mesh key={`feat-${i}`} castShadow receiveShadow position={f.pos} rotation={f.rot || [0, 0, 0]}>
+          <mesh key={`feat-${i}`} castShadow={!f.elite} receiveShadow position={f.pos} rotation={f.rot || [0, 0, 0]}>
             <boxGeometry args={f.box} />
-            <MobToonMaterial color={featureColor(f.tone, entity.color)} rimStrength={rimStrength} />
+            <MobToonMaterial color={featureColor(f.tone, entity.color)} emissive={f.tone === 'ember' ? '#FF7A2A' : '#000000'} emissiveIntensity={0.6} />
             {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
           </mesh>
         ))}

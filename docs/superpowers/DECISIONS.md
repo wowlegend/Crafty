@@ -138,9 +138,10 @@ commit carries a `Mutation-Proof:` trailer with two comment-only identity mutant
 453. **The index budget, reconciled with the command session's ruling.** The ruling (session record, 2026-11-01): PR B's
    growth is accepted, and PR C's C0 frees at least 2,500 B before PR C's index units land. Item 446's numbers stand
    for round 1 (651,413 B; the builder's QUESTION.md, which said +2,311 B and 651,434 B, was a draft and is corrected
-   to them). Round 2 nets +102 B: 651,515 B at this round's head, 985 B under 652,500. The task script's units after PR B share about 4.7 KB of index and C0 frees 2,500 B, a net of about
-   2.2 KB against those 985 B, so PR C fits only if C0 frees about 3,700 B or its units come in under their shares;
-   PR A's own growth is not counted here.
+   to them). Round 2 nets +102 B (651,515 B), and main's PR A, merged in, adds its +105 B (item 436): 651,620 B at
+   this round's head, 880 B under 652,500. The task script's units after PR B share about 4.7 KB of index and C0
+   frees 2,500 B, a net of about 2.2 KB against those 880 B, so PR C fits only if C0 frees about 3,800 B or its units
+   come in under their shares.
 454. **G2b's claim is narrowed to the colour model; the midnight brazier stays open, for W3-A unit L1.** G2b reads the
    model's pad by the fire, not the screen, which still reads it maroon at midnight under amber (item 440). Its test
    name, its blind-spot note (which had kept history: the old orange's numbers) and the `HEARTH_FIRE` comment now say
@@ -159,6 +160,138 @@ commit carries a `Mutation-Proof:` trailer with two comment-only identity mutant
    twelve jobs, each carrying a completion time before its start time by GitHub's own record; `runtime reach (merged)`
    and `ci ok`, which need the e2e matrix, were never created, so the PR stayed blocked (the dynamic review, item 1).
    Nothing in `ci.yml` explains it; this round's push runs CI again on its own head.
+
+---
+
+## 2026-11-01 (W3-A PR A) — [LOOP] one feedback grammar: danger at the edge, contact on the lit band, magic as a solid core
+
+The W3-A task script's PR A (F0-F5), a re-cut at `eff58e9a` of the feedback-grammar plan
+(`docs/superpowers/plans/2026-10-27-crafty-feedback-grammar.md`) M1, M2, M4, M5 and M7, and the siege plan's Move E.
+Branch `feat/w3a-feedback-grammar`. Each call below was checked against the code at HEAD before it was taken.
+
+420. **The lookbook's combat stage holds a moment with the world's own freeze, not a `lookHold` field.** The plan had
+   `mobLook` honour an `entity.lookHold` set by the seam and the DEV e2e. `stage()` (render/lookbookSeam.js, the lazy
+   chunk) instead freezes the world through the store's `triggerHitstop` (so the AI worker neither moves the mob nor
+   replaces its windup), plants `windupUntil` at 0.8 of the ramp on the world clock, and renews `lastHit` every frame
+   for a hit: the game code reads only the fields it already reads, and no test branch sits in the per-frame look.
+   The same stage holds a spell (`moment: 'cast'`, the spell system's deterministic cast) and an elite's rank. Draws
+   per frame are counted at the WebGL context (`scripts/visual/_glDrawCounter.mjs`), because renderer.info resets at
+   every render() call and postprocessing calls it once per pass.
+421. **Danger is an edge colour, plain danger red, and the rim runs at every tier.** A windup carries the ink outline
+   and the rim's colour from rest to `#ff3a00` over the ramp squared; the rim's strength and power do not ramp (a box
+   face has no fresnel edge, plan amendment 2) and the body takes no emissive. The plan's M1 option (b) is taken: the
+   edge is about sRGB (0.95, 0.25, 0.13) through the Neutral tone map and does not bloom, so the eyes stay a mob's only
+   glow. The 4 Hz throb is dropped (the monotonic ramp tells the timing). `charRim` is deleted from `render/quality.js`
+   (MobModel was its only reader); the iPad's low tier now draws the rim. The plan's mood rim (moon-white at night) is
+   not built: at HEAD `moodRef` is the storm and obsidian overlay, not night (`render/mood.js` header).
+422. **Contact is about 70 ms of white on the band facing the key light, a white edge, and a 50 ms squash.** It
+   supersedes the 300 ms whole-body flood (colour and emissive). FLASH holds 70 ms and at least one drawn frame; SQUASH
+   50 ms and at least two frames, through 1, 0.6, 0.25, so it lasts about 50 ms at 120 Hz and at 30 fps. The flash is a
+   term in the one rim program (`characterStyle.js FLASH_GLSL`), identity at 0 for the beast and the props. Reduced
+   motion keeps the white edge only. MobModel writes uniforms only, so `render/mobFlash.js` (the authored-colour
+   restore the flood needed), its gate and `flashableMaterial` are deleted, and an authored emissive survives. The key
+   light is the moon at night (`render/keyLight.js`), so the plan's elevation fallback is not needed.
+423. **Only a hostile's eyes glow, and identity costs no draw.** The eyes are red lifted to 1.25x the bloom threshold
+   by the bloom pass's own luminance weights (`render/hdrGain.js`, which is now the one home of `BLOOM_THRESHOLD`;
+   GameScene passes it). The plan's part tones were a flush plate and a strap box per mob, each a mesh and an ink hull
+   on every mob of a 40-mob night; they are instead a lighter head and darker legs on parts every mob already has
+   (`render/mobTones.js`), so the unit adds no part, draw or program.
+424. **A spell is a solid core ringed in ink under one additive glow.** The silhouette is now opaque and
+   depth-written with the mobs' ink outline; the two additive white-hot core spheres (depthTest off) and the bolt's
+   five white filaments are deleted, and the bolt, the sigil's accent ring and its motes are solid. Mounted draws per
+   projectile: fire 5 to 4, ice 5 to 4, lightning 15 to 13, arcane 12 to 11 (F4's commit body says fire 5 to 5: wrong,
+   the mounted count is 4). Lightning's strobe lever drove the deleted core's opacity, so the bolt no longer flickers.
+   The plan's merged bolt and sigil geometries and puff pool are row 49's draw cut, and the impact grammar (plan M6: a
+   mark, a ground ring, voxel debris) is deferred to `MASTERPIECE:one-feedback-grammar/c`.
+425. **Elites wear an ember crest and the captain a banner (Move E), drawn by MobModel from `entity.elite`.**
+   `src/night/eliteLook.js` returns the boxes in mobFeatures' vocabulary, each with no shadow; MobModel imports it
+   directly (index), because it reads `entity.elite` at mount; PR C's spawner sets the field. The crest's emissive is
+   `#FF7A2A` at 0.6, under the bloom threshold, so it reads at night without competing with the eyes.
+426. **PR A nets fewer index bytes than main.** 647,757 B on main; F0 +12, F1 +13, F2 +383, F3 +335, F4 -1,651 (the
+   deleted layers and duplicated material props), F5 +624: 647,473 B, 284 B under main, against the task script's
+   400 B allowance. The ceiling (652,500 B) is unchanged.
+
+**Round 2, the fix round (from `a6529156`).** Main `3442443d` (lane L13 part 1) merged at `7230ea86`. Each finding of
+the two round-1 reviews below was fixed with its gate red first, or filed. Frames: `lookbook.mjs --sets combat`, on the
+production build, M3 Max, Chromium 1280x800 at high and WebKit 1180x820 and 820x1180 held at the iPad's low tier.
+
+427. **The ice crystal carries an identity index, so its ink builds the hull from its own copy.** drei's `<Outlines>`
+   builds its hull with three-stdlib's `toCreasedNormals`, which copies an indexed geometry but rewrites a non-indexed
+   one's normals in place, and disposes it on unmount. The shared `ICE_SHARDS` was non-indexed, so the first cast
+   smoothed it for the session and each projectile that ended disposed it under the live ones. Every face still owns
+   its three vertices, so the crystal keeps its per-face normals. The cost is a 72-vertex copy per mounted ice
+   projectile, freed with it, which the other inked cores already paid. `angle={0}` was the alternative: no copy, but a
+   hull pushed along flat normals splits at every facet. Gate: `spell-grammar-gates`, two ice projectiles in a row.
+428. **The mounted MobModel is gated.** Round 1's dynamic review cut seven wires in MobModel at once and the unit suite
+   stayed green. `mob-model-look-gates` mounts the real MobModel through R3F's reconciler with drei's real Outlines and
+   reads what a frame writes: the flash and white edge, the 50 ms squash, reduced motion, the head and leg tones, and an
+   elite's boxes, drawn with no shadow and with their glow. It sees writes, not pixels; the e2e reads the pixels.
+429. **An elite's crest takes a seat per type, the husk wears its own crown in ember, and a nametag stands over the
+   whole silhouette.** It supersedes item 425's one placement, which put the crest's side boxes inside a duskhound's
+   ears, its centre through a skitterling's antennae and the whole crest into the husk's and the moss brute's crowns,
+   and ran the nametag's bar through a zombie's crest. The crest is sized to the head's width (the zombie's is
+   unchanged) and seated in fractions of the head: behind the duskhound's ears with its side boxes between them, behind
+   the skitterling's antennae, on the moss brute's moss crown. The husk's charred crown is a three-spike crest at the
+   same spot, so an elite husk wears it in ember (`crest` in `game/mobFeatures.js`) and adds no boxes. The seat is a
+   table, not a derived rule, because the derived one (raise the crest over whatever it would hit) floated it 0.44 m
+   over a skitterling's head; `elite-clearance-gates` holds every hostile type in `MOB_TYPES` to it at both ranks: no
+   placed box inside the mob's own boxes, head or body (an exact oriented-box test), each crest box resting on the mob
+   and showing half its face from the front. `eliteLook.nametagY` puts a tag 2.4 m over the mob's origin, or higher so
+   the bar's bottom is 0.2 m over the silhouette's top. An elite's tag rises over its crest and banner; three plain tags
+   move too, a zombie's (2.4 to 2.56 m: its bar stood 0.04 m over its head), a moss brute's and a husk's (they stood
+   inside the head and the crown). Every lower mob keeps 2.4 m. Evidence: `elites-noon-before-top-after-bottom.jpg`
+   and `elites-midnight-ipadlow-after.jpg`.
+430. **A removed mob stops being drawn at once.** miniplex 2.0.0 emits `onEntityRemoved` before it takes the entity out
+   of the query (`@miniplex/bucket` remove), and `useEntities` (`systems/_npcShared.js`, with a copy in Nametags)
+   snapshot the query at that event. So the last mob removed stayed mounted, frozen in its last pose, until the next
+   spawn or removal: the round-1 static review's staged captain still drawn after `unstage()`, an open question then.
+   The hook now filters out the entity the event names, and Nametags uses it. In play a killed mob has shrunk to 0.001
+   scale by the time it is removed, so the leftover was mostly unseen; a despawn, a clear or a bind left a full-size one.
+   Item 431's first run found it: on every target the frames after its control and after the draw count's removals
+   (9, 5 and 5) were invalid for a mob model in view with no live mob; the cause was read in miniplex's remove, and the
+   next run, with the fix, called them all valid.
+   Gate: `use-entities-gates`, the real hook over a real miniplex world.
+431. **A combat frame holding anything the stage did not put there is invalid, and each run proves the check can see.**
+   `unstage()` ends a staged cast through the spell system's own clear (`endDeterministicCast`) while the world is still
+   held; round 1 let the projectile fly on into the next staged mobs. The seam's `frame()` reads what is drawn in the
+   game camera's view within 60 m, in the scene it finds among R3F's roots: MobModel groups (named `mob`), each matched
+   to its live mob or reported with none, and spells (projectile heads and impact pops, named `spell`). The two names
+   are production code for a test tool; they cost no work per frame. The combat set clears hostiles within the same
+   60 m (a first run cleared 40 m, and on WebKit 1180x820 all 22 frames of the day cycle went invalid for ambient mobs
+   40 to 60 m out behind the trees), waits out a new hour's toasts, and judges each frame with `combatVerdict`: an
+   unstaged hostile or a model with no live mob in view, a staged mob hurt or not in view, a spell count other than the
+   stage's, a cast still drawn after `unstage()`, a toast up, or a mob left behind. Each round-1 contaminated frame is a
+   fixture in `lookbook-combat-verdict-gates`, invalid naming its cause, beside four clean ones that stay valid. Each
+   run shoots a control first, a zombie spawned through the store beside a staged one, and calls every frame of the
+   run invalid unless the check names it. The second run: the control seen on all three targets, 132 of 132 frames
+   valid; the elite run after it, 72 of 72. Blind spots: a damage number over a mob that has died, a passive mob walking in, and anything inside the view
+   but hidden from the camera (the check reads the frustum, not occlusion).
+432. **The lit band has its own hit frame.** The round-1 hit frames faced the zombie head-on with the key light behind
+   the eye, so every visible face went white. `hit-zombie-lit` looks along the first of five headings where the best
+   turn of 30 to 60 degrees (`litTurn`, the e2e's rule, from the key light's direction, which the seam now reads) leans
+   one visible face at least 0.3 toward the key light and the other away: by day heading 90 and a -30 degree turn
+   (split 0.66), by night under the moon heading 120 and -30 (0.65). The lit front whitens and the side in the shadow
+   band stays green, paled by the white face's bloom (sampled sRGB 140, 171, 148 beside the front's 242, 242, 242 at
+   noon on Chromium), on every target (`hit-lit-noon-after.jpg`, `hit-lit-midnight-ipadlow-after.jpg`).
+433. **The core sphere's dead levers are gone.** `spellMotion`'s `coreIntensity` (the strobe's on/off, still asserted by
+   its test after the bolt stopped flickering) and `innerScale`, and `ENERGY_PROFILE`'s `coreScale` and
+   `coreIntensity`, had no reader after item 424; they go with their assertions, and the strobe's test asserts its live
+   lever instead, the bolt's scale snapping between two sizes. Four comments made stale by PR A say what the code does.
+434. **A killing blow shows no contact (it predates PR A; filed).** MobModel's dissolve branch returns before the look
+   is written, so the killing hit never flashes, and a mob killed mid-windup keeps its heated edge (#c32c0b on the
+   mounted model) through the dissolve. Row `REVIEW:w3a-pr-a:killing-blow-no-contact`, LOW, lane W3-A.
+435. **An ember elite costs about six more main-pass draws, measured.** Four zombies, then four ember-elite zombies,
+   staged 6 m out, draws counted at the GL context over three runs: Chromium +6 each time (13.5 to 19.5 per mob, then
+   22 to 28 twice), the crest's three boxes and their three ink hulls, the count the boxes predict (the per-mob figure
+   itself swings between runs with the frames that carry a shadow render). WebKit at the low tier read +10, +10 and +6
+   at 1180x820 and +5 each time at 820x1180, whose narrower view may drop the side mobs; the two +10 readings are not
+   explained by these runs. A captain's banner adds two boxes and two hulls more; an elite husk adds none of its own
+   (item 429). No elite box casts a shadow.
+436. **Bytes.** Index 649,228 B at this round's head, against main's 649,123 B (`3442443d`): PR A now nets +105 B,
+   this round +389 B (the seats and the tag height +, the cast's end and the two names, less the dead levers and
+   Nametags' copy of the hook). The ceiling (652,500 B) is unchanged.
+
+---
 
 ## 2026-10-31 (lane L13) — [LOOP] the stuck-in-solid remainder: a wall is not ground, rays see what was just placed, a dug spawn corner does not loop, a sunk capsule is stood clear, the resume hold is time
 

@@ -1,8 +1,10 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Billboard, Text } from '@react-three/drei';
 import { mobsQuery, alliesQuery } from '../ecs/world';
 import { nametagFor } from '../game/nametagData.js';
+import { nametagY } from '../night/eliteLook.js';
+import { useEntities } from '../systems/_npcShared';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 
@@ -15,19 +17,8 @@ import { isCaptureMode } from '../devtest/captureMode';
 // transiently per frame; the React tree re-renders only on entity membership change (spawn/despawn)
 // via the same onEntityAdded/onEntityRemoved bridge the NPCSystem mob list uses.
 
-// Membership-reactive subscription (mirrors SimplifiedNPCSystem's useEntities): re-render only when
-// the entity SET changes, never at render rate — so a freshly spawned mob gets a tag mounted.
-function useEntities(query) {
-  const [entities, setEntities] = useState(() => [...query.entities]);
-  useEffect(() => {
-    const update = () => setEntities([...query.entities]);
-    update();
-    const unsubAdded = query.onEntityAdded.subscribe(update);
-    const unsubRemoved = query.onEntityRemoved.subscribe(update);
-    return () => { unsubAdded(); unsubRemoved(); };
-  }, [query]);
-  return entities;
-}
+// Membership-reactive subscription (systems/_npcShared.js useEntities, SimplifiedNPCSystem's too): re-render only when
+// the entity SET changes, never at render rate, so a freshly spawned mob gets a tag mounted and a removed one loses it.
 
 function Tag({ entity }) {
   const groupRef = useRef();
@@ -35,6 +26,8 @@ function Tag({ entity }) {
   const bgRef = useRef();
   const barRef = useRef();
   const barMatRef = useRef();
+  // [rank, height]: the tag's height over the mob (eliteLook.js nametagY), worked out again only if its rank changes.
+  const lift = useRef(null);
   useFrame(() => {
     const g = groupRef.current;
     if (!g) return;
@@ -46,7 +39,8 @@ function Tag({ entity }) {
     const tag = nametagFor(entity, dist, st.getVerbMods().snareHpFrac);
     g.visible = tag.visible && entity.health > 0;
     if (!g.visible) return;
-    g.position.set(entity.position.x, entity.position.y + 2.4, entity.position.z);
+    if (!lift.current || lift.current[0] !== entity.elite) lift.current = [entity.elite, nametagY(entity)];
+    g.position.set(entity.position.x, entity.position.y + lift.current[1], entity.position.z);
     if (textRef.current) { textRef.current.text = tag.text; textRef.current.color = tag.color; }
     // name-only tags (passive mobs / NPCs / bound allies return showBar:false) must NOT render the
     // dark bar BACKGROUND either — gate it with the same flag as the fill, else a stray empty

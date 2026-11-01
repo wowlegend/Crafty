@@ -102,13 +102,9 @@ describe('attack-telegraph render gates (M2 #4 Slice 2)', () => {
     expect(mob).toMatch(/windupRamp\(wnow, entity\.windupUntil/);
     expect(mob).toMatch(/const wnow = worldNow\(\);/);
   });
-  it('ramps an emissive charge glow toward the strike, but the hit-flash still wins', () => {
-    // (R8.1: a staggered mob shows no charge either — its windup was cancelled by the perfect dodge.)
-    expect(mob).toMatch(/const charging = !isHit && !isStaggered\(entity, wnow\) && entity\.windupUntil/);
-    expect(mob).toMatch(/emissive\.copy\(chargeColor\)/);
-    // hit-flash precedence preserved in the traverse
-    expect(/if \(isHit\)[\s\S]{0,120}emissive\.copy\(hitColor\)/.test(mob)).toBe(true);
-  });
+  // The emissive charge glow is gone (W3-A PR A F1): a windup heats the edge, never the body. Its precedence (a hit
+  // flash, then a stagger, then the telegraph) is driven through the pure mobLook in edge-telegraph-gates.test.js, and
+  // that the component writes no emissive in a windup is the e2e's (tests/e2e/feedback-grammar.spec.js).
 });
 
 // Slice 3: the boss Phase-3 lava AoE (its own attack loop in BossEntity, not the ai.worker) is telegraphed --

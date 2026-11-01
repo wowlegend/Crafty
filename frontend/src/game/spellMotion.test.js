@@ -13,7 +13,6 @@ describe('computeSpellMotion — per-element motion grammar', () => {
     expect(m.shapeScale[1]).toBeGreaterThan(m.shapeScale[0]);
     expect(m.shapeScale[1]).toBeGreaterThan(m.shapeScale[2]);
     expect(m.shapeSpin).not.toBeNull();
-    expect(m.coreIntensity).toBe(1);
   });
 
   it('static (ice): ~uniform near-1 scale and NO tumble (shapeSpin null)', () => {
@@ -23,17 +22,18 @@ describe('computeSpellMotion — per-element motion grammar', () => {
     expect(m.shapeScale[0]).toBe(m.shapeScale[1]);
     expect(m.shapeScale[1]).toBe(m.shapeScale[2]);
     expect(Math.abs(m.shapeScale[0] - 1)).toBeLessThan(0.05);
-    expect(m.coreIntensity).toBe(1);
   });
 
-  it('strobe (lightning): coreIntensity is QUANTIZED on/off across phases, no smooth pulse, no spin', () => {
-    const samples = Array.from({ length: 40 }, (_, i) => computeSpellMotion('strobe', i * 0.137, 0.34).coreIntensity);
+  it('strobe (lightning): the scale snaps between TWO sizes across phases, no smooth pulse, no spin', () => {
+    // The strobe's one live lever is the bolt's scale (SpellProjectileCore draws shapeScale); its old core intensity
+    // drove a core sphere W3-A PR A deleted.
+    const samples = Array.from({ length: 40 }, (_, i) => computeSpellMotion('strobe', i * 0.137, 0.34).shapeScale[0]);
     const uniq = [...new Set(samples.map((v) => v.toFixed(3)))];
-    // a square on/off strobe collapses to a SMALL set of discrete values (not a smooth continuum)
-    expect(uniq.length).toBeLessThanOrEqual(3);
-    // and it actually toggles (both a bright and a dim state occur)
-    expect(Math.max(...samples)).toBeGreaterThan(0.8);
-    expect(Math.min(...samples)).toBeLessThan(0.5);
+    // a square on/off strobe collapses to two discrete sizes (not a smooth continuum)
+    expect(uniq.length).toBe(2);
+    // and it actually toggles: a flash larger than rest and a dim smaller
+    expect(Math.max(...samples)).toBeGreaterThan(1);
+    expect(Math.min(...samples)).toBeLessThan(1);
     expect(computeSpellMotion('strobe', 0.0, 0.34).shapeSpin).toBeNull();
   });
 

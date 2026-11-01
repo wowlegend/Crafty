@@ -1,7 +1,7 @@
 // R3F wrapper: a per-instance MeshToonMaterial with the shared 2-band gradient
 // + the fresnel rim baked in at construction (so onBeforeCompile is set before
-// first compile). `rimStrength` is tier-gated by the caller (0 disables the rim
-// cheaply without a recompile). Kept in a .jsx file + isolated from the pure
+// first compile). `rimStrength` defaults to RIM.strength at every tier; a caller may
+// set its own (0 disables the rim cheaply without a recompile). Kept in a .jsx file + isolated from the pure
 // characterStyle.js so the unit test stays renderer-free.
 import { MeshToonMaterial } from 'three';
 import { extend } from '@react-three/fiber';

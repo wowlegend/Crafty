@@ -231,7 +231,9 @@ describe('a reply computed BEFORE the dodge cannot bring the cancelled windup ba
   });
   it('AIWorkerSystem holds the stagger on every reply; MobModel never shows the charge on a staggered mob (weak, structural)', () => {
     expect(carriersOf(/applyMobUpdate\(entity, update\);\s*holdStagger\(entity, worldNow\(\)\);/)).toEqual(['systems/AIWorkerSystem.jsx']);
-    expect(carriersOf(/const charging = !isHit && !isStaggered\(entity, wnow\)/)).toEqual(['render/MobModel.jsx']);
+    // The telegraph's stagger check lives in the pure look since W3-A PR A (render/feedbackGrammar.js mobLook), and is
+    // driven there by tests/gates/edge-telegraph-gates.test.js "stagger clears the telegraph the same frame".
+    expect(carriersOf(/const live = !flash && !isStaggered\(entity, wnow\)/)).toEqual(['render/feedbackGrammar.js']);
   });
   it('the riposte is the PLAYER\'s: an ally, a zone or a hazard hitting a staggered mob gets no x1.5 (R8.5, structural)', () => {
     expect(carriersOf(/if \(isPlayerSource\(source\)\) damage = riposteDamage\(damage, entity, worldNow\(\)\);/)).toEqual(['systems/CombatSystem.jsx']);

@@ -23,6 +23,7 @@ import { getLiveZones } from '../world/ElementZoneSystem';
 import { spawnZone, clearZones } from '../game/elementZones';
 import { loadPanels } from '../ui/panels/lazyPanels.js';
 import { requestGameLock } from '../input/pointerLock.js';
+import { setLookbookPassesOff } from '../render/lookbookState.js';
 
 /** Register every hook and expose window.__craftyTest. The two setters are App's panel flags, held in React state. */
 export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) {
@@ -53,6 +54,66 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     id: e.id, type: e.type, role: e.role ?? null, health: e.health, passive: !!e.passive, x: e.position.x, y: e.position.y, z: e.position.z,
     knockback: !!e.knockback, windupUntil: e.windupUntil || 0, staggerUntil: e.staggerUntil || 0,
   })));
+  // A mob's LIVE look, read from the materials mounted on the scene (the feedback-grammar E2E): the meshes whose world
+  // position lies within 1.6 m across and 3 m up of the entity, so a spec clears other mobs first. `rim` and `outline`
+  // are the first toon rim colour and the first drei hull colour (linear rgb), `rimStrength` the weakest rim, `emissive`
+  // the brightest emitted toon emissive, `toon` and `hulls` the denominators. Read-only.
+  registerTestHook('readMobLook', (id) => {
+    const e = mobsQuery.entities.find((m) => m.id === id);
+    const scene = window.__threeScene;
+    if (!e || !scene) return null;
+    const out = { toon: 0, hulls: 0, rim: null, rimStrength: Infinity, outline: null, emissive: 0, uFlash: 0, lastHit: e.lastHit || 0 };
+    const at = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } };
+    scene.traverse((o) => {
+      const m = o.material;
+      if (!o.isMesh || !m) return;
+      o.updateWorldMatrix(true, false);
+      const w = o.matrixWorld.elements;
+      at.set(w[12], w[13], w[14]);
+      if (Math.hypot(at.x - e.position.x, at.z - e.position.z) > 1.6 || at.y < e.position.y - 1 || at.y > e.position.y + 3) return;
+      if (m.uniforms?.thickness) {
+        out.hulls += 1;
+        if (!out.outline) out.outline = m.uniforms.color.value.toArray();
+      } else if (m.userData?.rim) {
+        out.toon += 1;
+        if (!out.rim) out.rim = m.userData.rim.uRimColor.value.toArray();
+        out.rimStrength = Math.min(out.rimStrength, m.userData.rim.uRimStrength.value);
+        // The emitted light: the emissive colour's brightest channel times its intensity (three's default intensity is
+        // 1 over a black emissive, which emits nothing).
+        const em = m.emissive ? Math.max(m.emissive.r, m.emissive.g, m.emissive.b) * (m.emissiveIntensity ?? 1) : 0;
+        out.emissive = Math.max(out.emissive, em);
+        out.uFlash = Math.max(out.uFlash, m.userData.rim.uFlash?.value || 0);
+      }
+    });
+    return out;
+  });
+  // Turn a mob to face the game camera, then by `yawDeg`, and copy the pose on the next frame (snapSync), so a held
+  // world shows it at a known angle (the feedback-grammar E2E shoots the edge head-on and turned). Returns its rotation.
+  registerTestHook('faceMob', (id, yawDeg = 0) => {
+    const e = mobsQuery.entities.find((m) => m.id === id);
+    const cam = useGameStore.getState().gameCamera;
+    if (!e || !cam) return null;
+    e.rotation = Math.atan2(cam.position.x - e.position.x, cam.position.z - e.position.z) + (yawDeg * Math.PI) / 180;
+    e.snapSync = true;
+    return e.rotation;
+  });
+  // Switch named post passes off (render/passesOff.js names; [] restores the chain), as the lookbook seam does: the
+  // feedback-grammar E2E compares a hit's pixels with bloom off, so a white edge's halo cannot stand in for the lit band.
+  registerTestHook('passesOff', (names) => { setLookbookPassesOff(new Set(names)); return [...names]; });
+  // Hold a mob in contact: its hit stamp renewed every frame until `on` is false (the feedback-grammar E2E shoots the
+  // flash the way the lookbook's stage holds it). No damage, knockback or hitstop: only the stamp the look reads.
+  const held = new Set();
+  registerTestHook('holdHit', (id, on = true) => {
+    const e = mobsQuery.entities.find((m) => m.id === id);
+    if (!e) return false;
+    if (!on) { held.delete(e); return true; }
+    if (!held.has(e)) {
+      held.add(e);
+      const stamp = () => { if (!held.has(e)) return; e.lastHit = performance.now(); requestAnimationFrame(stamp); };
+      stamp();
+    }
+    return true;
+  });
   // The squad, for the ember E2E: a bind is seen as a mob joining it, a fuse as a pair leaving it for one hybrid.
   registerTestHook('readAllies', () => alliesQuery.entities.map((e) => ({
     id: e.id, type: e.type, baseType: e.baseType || null, hybridId: e.hybridId || null, x: e.position.x, z: e.position.z,
