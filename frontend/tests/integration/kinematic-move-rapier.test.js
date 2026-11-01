@@ -154,6 +154,32 @@ describe('a form swap\'s grow lift lands unswept whether or not a world step fol
   });
 });
 
+describe('the cut at a collider made since the last step lets a capsule that starts inside it move out (real Rapier)', () => {
+  // A cell's stand-in cuboid made since the last world step (world/placedCellColliders.js), its top 0.2 m above the
+  // capsule's lowest point, as a block placed round the feet or a chunk rebuilt under a form swap leaves it: the sweep
+  // cannot see it, so the cut casts against it. A cast that starts in it must not stop there, or a jump out of it, away
+  // from it, is cut to nothing for the frame (rapier3d-compat 0.19.2 castCollider's stopAtPenetration, false here).
+  function inCell() {
+    const w = makeWorld();
+    const feet = w.body.translation().y - BASE_CAPSULE.halfHeight - BASE_CAPSULE.radius;
+    const cell = w.world.createCollider(RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5).setTranslation(0, feet + 0.2 - 0.5, 0));
+    expect(w.collider.intersectsShape(cell.shape, cell.translation(), cell.rotation()), 'SETUP: the capsule does not start inside the cell').toBe(true);
+    return { w, cell };
+  }
+  it('a jump straight up out of the cell keeps its whole move', () => {
+    const { w, cell } = inCell();
+    const m = moveKinematic(w.body, w.kcc, w.collider, { x: 0, y: 0.3, z: 0 }, 0, undefined, [cell]);
+    expect(m.y, 'the move out of the cell was cut').toBeCloseTo(0.3, 3);
+  });
+  it('the control: a move into the cell from outside it is still cut short of it', () => {
+    const w = makeWorld();
+    const cell = w.world.createCollider(RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5).setTranslation(1.0 + BASE_CAPSULE.radius + 0.5, 1, 0));
+    const m = moveKinematic(w.body, w.kcc, w.collider, { x: 2, y: 0, z: 0 }, 0, undefined, [cell]);
+    expect(m.x, 'SETUP: the sweep did not move toward the cell').toBeGreaterThan(0.5);
+    expect(m.x, 'the cut let the capsule into the cell').toBeLessThanOrEqual(1.0 - 0.04);
+  });
+});
+
 describe('the frame cap and the wall: the KCC sweep does not tunnel at any step length', () => {
   // Why MAX_FRAME_STEP_SEC need not be lower for the player (game/frameStep.js).
   for (const thick of [1.0, 0.05]) {
