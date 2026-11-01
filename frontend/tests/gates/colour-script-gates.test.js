@@ -279,8 +279,9 @@ describe('the ground through the day', () => {
   });
 
   it('G2b the pad by the fire stays near grey wherever it would display maroon: terrain stone 0.5, 1 and 2 m from the brazier, f 0.44 to 1.06', () => {
-    // The real-GPU pad by the brazier reads 10 to 20 deg redder than this model (DECISIONS 2026-10-28 item 20 (d)), so a
-    // model hue within 20 deg of maroon's band (330 to 30) displays in it: the band here is widened to 310 to 50. Inside
+    // The real-GPU pad by the brazier reads 10 to 20 deg redder than this model (DECISIONS 2026-10-28, the landing
+    // lifecycle entry, item 21 (d)), so a model hue within 20 deg of maroon's band (330 to 30) displays in it: the band here
+    // is widened to 310 to 50. Inside
     // it the pad may carry at most PAD_MAROON_C of chroma, the design margin the twilight keys were chosen for, and it is
     // read on the stone the screen was calibrated on, from sunset through the night keys (f 0.574, 0.926) to sunrise.
     let n = 0, inBand = 0;
