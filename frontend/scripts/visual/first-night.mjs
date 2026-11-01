@@ -1,7 +1,7 @@
 // first-night.mjs — the First Night, PLAYED: ten minutes in real time on the production build (or --url), as a fresh
 // player, on real input (the W3-A task script's U0; the brief's acceptance 2; DECISIONS 2026-11-01 (W3-A PR C) item 484).
 //
-//   node scripts/visual/first-night.mjs [--url <base>] [--out <dir>] [--seconds <n>] [--allow-software]
+//   node scripts/visual/first-night.mjs [--url <base>] [--out <dir>] [--seconds <n>] [--allow-software] [--flame-off]
 //
 // It serves build/ with `vite preview` (run `npm run build` first) unless --url names a deployment, opens the page with
 // ?lookbook=1 for the production seam's read-only views (render/lookbookSeam.js night(), info(), mobs()), clicks Start,
@@ -12,7 +12,15 @@
 //                      the verdict and the renderer; clip.webm, the eye-level clip of the whole run; hero.jpg, the
 //                      captain-kill frame (W3-G's README hero); frames/ and contact-sheet.{html,png}, a frame every 30 s.
 // Exit 0: every beat seen on time and the pressure in band. 1: a beat missed or the pressure out of band (the report
-// names each, misses first). 3: COULD NOT CHECK (no build, a stale build served, no hardware renderer, no seam, no play).
+// names each, misses first). 2: the probe itself failed (a crash, so no verdict on the game). 3: COULD NOT CHECK (no
+// build, a stale build served, no hardware renderer, no seam, no play). _firstNight.mjs EXIT holds the codes.
+//
+// TIMING. Every beat is timed in real seconds from the game clock's start: the first moment the world is built and play
+// is live, which is when dayNight.js lets the clock run, and not the Start click, which comes before the world builds
+// (DECISIONS 2026-11-01 (W3-A PR C) item 489). The horn is the siege notice the page shows (the same log the e2e spec
+// reads), and the clock's own flip logs as `dusk`; the kindle needs a cold Hearth read before a lit one. --flame-off
+// declares the Hearth's flame switched off (H1's FLAME_DRAIN 0 night, or the flame cut): the flame must then not dip,
+// and the night is judged on health and engagement.
 //
 // INPUT, AND WHAT IS STOOD IN. Keys (W, G, R) and the mouse buttons are Playwright's trusted input. Playwright's browsers
 // refuse a pointer lock, so the lock is stood in (_probe.mjs standInPointerLock): the game's own listener opens its gate.
@@ -32,7 +40,7 @@ import { resolveChromium } from './_lookbookPage.mjs';
 import { standInPointerLock } from './_probe.mjs';
 import { aimAt, indexChunkOf, servedBuildProblem } from './_lookbook.mjs';
 import { profileSeed, seedStorage } from './_profile.mjs';
-import { firstNightVerdict, aimStep, FIRST_NIGHT_BEATS } from './_firstNight.mjs';
+import { firstNightVerdict, aimStep, tickBeats, installNoticeLog, isHornKey, exitCodeFor, CouldNotCheck, EXIT, FIRST_NIGHT_BEATS } from './_firstNight.mjs';
 import { HEARTH_Y, HEARTH_FIRE } from '../../src/world/homeAnchor.js';
 
 const PORT = probePort(import.meta.url);
@@ -42,6 +50,7 @@ const URL_ARG = arg('--url');
 const OUT = resolve(arg('--out') || join(APP, '../docs/superpowers/masterpiece-2026-10/evidence/first-night'));
 const SECONDS = Number(arg('--seconds')) > 0 ? Number(arg('--seconds')) : 600;
 const ALLOW_SOFTWARE = process.argv.includes('--allow-software');
+const FLAME_OFF = process.argv.includes('--flame-off');
 const VIEWPORT = Object.freeze({ width: 1280, height: 800 });
 const TICK_MS = 250;
 const FRAME_EVERY_S = 30;
@@ -53,7 +62,6 @@ const THREAT_M = 6; // a hostile this near ends a kindle walk: the bot fights it
 const OWN_SIGNALS = Object.freeze({ handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-class CouldNotCheck extends Error {}
 const cannot = (msg) => { throw new CouldNotCheck(msg); };
 
 /** IN-PAGE: a mouse move that the view must not follow (the cursor's way back to the centre): the stood-in lock answers
@@ -89,7 +97,7 @@ async function main() {
       process.exit(code);
     });
   }
-  const report = { url, build, profile: 'fresh', seconds: SECONDS, cutShort: SECONDS < 600, renderer: null, gate: null, log: [], notes: [], frames: [] };
+  const report = { url, build, profile: 'fresh', seconds: SECONDS, cutShort: SECONDS < 600, flameOff: FLAME_OFF, renderer: null, gate: null, clockStartSec: null, log: [], notes: [], frames: [] };
   try {
     if (server) {
       await server.waitReady();
@@ -107,6 +115,7 @@ async function main() {
     const context = await live.newContext({ viewport: VIEWPORT, recordVideo: { dir: join(OUT, 'video'), size: VIEWPORT } });
     const page = await context.newPage();
     await page.addInitScript(seedStorage, profileSeed('fresh'));
+    await page.addInitScript(installNoticeLog);
     page.on('pageerror', (e) => report.notes.push(`pageerror: ${e.message.slice(0, 200)}`));
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof window.__craftyLookbook?.night === 'function', null, { timeout: 60000 })
@@ -114,14 +123,18 @@ async function main() {
     const start = page.getByTestId('title-start');
     await start.waitFor({ state: 'visible', timeout: 60000 }).catch(() => cannot('the title never showed its Start button'));
     await start.click();
-    const t0 = Date.now();
-    const t = () => (Date.now() - t0) / 1000;
+    const clicked = Date.now();
     await page.waitForFunction(() => window.__craftyLookbook.info().worldBuilt, null, { timeout: 120000 })
       .catch(() => cannot('the world never built after Start'));
     report.gate = await page.evaluate(standInPointerLock);
     await delay(300);
     if (!(await lb(page, 'info')).active) { await lb(page, 'play'); report.gate += ', then the seam\'s play()'; }
-    if (!(await lb(page, 'info')).active) cannot('play never went live (the input gate stayed shut)');
+    const going = await lb(page, 'info');
+    if (!going.active || !going.worldBuilt) cannot('play never went live (the input gate stayed shut)');
+    // The clock starts here: the world built and play live (dayNight.js shouldAdvanceClock), not at the click.
+    const t0 = Date.now();
+    report.clockStartSec = +((t0 - clicked) / 1000).toFixed(1);
+    const t = () => (Date.now() - t0) / 1000;
 
     const cx = VIEWPORT.width / 2, cy = VIEWPORT.height / 2;
     await page.mouse.move(cx, cy);
@@ -149,18 +162,16 @@ async function main() {
     let dawnAt = null;
     while (t() < SECONDS && !(dawnAt !== null && t() > dawnAt + 20)) {
       const now = t();
-      const [n, i, mobs] = await page.evaluate(() => [window.__craftyLookbook.night(), window.__craftyLookbook.info(), window.__craftyLookbook.mobs() || []]);
+      const [n, i, mobs, shown] = await page.evaluate(() => [window.__craftyLookbook.night(), window.__craftyLookbook.info(),
+        window.__craftyLookbook.mobs() || [], (window.__fnNotices || []).map((e) => e.key)]);
       const dt = prev ? now - prev.at : 0;
-      // The beats, from what the seam reads: transitions only, so a load is never counted as a dusk or a dawn.
-      if (n.hearthLit === true && !report.log.some((e) => e.beat === 'kindle')) report.log.push({ beat: 'kindle', t: now });
-      if (prev && prev.n.isDay && !n.isDay) report.log.push({ beat: 'horn', t: now, night: n.nightCount });
-      if (prev && !prev.n.isDay && n.isDay) {
-        dawnAt = now;
-        p.flameAtDawn = n.hearthFlame;
-        report.log.push({ beat: 'dawn', t: now, night: n.nightCount });
+      // The beats, from what the seam and the notice log read (_firstNight.mjs tickBeats): transitions only.
+      const cur = { at: now, t: now, n, horns: shown.filter(isHornKey).length };
+      if (!prev && n.hearthLit !== false) report.notes.push(`the Hearth read ${JSON.stringify(n.hearthLit)} at the clock's start: no cold Hearth to kindle`);
+      for (const e of tickBeats(prev, cur)) {
+        report.log.push(e);
+        if (e.beat === 'dawn') { dawnAt = now; p.flameAtDawn = n.hearthFlame; }
       }
-      const wave = n.siege?.wave ?? 0;
-      if (prev && wave > (prev.n.siege?.wave ?? 0)) report.log.push({ beat: 'wave', t: now, wave });
       if (n.siege?.captainId != null) captainSeen = n.siege.captainId;
       if (captainSeen !== null && !mobs.some((m) => m.id === captainSeen)) {
         report.log.push({ beat: 'captain', t: now });
@@ -220,12 +231,12 @@ async function main() {
           await page.keyboard.up('KeyR');
         }
       }
-      prev = { at: now, n };
+      prev = cur;
       await delay(TICK_MS);
     }
     for (const k of [...keys]) await hold(k, false);
     if (!existsSync(join(OUT, 'hero.jpg'))) await page.screenshot({ path: join(OUT, 'hero.jpg'), type: 'jpeg', quality: 88 });
-    report.pressure = { lowestHealth: +p.lowest.toFixed(3), hitsTaken: p.hits, engagedSec: +p.engagedSec.toFixed(1), flameLow: p.flameLow, flameAtDawn: p.flameAtDawn, deaths: p.deaths };
+    report.pressure = { lowestHealth: +p.lowest.toFixed(3), hitsTaken: p.hits, engagedSec: +p.engagedSec.toFixed(1), flameLow: p.flameLow, flameAtDawn: p.flameAtDawn, flameOff: FLAME_OFF, deaths: p.deaths };
     report.verdict = firstNightVerdict({ log: report.log, pressure: report.pressure });
     await page.close();
     await context.close(); // the clip is written on close
@@ -233,11 +244,11 @@ async function main() {
     if (video.length) { renameSync(join(OUT, 'video', video[video.length - 1]), join(OUT, 'clip.webm')); report.clip = 'clip.webm'; }
     writeFileSync(join(OUT, 'first-night.json'), `${JSON.stringify(report, null, 2)}\n`);
     await contactSheet(live, report);
-    console.log(`first-night: ${report.verdict.ok ? 'PASS' : 'MISS'} after ${SECONDS < 600 ? `${SECONDS} s (cut short)` : 'the night'}; ${report.renderer}`);
+    console.log(`first-night: ${report.verdict.ok ? 'PASS' : 'MISS'} after ${SECONDS < 600 ? `${SECONDS} s (cut short)` : 'the night'} from the clock's start (${report.clockStartSec} s after the click); ${report.renderer}`);
     for (const line of report.verdict.lines) console.log(`  ${line}`);
     for (const line of report.notes.slice(0, 12)) console.log(`  note: ${line}`);
     console.log(`  wrote ${OUT}`);
-    return report.verdict.ok ? 0 : 1;
+    return report.verdict.ok ? EXIT.pass : EXIT.miss;
   } finally {
     if (server) await server.shutdown(live); else await live?.close().catch(() => {});
   }
@@ -263,6 +274,7 @@ async function contactSheet(browser, report) {
 }
 
 main().then((code) => process.exit(code), (e) => {
-  console.error(e instanceof CouldNotCheck ? `first-night: COULD NOT CHECK: ${e.message}` : e);
-  process.exit(e instanceof CouldNotCheck ? 3 : 1);
+  if (e instanceof CouldNotCheck) console.error(`first-night: COULD NOT CHECK: ${e.message}`);
+  else console.error('first-night: the probe failed, so there is no verdict on the game:', e);
+  process.exit(exitCodeFor(e));
 });

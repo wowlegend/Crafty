@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { FIRST_NIGHT_BEATS, PRESSURE_BAND, beatVerdicts, pressureVerdict, firstNightVerdict, aimStep } from '../../scripts/visual/_firstNight.mjs';
+import {
+  FIRST_NIGHT_BEATS, PRESSURE_BAND, beatVerdicts, pressureVerdict, firstNightVerdict, aimStep, tickBeats, isHornKey, exitCodeFor, CouldNotCheck, EXIT,
+} from '../../scripts/visual/_firstNight.mjs';
 import { applyLook } from '../../src/input/touchMath.js';
 
 /**
@@ -90,5 +92,60 @@ describe('aimStep', () => {
     expect(aimStep({ heading: 350, pitch: 0 }, { heading: 10, pitch: 0 }, { maxPx: 10000 }).dx, 'the short way round').toBeGreaterThan(0);
     const capped = aimStep(from, { heading: 190, pitch: 60 }, { maxPx: 50 });
     expect([Math.abs(capped.dx), Math.abs(capped.dy)]).toEqual([50, 50]);
+  });
+});
+
+// THE TICK, THE FLAME'S DECLARATION AND THE EXIT CODE (DECISIONS 2026-11-01 (W3-A PR C) item 489). The probe's loop hands
+// each tick's readings to tickBeats; what it logs is the beat log the verdict above reads.
+//
+// Mutation-Proof: via scripts/dev/mutate.sh, 4 tests, each observed RED:
+//   T1 the kindle logged on any lit reading (no cold one before it) -> "the kindle is a transition from cold"
+//   T2 plausible-wrong: the horn read off the clock's flip, as phase 1 did -> "the horn is the notice, never the flip"
+//   T3 the declaration passes a flame that dipped -> "declared off, the flame must not dip"
+//   T4 a crash given the miss code -> "a crash is never a miss"
+//   I0 identity (a comment edit in _firstNight.mjs) SURVIVED.
+const reading = (t, n, horns = 0) => ({ t, n: { isDay: true, nightCount: 0, hearthLit: null, gameTime: 0, siege: null, ...n }, horns });
+
+describe('tickBeats', () => {
+  it('the kindle is a transition from cold: a lit first reading, or lit after unknown, logs none', () => {
+    expect(tickBeats(reading(1, { hearthLit: false }), reading(2, { hearthLit: true }))).toEqual([{ beat: 'kindle', t: 2 }]);
+    expect(tickBeats(null, reading(1, { hearthLit: true })), 'the first tick').toEqual([]);
+    expect(tickBeats(reading(1, { hearthLit: null }), reading(2, { hearthLit: true })), 'lit after a build with no field').toEqual([]);
+    expect(tickBeats(reading(1, { hearthLit: true }), reading(2, { hearthLit: true }))).toEqual([]);
+  });
+
+  it('the horn is the notice, never the flip: the flip logs as dusk, and each new notice as a horn', () => {
+    const flip = tickBeats(reading(239, { isDay: true }), reading(240, { isDay: false, nightCount: 1, gameTime: 600 }));
+    expect(flip.map((e) => e.beat), 'the clock flipped with no notice').toEqual(['dusk']);
+    const horn = tickBeats(reading(240, { isDay: false, nightCount: 1 }, 0), reading(241, { isDay: false, nightCount: 1, gameTime: 602 }, 1));
+    expect(horn).toEqual([{ beat: 'horn', t: 241, night: 1, clock: 602 }]);
+    expect(tickBeats(reading(1, {}, 1), reading(2, {}, 3)).map((e) => e.beat), 'two notices in one tick are two horns').toEqual(['horn', 'horn']);
+  });
+
+  it('dawn and each new wave, once', () => {
+    expect(tickBeats(reading(1, { isDay: false, nightCount: 1 }), reading(2, { isDay: true, nightCount: 1 })).map((e) => e.beat)).toEqual(['dawn']);
+    expect(tickBeats(reading(1, { siege: { wave: 1 } }), reading(2, { siege: { wave: 2 } }))).toEqual([{ beat: 'wave', t: 2, wave: 2 }]);
+    expect(tickBeats(reading(1, { siege: { wave: 2 } }), reading(2, { siege: { wave: 2 } }))).toEqual([]);
+  });
+
+  it('isHornKey reads the siege tiers and nothing else', () => {
+    expect(['notice.siege.first', 'notice.siege.relentless', 'notice.siegeWarning', 'notice.dusk', ''].map(isHornKey)).toEqual([true, true, false, false, false]);
+  });
+});
+
+describe('the flame, declared off', () => {
+  it('declared off, the flame must not dip: a flat or absent flame passes, a dip misses', () => {
+    const flame = (p) => byId(pressureVerdict({ ...GOOD_PRESSURE, flameOff: true, ...p })).flame;
+    expect([flame({ flameLow: 1, flameAtDawn: 1 }), flame({ flameLow: null, flameAtDawn: null }), flame({ flameLow: 0.75, flameAtDawn: 0.75 })])
+      .toEqual([true, true, false]);
+    expect(byId(pressureVerdict({ ...GOOD_PRESSURE, flameLow: 1, flameAtDawn: 1 })).flame, 'undeclared, a flat flame still misses').toBe(false);
+  });
+});
+
+describe('the exit code', () => {
+  it('a crash is never a miss: COULD NOT CHECK is 3, any other error 2', () => {
+    expect(exitCodeFor(new CouldNotCheck('no build'))).toBe(EXIT.couldNotCheck);
+    expect(exitCodeFor(new Error('page.goto: net::ERR_UNSAFE_PORT'))).toBe(EXIT.crashed);
+    expect(EXIT).toEqual({ pass: 0, miss: 1, crashed: 2, couldNotCheck: 3 });
   });
 });
