@@ -589,8 +589,9 @@ The order is the dependency order, and each unit ships independently and keeps t
   goes RED. **M0b** the ring never evicts, so the window test goes RED. **M0-id**, the identity, stays GREEN.
 - [ ] **Step 5: Measure the baseline (local, real hardware, lightly loaded machine; `uptime` first).**
   `npx playwright test tests/e2e/perf-siege.spec.js` (`@local-only`). Record the logged `ai` block (buildMs, applyMs,
-  workerMs p50/p95/max, gridsP95, mobsP95) in this plan under "Measured" below, with the machine load average. Sweep
-  `sh scripts/dev/kill-test-procs.sh` afterwards.
+  workerMs p50/p95/max, gridsP95, mobsP95) in this plan under "Measured" below, with the machine load average.
+  Afterwards report leftover processes and listening ports read-only (`pgrep`, `lsof`); the command session runs the
+  sweep, `scripts/dev/kill-test-procs.sh` (DECISIONS 2026-11-01 item 536).
 - [ ] **Step 6: Commit.** `git commit -m "feat(ai): a cost meter on the AI bridge — build, apply and worker ms per tick, grids per tick; the siege baseline measured"`.
 
 ### Unit 1: the encounter table

@@ -214,7 +214,7 @@ That is 71 files in all.
   - no baseline is touched: `tests/visual/baseline/` holds no credits frame (`ls | grep -i credit` is empty), and `menu.png` does not change;
   - if any baseline moves anyway, that is a defect to find, not a re-shoot;
   - a re-shoot is its own `Baseline-Review:` commit, never bundled with `src`.
-- Browser hygiene: anything launched is killed, then `sh frontend/scripts/dev/kill-test-procs.sh`. On this loaded machine, e2e and prod-smoke run in CI only.
+- Browser hygiene: anything launched is killed, then the lane reports leftover processes and ports read-only (`pgrep`, `lsof`) and the command session runs the sweep, `frontend/scripts/dev/kill-test-procs.sh` (DECISIONS 2026-11-01 item 536). On this loaded machine, e2e and prod-smoke run in CI only.
 - **The mutation path (amended after review, finding 8).** e2e and prod-smoke mutants run in CI, through a `workflow_dispatch` workflow `.github/workflows/e2e-mutants.yml` that this milestone adds in Unit 2.
   - It reads a committed list (`frontend/tests/e2e/mutants/sound-bank.json`: `{ label, subject, old, new, harness: 'e2e'|'prod-smoke', spec, identity? }`). It runs one matrix job per mutant through `scripts/dev/mutate-e2e.sh` (or the prod-smoke equivalent after `npm run build`), plus the unmutated spec, which must be GREEN.
   - Scoring follows `mutate-e2e.sh`: each mutant must go RED; the identity mutant must SURVIVE; `SETUP:` failures and timeouts count as COULD NOT CHECK, never as a kill.

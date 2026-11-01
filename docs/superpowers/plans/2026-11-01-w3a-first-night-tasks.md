@@ -223,7 +223,7 @@ The feedback-grammar plan's U0-U3 and U5-U7, re-cut at HEAD; M3 belongs to row 4
 1. `ci ok` on PR C's exact sha with U0's eight beats green and each beat's identity mutant recorded red.
 2. `uptime`, then `first-night.mjs` on a local prod build, pressure in band; its clip and contact sheet judged beside today's eye-level frames by a reviewer who did not build the lane. After the deploy, again with `--url https://crafty-game.vercel.app`.
 3. By hand on Chromium and WebKit at 1180x820 and 820x1180: touch-hold roar and heavy through a siege.
-4. `sh frontend/scripts/dev/kill-test-procs.sh`; name any port a local run bound.
+4. Leftover processes and listening ports, read-only (`pgrep`, `lsof`), from whoever ran the local steps; the command session runs `sh frontend/scripts/dev/kill-test-procs.sh` from its main thread (DECISIONS 2026-11-01 item 536); name any port a local run bound.
 5. DECISIONS entries, each naming what it supersedes: the cold Hearth and the Primal Roar gift; the lend (amends first-minute D7); the flame, kept or cut; regeneration replacing hunger; respawn at a light; the healer when calm; the held view and the eye point (amends `transformCam.js:16`, pulls part of A21 forward); C0's moves; E1's numbers; the J1 verdict.
 6. Close the rows by sha, then `LANE:W3-A` once no open row names it. Regenerate the Command Record and the CHANGELOG.
 

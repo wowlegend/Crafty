@@ -42,8 +42,11 @@ is below.
    launched by its pid or `$!`, a shape the guard allows, then report its processes and listening ports read-only
    (`pgrep`, `lsof`), naming any it did not start. The command session sweeps from the main thread, where the guard
    does not walk into a script file, and not while another lane runs heavy work, because a sweep beside a live run
-   has cost that run before (AB episode :745). *Where:* `CLAUDE.md` "Browser and test-process hygiene" and
-   `.claude/rules/gates-and-probes.md` "Where things go". *Not changed:* the script and its test; the cold-takeover
+   has cost that run before (AB episode :745). *Where:* `CLAUDE.md` "Browser and test-process hygiene",
+   `.claude/rules/gates-and-probes.md` "Where things go", and the live plans that told a lane to sweep:
+   `2026-10-27-crafty-encounters-siege.md` (Unit 0 Step 5), `2026-10-27-crafty-sound-with-body.md` (Global Constraints)
+   and `2026-11-01-w3a-first-night-tasks.md` (Z step 4). Older dated plans that still name the sweep yield to this
+   item on that step. *Not changed:* the script and its test; the cold-takeover
    eval's q8 still wants an answer that names the script, which the new text does. *Enforcer:* the guard denies a lane
    the sweep; that the command session runs it after each lane, and not beside heavy work, is advisory.
 
