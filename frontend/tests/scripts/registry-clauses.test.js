@@ -130,6 +130,11 @@ describe('every clause of S0-S11 fires on a fixture built for it alone', () => {
     expect(findings(rows)).toEqual(one(rule, re));
   });
 
+  it('S6 while a merge is unfinished says it looked at MERGE_HEAD too, so the failure names where the sha was searched for', () => {
+    const refs = { ...REFS, mergeHead: 'f'.repeat(40) };
+    expect(findings([lane(), closed({ closedBy: 'abc1234, dead567' })], refs)).toEqual(one('S6', /closedBy dead567 is not an ancestor of HEAD or of MERGE_HEAD ffffffff$/));
+  });
+
   it('S2 and S8 together: a blockedBy holding an empty id is malformed and names no row', () => {
     expect(findings([lane(), row({ blockedBy: [''] })])).toEqual([
       expect.stringMatching(/^S2 blockedBy must be a list of row ids/), expect.stringMatching(/^S8 blockedBy {2}names no row/),

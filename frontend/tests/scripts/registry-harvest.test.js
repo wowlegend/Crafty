@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { describe, it, expect, afterAll } from 'vitest';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, realpathSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { fixtureGit } from './_isolatedGit.js';
+import { fixtureGit, fixtureGitWith } from './_isolatedGit.js';
 import {
-  ROOT, REGISTRY, SOURCES, FLOORS_FILE, harvest, compare, parseRegistry, readFloors, slug,
+  ROOT, REGISTRY, DECISIONS, SOURCES, FLOORS_FILE, harvest, compare, parseRegistry, readFloors, slug,
   extractStatus, extractActivePlan, extractQueue, extractOpenItems, extractMasterpiece,
   checkReferences, liveReferences, decisionsIndex, resolveDecision,
 } from '../../scripts/ci/registry-harvest.mjs';
@@ -302,5 +302,121 @@ describe('schema v2: the committed registry passes, the v1 registry fails, and o
 
   it('a reference check with nothing injected throws rather than passing', () => {
     expect(() => checkReferences([], {})).toThrow(/run blind is not a pass/);
+  });
+});
+
+describe('S6 while a merge is in progress: a sha main added is reachable from MERGE_HEAD, and no other sha is', () => {
+  // The documented way to take main into a lane is a merge commit (CLAUDE.md "Landing"). A merge that stops, on a
+  // conflict or with --no-commit, is finished with `git commit`, whose pre-commit hook can run S6 on the working-tree
+  // registry while HEAD is still the lane's own tip, so every closedBy sha main added read "not an ancestor of HEAD"
+  // and the commit could not be made without --no-verify. Each case builds a throwaway repository
+  // where the answer is known by construction: `mainOnly` is on main and not on the lane, `stray` is on a third branch
+  // nothing merges, so a rule that accepts any sha git can find is told apart from one that follows the merge.
+  const roots = [];
+  afterAll(() => {
+    for (const d of roots) rmSync(d, { recursive: true, force: true });
+  });
+
+  function lane() {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'registry-s6-')));
+    roots.push(root);
+    const g = (...a) => fixtureGit(root, ...a);
+    g('init', '-q', '-b', 'main');
+    g('config', 'user.email', 'fixture@example.invalid');
+    g('config', 'user.name', 'fixture');
+    g('config', 'commit.gpgsign', 'false');
+    mkdirSync(join(root, dirname(DECISIONS)), { recursive: true });
+    writeFileSync(join(root, DECISIONS), '## 2026-10-31 - a\n\n1. an item\n');
+    const commit = (file, msg) => {
+      writeFileSync(join(root, file), `${msg}\n`);
+      g('add', '-A');
+      g('commit', '-q', '-m', msg);
+      return g('rev-parse', 'HEAD');
+    };
+    const base = commit('base.txt', 'base');
+    g('checkout', '-q', '-b', 'lane');
+    const laneOnly = commit('lane.txt', 'lane');
+    g('checkout', '-q', 'main');
+    const mainOnly = commit('main.txt', 'main');
+    g('checkout', '-q', '-b', 'stray', base);
+    const stray = commit('stray.txt', 'stray');
+    g('checkout', '-q', 'lane');
+    return { root, g, base, laneOnly, mainOnly, stray };
+  }
+
+  /** The S6 findings for a registry that closes one row on each of `shas`, read from the repository at `root`. */
+  function s6(root, shas) {
+    const rows = shas.map((sha, i) => ({
+      id: `R${i}`, state: 'closed', owner: 'command session', resolution: 'done', closedBy: sha.slice(0, 8), _line: i + 1,
+    }));
+    return checkReferences(rows, liveReferences(root)).findings.filter((f) => f.rule === 'S6').map((f) => f.id);
+  }
+  const inProgress = (g) => g('rev-parse', '-q', '--verify', 'MERGE_HEAD');
+
+  it('outside a merge, a sha only main holds is not an ancestor of the lane, as before', () => {
+    const f = lane();
+    expect(() => inProgress(f.g), 'presence: no merge is in progress').toThrow();
+    expect(s6(f.root, [f.base, f.laneOnly, f.mainOnly, f.stray])).toEqual(['R2', 'R3']);
+  });
+
+  it('mid-merge of main, a sha main added passes; a sha on a branch the merge does not take in, and one that does not exist, still fail', () => {
+    const f = lane();
+    f.g('merge', '-q', '--no-commit', '--no-ff', 'main');
+    expect(inProgress(f.g), 'presence: the fixture is mid-merge, MERGE_HEAD is main').toBe(f.mainOnly);
+    expect(s6(f.root, [f.base, f.laneOnly, f.mainOnly])).toEqual([]);
+    expect(s6(f.root, [f.stray, 'deadbeef'.padEnd(40, '0')])).toEqual(['R0', 'R1']);
+  });
+
+  it('a merge that was aborted takes the allowance with it', () => {
+    const f = lane();
+    f.g('merge', '-q', '--no-commit', '--no-ff', 'main');
+    expect(s6(f.root, [f.mainOnly]), 'control: the allowance is on mid-merge').toEqual([]);
+    f.g('merge', '--abort');
+    expect(() => inProgress(f.g)).toThrow();
+    expect(s6(f.root, [f.mainOnly])).toEqual(['R0']);
+  });
+
+  it('once the merge commits, the sha is an ancestor of HEAD and the stray one is still refused', () => {
+    const f = lane();
+    f.g('merge', '-q', '--no-commit', '--no-ff', 'main');
+    f.g('commit', '-q', '-m', 'merge main into lane');
+    expect(() => inProgress(f.g)).toThrow();
+    expect(s6(f.root, [f.mainOnly, f.laneOnly])).toEqual([]);
+    expect(s6(f.root, [f.stray])).toEqual(['R0']);
+  });
+
+  it("holds in a linked worktree, where the merge state sits in the worktree's own git dir", () => {
+    const f = lane();
+    const wt = `${f.root}-wt`;
+    roots.push(wt);
+    // The override is for a machine whose git shim refuses a worktree under the temp dir; the fixture is deleted above.
+    fixtureGitWith(f.root, { AB_ALLOW_EPHEMERAL_WORKTREE: '1' }, 'worktree', 'add', '-q', '-b', 'lane-wt', wt, 'lane');
+    const w = (...a) => fixtureGit(wt, ...a);
+    w('merge', '-q', '--no-commit', '--no-ff', 'main');
+    expect(inProgress(w), 'presence: the worktree is mid-merge').toBe(f.mainOnly);
+    expect(s6(wt, [f.mainOnly])).toEqual([]);
+    expect(s6(wt, [f.stray])).toEqual(['R0']);
+  });
+
+  // `git rev-parse MERGE_HEAD` is a name lookup: with no merge-state file it goes on to refs/MERGE_HEAD, refs/tags/ and
+  // refs/heads/, and git lets anyone create a branch or a tag with that name. A merge is in progress when the file
+  // exists, so the file is what the rule reads before it resolves the name.
+  it.each(['branch', 'tag'])('a %s named MERGE_HEAD with no merge in progress gives no allowance', (kind) => {
+    const f = lane();
+    f.g(kind, 'MERGE_HEAD', f.stray);
+    expect(existsSync(join(f.root, '.git', 'MERGE_HEAD')), 'presence: no merge-state file').toBe(false);
+    expect(inProgress(f.g), `presence: the name resolves to the ${kind}, which is the trap`).toBe(f.stray);
+    expect(s6(f.root, [f.stray, f.mainOnly, f.laneOnly])).toEqual(['R0', 'R1']);
+    expect(liveReferences(f.root).mergeHead).toBeNull();
+  });
+
+  it('a branch named MERGE_HEAD does not displace the merge-state file during a real merge', () => {
+    const f = lane();
+    f.g('merge', '-q', '--no-commit', '--no-ff', 'main');
+    f.g('branch', 'MERGE_HEAD', f.stray);
+    expect(existsSync(join(f.root, '.git', 'MERGE_HEAD')), 'presence: the merge-state file exists').toBe(true);
+    expect(liveReferences(f.root).mergeHead).toBe(f.mainOnly);
+    expect(s6(f.root, [f.mainOnly])).toEqual([]);
+    expect(s6(f.root, [f.stray])).toEqual(['R0']);
   });
 });
