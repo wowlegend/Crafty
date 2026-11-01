@@ -5,7 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 import { MobToonMaterial } from './MobToonMaterial';
 import {
   beastAvatarParts, beastAvatarSpheres, boxDistance, sphereDistance, nearEye, haloRadius,
-  SELF_CLEARANCE_M, FEET_OFFSET, BEAST_GLOW, EYE_LOCAL_Y,
+  SELF_CLEARANCE_M, FEET_OFFSET, BEAST_GLOW, EYE_LOCAL_Y, formLift,
 } from './beastAvatarParts.js';
 import { followHoldsView } from './followView.js';
 import { elementForSpell } from '../game/beasts.js';
@@ -45,14 +45,14 @@ const _inv = new THREE.Matrix4();
 const _eye = new THREE.Vector3();
 const _feet = new THREE.Vector3();
 const _cam = new THREE.Vector3();
-/** The camera drawing this frame, in the avatar group's own space (`group.matrixWorld` is current at draw time). */
+/** The camera drawing this frame, in `group`'s own space (`group.matrixWorld` is current at draw time). */
 function eyeInAvatar(group, camera) {
   _inv.copy(group.matrixWorld).invert();
   return _eye.setFromMatrixPosition(camera.matrixWorld).applyMatrix4(_inv);
 }
 
 /** Whether `camera` draws the player's own view: the follow placed it, or it stands at the steady eye, judged in world
- *  space (the group's origin is the avatar's feet, and its scale is the entrance's). */
+ *  space (the group hangs FEET_OFFSET under the body's centre, unscaled; the entrance scales the parts inside it). */
 function firstPerson(group, camera) {
   if (followHoldsView()) return true;
   _feet.setFromMatrixPosition(group.matrixWorld);
@@ -72,11 +72,12 @@ function worldScale(group) {
  * clearance, in metres, is not drawn. Judged in each mesh's onBeforeRender, after the Player's loop has placed the
  * camera this frame, so the reveal handing the view back to the eye hides the beast on that same frame. A hidden part
  * writes neither colour nor depth; a box still casts its shadow (the shadow pass reads no colour mask).
- * `distanceOf(e)` is the part's distance from `e`, a point in the avatar group's space.
+ * `distanceOf(e)` is the part's distance from `e`, a point in the space of `parts`, the group the parts stand in (at the
+ * form's feet, with the entrance's scale); first person is judged on `group`, which hangs FEET_OFFSET under the body.
  */
-function hideNearEye(mesh, group, distanceOf) {
+function hideNearEye(mesh, group, parts, distanceOf) {
   mesh.onBeforeRender = (renderer, scene, camera) => {
-    const seen = !firstPerson(group, camera) && distanceOf(eyeInAvatar(group, camera)) * worldScale(group) >= SELF_CLEARANCE_M;
+    const seen = !firstPerson(group, camera) && distanceOf(eyeInAvatar(parts, camera)) * worldScale(parts) >= SELF_CLEARANCE_M;
     mesh.material.colorWrite = seen;
     mesh.material.depthWrite = seen && mesh.userData.writesDepth === true;
   };
@@ -88,6 +89,7 @@ export function BeastAvatar() {
   const element = useGameStore((s) => s.activeBeastForm);
   const activeSpell = useGameStore((s) => s.activeSpell);
   const groupRef = useRef();
+  const partsRef = useRef();
   const boxRefs = useRef([]);
   const coreRef = useRef();
   const haloRef = useRef();
@@ -113,25 +115,25 @@ export function BeastAvatar() {
 
   // Each part judges, as it is drawn, whether the camera drawing it may see it (hideNearEye). Set once per form.
   useLayoutEffect(() => {
-    const g = groupRef.current;
-    if (!active || !g || !spheres) return;
+    const g = groupRef.current, p = partsRef.current;
+    if (!active || !g || !p || !spheres) return;
     const boxes = beastAvatarParts(element).boxes;
     boxes.forEach((b, i) => {
       const m = boxRefs.current[i];
       if (!m) return;
       m.userData.writesDepth = true;
-      hideNearEye(m, g, (e) => boxDistance(b, e.x, e.y, e.z));
+      hideNearEye(m, g, p, (e) => boxDistance(b, e.x, e.y, e.z));
     });
     const core = coreRef.current;
     if (core) {
-      hideNearEye(core, g, (e) => sphereDistance(spheres.core, e.x, e.y, e.z));
+      hideNearEye(core, g, p, (e) => sphereDistance(spheres.core, e.x, e.y, e.z));
       const hot = core.children.find((c) => c.isMesh);
-      if (hot) hideNearEye(hot, g, (e) => sphereDistance(spheres.hotspot, e.x, e.y, e.z));
+      if (hot) hideNearEye(hot, g, p, (e) => sphereDistance(spheres.hotspot, e.x, e.y, e.z));
     }
-    if (haloRef.current) hideNearEye(haloRef.current, g, (e) => sphereDistance(spheres.halo, e.x, e.y, e.z));
+    if (haloRef.current) hideNearEye(haloRef.current, g, p, (e) => sphereDistance(spheres.halo, e.x, e.y, e.z));
     const burst = burstRef.current;
     if (burst) {
-      hideNearEye(burst, g, (e) => Math.hypot(e.x - spheres.core.pos[0], e.y - spheres.core.pos[1], e.z - spheres.core.pos[2])
+      hideNearEye(burst, g, p, (e) => Math.hypot(e.x - spheres.core.pos[0], e.y - spheres.core.pos[1], e.z - spheres.core.pos[2])
         - BURST_RADIUS * burst.scale.x);
     }
   }, [active, element, spheres]);
@@ -168,7 +170,10 @@ export function BeastAvatar() {
     if (entryRef.current < 0) entryRef.current = now;
     const elapsed = capture ? MORPH_SEC + 1 : now - entryRef.current;
     const ent = morphEntrance(elapsed);
-    groupRef.current.scale.setScalar(ent.scale);
+    if (partsRef.current) {
+      partsRef.current.scale.setScalar(ent.scale);
+      partsRef.current.position.y = formLift(element, ent.scale); // the lowest point stays on the floor as it grows
+    }
 
     if (coreRef.current) {
       const pulse = capture ? 1.08 : 1 + Math.sin(now * 3) * 0.08;
@@ -204,41 +209,43 @@ export function BeastAvatar() {
 
       {parts && (
         <group ref={groupRef} position={[0, FEET_OFFSET, 0]}>
-          {/* (1) SILHOUETTE — dark-ink toon body + element rim (toneMapped, crisp) */}
-          {parts.boxes.map((b, i) => (
-            <mesh key={i} ref={(m) => { boxRefs.current[i] = m; }} position={b.pos} rotation={b.rot} castShadow>
-              <boxGeometry args={b.size} />
-              <MobToonMaterial color={parts.bodyColor} rimColor={parts.glowColor} rimStrength={1.15 * GLOW * parts.rimBoost} />
-            </mesh>
-          ))}
+          <group ref={partsRef} position={[0, formLift(element), 0]}>
+            {/* (1) SILHOUETTE — dark-ink toon body + element rim (toneMapped, crisp) */}
+            {parts.boxes.map((b, i) => (
+              <mesh key={i} ref={(m) => { boxRefs.current[i] = m; }} position={b.pos} rotation={b.rot} castShadow>
+                <boxGeometry args={b.size} />
+                <MobToonMaterial color={parts.bodyColor} rimColor={parts.glowColor} rimStrength={1.15 * GLOW * parts.rimBoost} />
+              </mesh>
+            ))}
 
-          {/* (2) HOT-CORE — near-white additive heart + nested pure-white hotspot (clips past bloom) */}
-          <mesh ref={coreRef} position={parts.core.pos} renderOrder={2}>
-            <sphereGeometry args={[parts.core.radius * 0.6, 14, 14]} />
-            <meshBasicMaterial color={parts.coreColor} toneMapped={false} transparent opacity={Math.min(1, 0.95 * GLOW)}
-              blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
-            <mesh renderOrder={3}>
-              <sphereGeometry args={[parts.core.radius * 0.32, 10, 10]} />
-              <meshBasicMaterial color="#FFFFFF" toneMapped={false} transparent opacity={1}
+            {/* (2) HOT-CORE — near-white additive heart + nested pure-white hotspot (clips past bloom) */}
+            <mesh ref={coreRef} position={parts.core.pos} renderOrder={2}>
+              <sphereGeometry args={[parts.core.radius * 0.6, 14, 14]} />
+              <meshBasicMaterial color={parts.coreColor} toneMapped={false} transparent opacity={Math.min(1, 0.95 * GLOW)}
+                blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+              <mesh renderOrder={3}>
+                <sphereGeometry args={[parts.core.radius * 0.32, 10, 10]} />
+                <meshBasicMaterial color="#FFFFFF" toneMapped={false} transparent opacity={1}
+                  blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+              </mesh>
+            </mesh>
+
+            {/* (3) a single faint back-halo (BackSide) — a touch of aura behind the silhouette */}
+            <mesh ref={haloRef} position={parts.core.pos} renderOrder={1}>
+              <sphereGeometry args={[haloRadius(parts), 16, 16]} />
+              <meshBasicMaterial color={parts.glowColor} toneMapped={false} transparent opacity={Math.min(0.55, 0.3 * GLOW)}
+                blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
+            </mesh>
+
+            {/* beat 2 — the BURST flash at the core: masks the collider/avatar swap, gone when settled */}
+            <mesh ref={burstRef} position={parts.core.pos} renderOrder={4} visible={false}>
+              <sphereGeometry args={[0.5, 16, 16]} />
+              <meshBasicMaterial color={parts.coreColor} toneMapped={false} transparent opacity={1}
                 blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
             </mesh>
-          </mesh>
 
-          {/* (3) a single faint back-halo (BackSide) — a touch of aura behind the silhouette */}
-          <mesh ref={haloRef} position={parts.core.pos} renderOrder={1}>
-            <sphereGeometry args={[haloRadius(parts), 16, 16]} />
-            <meshBasicMaterial color={parts.glowColor} toneMapped={false} transparent opacity={Math.min(0.55, 0.3 * GLOW)}
-              blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
-          </mesh>
-
-          {/* beat 2 — the BURST flash at the core: masks the collider/avatar swap, gone when settled */}
-          <mesh ref={burstRef} position={parts.core.pos} renderOrder={4} visible={false}>
-            <sphereGeometry args={[0.5, 16, 16]} />
-            <meshBasicMaterial color={parts.coreColor} toneMapped={false} transparent opacity={1}
-              blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
-          </mesh>
-
-          <PooledLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} lightsHands={false} />
+            <PooledLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} lightsHands={false} />
+          </group>
         </group>
       )}
     </group>

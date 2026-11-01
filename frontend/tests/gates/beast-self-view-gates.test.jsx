@@ -21,7 +21,7 @@ import * as THREE from 'three';
  */
 vi.mock('@react-three/fiber', () => import('@react-three/fiber/dist/react-three-fiber.esm.js'));
 const { mountR3F } = await import('./_r3f.jsx');
-const { beastAvatarParts, boxDistance, SELF_CLEARANCE_M, FIRST_PERSON_M, BEAST_AVATAR_ELEMENTS } = await import('../../src/render/beastAvatarParts.js');
+const { beastAvatarParts, boxDistance, SELF_CLEARANCE_M, FIRST_PERSON_M, BEAST_AVATAR_ELEMENTS, formLift } = await import('../../src/render/beastAvatarParts.js');
 const { BeastAvatar, FEET_OFFSET } = await import('../../src/render/BeastAvatar.jsx');
 const { EYE_HEIGHT_M, EYE_BOB_M } = await import('../../src/combat/swingOrigin.js');
 const { transformCamPose } = await import('../../src/game/transformCam.js');
@@ -32,8 +32,9 @@ const { shakeOffset, traumaFromWeight, SHAKE_WEIGHT_MAX } = await import('../../
 const { KICK_PROFILES } = await import('../../src/game/cameraKick.js');
 const { BURST_SEC } = await import('../../src/game/beastMorph.js');
 
-/** The first-person eye in the avatar's own frame: the group sits FEET_OFFSET under the body's centre. */
-const EYE_LOCAL_Y = EYE_HEIGHT_M - FEET_OFFSET;
+/** The first-person eye in a form's parts frame: the avatar's group sits FEET_OFFSET under the body's centre, and the
+ *  form's parts stand formLift(el) up inside it (on the floor its capsule rests on). */
+const eyeLocalY = (el) => EYE_HEIGHT_M - FEET_OFFSET - formLift(el);
 
 /** three's answer: the point taken into the box's frame by the inverse of its world matrix, then clamped. */
 function threeDistance(box, p) {
@@ -50,7 +51,7 @@ describe('the distance from the eye to each part of the beast', () => {
     for (const el of BEAST_AVATAR_ELEMENTS) {
       for (const box of beastAvatarParts(el).boxes) {
         (box.rot || []).forEach((r, i) => { if (r) axes.add(i); });
-        for (const p of [[0, EYE_LOCAL_Y, 0], [0.3, 1.2, -0.4], [-0.7, 0.5, 0.9], [...box.pos]]) {
+        for (const p of [[0, eyeLocalY(el), 0], [0.3, 1.2, -0.4], [-0.7, 0.5, 0.9], [...box.pos]]) {
           const v = new THREE.Vector3(...p);
           expect(boxDistance(box, v.x, v.y, v.z), `${el} box at ${box.pos}`).toBeCloseTo(threeDistance(box, v), 9);
           checked += 1;
@@ -62,13 +63,17 @@ describe('the distance from the eye to each part of the beast', () => {
   });
 
   it('at the first-person eye the hawk\'s and the golem\'s heads are inside the clearance, and nothing far is', () => {
+    // Each form at its own eye: its parts stand on the floor its capsule rests on (formLift), so the eye sits higher in
+    // the bull, the hawk and the golem than in the dragon.
     const near = (el) => beastAvatarParts(el).boxes
-      .map((b, i) => [i, boxDistance(b, 0, EYE_LOCAL_Y, 0)])
+      .map((b, i) => [i, boxDistance(b, 0, eyeLocalY(el), 0)])
       .filter(([, d]) => d < SELF_CLEARANCE_M).map(([i]) => i);
-    expect(boxDistance(beastAvatarParts('lightning').boxes[1], 0, EYE_LOCAL_Y, 0), 'SETUP: the eye is no longer in the hawk\'s head').toBe(0);
-    expect(boxDistance(beastAvatarParts('arcane').boxes[1], 0, EYE_LOCAL_Y, 0), 'SETUP: the eye is no longer in the golem\'s head').toBe(0);
-    expect(near('lightning')).toContain(1);
-    expect(near('arcane')).toEqual([0, 1]); // the torso a hand's width under the eye, and the head around it
+    expect(boxDistance(beastAvatarParts('lightning').boxes[1], 0, eyeLocalY('lightning'), 0), 'SETUP: the eye is no longer by the hawk\'s head').toBeLessThan(SELF_CLEARANCE_M);
+    expect(boxDistance(beastAvatarParts('arcane').boxes[1], 0, eyeLocalY('arcane'), 0), 'SETUP: the eye is no longer by the golem\'s head').toBeLessThan(0.05);
+    expect(near('lightning')).toEqual([1]);
+    expect(near('arcane')).toEqual([1]); // the head a few centimetres from the eye; the torso is now out of reach
+    expect(near('fire')).toEqual([0, 1]); // the dragon's chest and neck
+    expect(near('ice'), 'the bull stands its head clear of the eye').toEqual([]);
     expect(SELF_CLEARANCE_M, 'the clearance must cover the near plane, or a clipped part still draws').toBeGreaterThan(0.1);
     expect(SELF_CLEARANCE_M, 'the clearance would hide the beast the player sees beside them').toBeLessThan(0.4);
   });
@@ -235,7 +240,8 @@ describe('BeastAvatar in first person and in the reveal (mounted through R3F, th
     const cam = await mountForm('fire');
     const wing = beastAvatarParts('fire').boxes[5];
     const group = r.three().scene.getObjectByProperty('type', 'Group');
-    // The wing's centre, in world space: the group sits FEET_OFFSET under the body and turns with the camera's yaw.
+    // The wing's centre, in world space: the parts stand formLift up in the group that sits FEET_OFFSET under the body
+    // and turns with the camera's yaw.
     await at(cam, [0, EYE_HEIGHT_M, 0]);
     const inWing = new THREE.Vector3(...wing.pos);
     r.three().scene.updateMatrixWorld(true);

@@ -13,6 +13,8 @@
  * The LEAD form (comet/fire) is shaped with the most care; the other 3 are first-pass, refined at M8.
  */
 import { EYE_HEIGHT_M } from '../combat/swingOrigin.js';
+import { BEAST_FORMS } from '../game/beasts.js';
+import { CONTROLLER_OFFSET } from '../game/kinematicMove.js';
 
 // element -> { DARK ink body (the crisp silhouette — never blooms), bright element glow+rim, near-white
 // core tint }. The Hades+Genshin fusion: the body is DARK (ink), the ELEMENT color lives in the rim /
@@ -116,8 +118,9 @@ export function beastAvatarParts(element) {
 export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);
 
 /**
- * In first person the eye rides the body's centre + EYE_HEIGHT_M (combat/swingOrigin.js), inside the hawk's and the
- * golem's heads, with the dragon's wings a third of a metre off. The boxes are shaped to read from the reveal's 4.5 m;
+ * In first person the eye rides the body's centre + EYE_HEIGHT_M (combat/swingOrigin.js), within a few centimetres of
+ * the golem's head and the dragon's chest and a hand's width from the hawk's head, with the dragon's wings half a metre
+ * off. The boxes are shaped to read from the reveal's 4.5 m;
  * from the eye they are slabs and fragments (the dragon's wings fill the upper corners, the hawk's beak floats under the
  * crosshair) and the halo washes the lower view, so in first person the avatar draws only into the shadow map and its
  * light stays on (DECISIONS 2026-10-29 item 80). Away from the eye, in the reveal, a part nearer the camera than this
@@ -125,8 +128,38 @@ export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);
  */
 export const SELF_CLEARANCE_M = 0.25;
 
-/** The rigid body's origin is the capsule's centre; the avatar's feet sit this far under it. */
+/** The avatar's group hangs this far under the body's centre (the capsule's centre is the rigid body's origin); it turns
+ *  with the view, and each form's boxes stand inside it at their own feet (formLift). The DEV hook frameBeastReveal
+ *  (devtest/devBridge.js) finds the centre from the published group by this. */
 export const FEET_OFFSET = -0.9;
+
+/** The lowest point of `boxes` in the avatar's space: each box's centre less the reach of its half-size straight down,
+ *  turned by its Euler XYZ rotation (the matrix Rx(a) Ry(b) Rz(c), whose second row maps a local axis onto y). */
+function lowestY(boxes) {
+  let low = Infinity;
+  for (const box of boxes) {
+    const [a, b, c] = box.rot || [0, 0, 0];
+    const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cc = Math.cos(c), sc = Math.sin(c);
+    const reach = Math.abs(ca * sc + sa * sb * cc) * box.size[0] / 2 + Math.abs(ca * cc - sa * sb * sc) * box.size[1] / 2
+      + Math.abs(sa * cb) * box.size[2] / 2;
+    low = Math.min(low, box.pos[1] - reach);
+  }
+  return low;
+}
+
+const FORM_LOW = Object.fromEntries(Object.entries(FORM_PARTS).map(([el, p]) => [el, lowestY(p.boxes)]));
+
+/**
+ * Where a form's parts stand inside the avatar's group (m, up from FEET_OFFSET) when drawn at `scale`: its capsule
+ * (game/beasts.js) rests the body's centre halfHeight + radius + the controller's offset (game/kinematicMove.js
+ * CONTROLLER_OFFSET) over the floor, and the lowest point of its boxes stands on that floor at every scale, so the
+ * entrance grows the form from the floor. 0 for an element with no form or no parts.
+ */
+export function formLift(element, scale = 1) {
+  const form = BEAST_FORMS[element], low = FORM_LOW[element];
+  if (!form || low === undefined) return 0;
+  return -(form.halfHeight + form.radius + CONTROLLER_OFFSET) - FEET_OFFSET - low * scale;
+}
 
 /** The element glow's strength: it scales the rim, the core, the halo and the core's light, never the ink body. */
 export const BEAST_GLOW = 1.7;
