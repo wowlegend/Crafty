@@ -39,6 +39,7 @@ import { installSquadPersistence } from './world/squadPersistence.js';
 import { useDayNightClock } from './game/useDayNightClock';
 import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
 import { requestGameLock } from './input/pointerLock.js';
+import { ON_WORLD_TEXT } from './ui/onWorldText.js';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -296,13 +297,17 @@ function GameApp({ experienceSystem }) {
       {/* Another tab saved this world: this tab stops saving, and offers the reload (ui/SlotConflictPanel.jsx). */}
       <SlotConflictPanel />
 
+      {/* The world is being built: shown under the title, and in play when Start is clicked before the spawn chunk is up.
+          A still caption at the foot of the screen, not a layer over the canvas: in play the page must drain every pointer
+          update the lock sends it, and on a software compositor a layer covering the live canvas left it unable to, most
+          of all a translucent, blurred, animated one (DECISIONS 2026-10-31 items 370-371; tests/e2e/start-before-built.spec.js).
+          The unbuilt world behind it is bright fog, where soft-shadowed text read 1.03:1, so the caption takes the ink outline
+          of type drawn on the world (ui/onWorldText.js). Not a plate: a small solid plate was tried first, and the CI runs did
+          not show that it cost the drain (DECISIONS 2026-10-31 item 380); the outline adds no element over the canvas. */}
       {!isWorldBuilt && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm pointer-events-auto">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-500 mb-6 shadow-lg shadow-green-500/50"></div>
-          <h2 className="text-3xl font-bold text-white mb-2 font-mono tracking-widest" style={{ textShadow: '0 0 10px rgba(74, 222, 128, 0.8)' }}>
-            {t('world.generating')}
-          </h2>
-          <p className="text-green-400 font-mono text-sm animate-pulse">{t('world.buildingTerrain')}</p>
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-50 flex flex-col items-center">
+          <h2 className="text-3xl font-bold text-text mb-2 font-mono tracking-widest" style={ON_WORLD_TEXT}>{t('world.generating')}</h2>
+          <p className="text-success font-mono text-sm font-semibold" style={ON_WORLD_TEXT}>{t('world.buildingTerrain')}</p>
         </div>
       )}
 

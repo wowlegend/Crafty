@@ -1,0 +1,120 @@
+{
+ "what": "The world-building caption in play, a Start clicked before the world was built (chunk meshes held 12 s after the browser lock, the lock held at the shot), production build, Chromium new headless on Apple M3 Max (ANGLE Metal), 1280x800 at DPR 2. fg: median of the glyph pixels within RGB distance 48 of the CSS colour. bg/contrast: against the median of a ring 2-6 CSS px outside the text box (the backdrop). edge/edgeContrast: against the median of the non-glyph pixels within 2 device px of a glyph (the outline where there is one); edgeWorst: the 10th percentile of those by luminance closeness (anti-aliased blends and fog between strokes). WCAG 2 relative luminance.",
+ "frames": {
+  "before": "caption-before.jpg (debfdfc2, soft text shadows)",
+  "after": "caption-after.jpg (the ink outline of ui/onWorldText.js)",
+  "plate": "caption-plate.jpg (the solid plate of 30fef172, superseded by the ink outline; the CI runs did not separate the two, DECISIONS 2026-10-31 item 380)",
+  "crops": "caption-before-crop.jpg, caption-after-crop.jpg (the caption at full resolution)"
+ },
+ "measured": {
+  "before_and_after": "2026-11-01T03:26Z",
+  "plate": "2026-11-01T03:10Z"
+ },
+ "before": {
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+  "state": {
+   "lock": true,
+   "started": true,
+   "built": false,
+   "held": 96
+  },
+  "headline": {
+   "css": "#ffffff",
+   "glyphPixels": 11016,
+   "fg": "#ffffff",
+   "ringPixels": 12464,
+   "bg": "#ebb4be",
+   "contrast": 1.78,
+   "worstBg": "#ecb5bf",
+   "worst": 1.76,
+   "edgePixels": 6839,
+   "edge": "#989b8b",
+   "edgeContrast": 2.84,
+   "edgeWorst": "#c3cfc2",
+   "edgeWorstContrast": 1.61
+  },
+  "subtitle": {
+   "css": "#4ade80",
+   "glyphPixels": 2739,
+   "fg": "#4ade80",
+   "ringPixels": 12128,
+   "bg": "#ebb3bd",
+   "contrast": 1.03,
+   "worstBg": "#ecb4bf",
+   "worst": 1.02,
+   "edgePixels": 6347,
+   "edge": "#c69da0",
+   "edgeContrast": 1.38,
+   "edgeWorst": "#d9a6af",
+   "edgeWorstContrast": 1.2
+  }
+ },
+ "after": {
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+  "state": {
+   "lock": true,
+   "started": true,
+   "built": false,
+   "held": 96
+  },
+  "headline": {
+   "css": "#ececef",
+   "glyphPixels": 10499,
+   "fg": "#ececef",
+   "ringPixels": 12464,
+   "bg": "#ecb4be",
+   "contrast": 1.5,
+   "worstBg": "#ecb5bf",
+   "worst": 1.49,
+   "edgePixels": 6760,
+   "edge": "#211a18",
+   "edgeContrast": 14.53,
+   "edgeWorst": "#afaeb0",
+   "edgeWorstContrast": 1.87
+  },
+  "subtitle": {
+   "css": "#7fe0a0",
+   "glyphPixels": 3734,
+   "fg": "#7fe0a0",
+   "ringPixels": 12128,
+   "bg": "#ecb4be",
+   "contrast": 1.1,
+   "worstBg": "#ecb5bf",
+   "worst": 1.1,
+   "edgePixels": 6190,
+   "edge": "#24241e",
+   "edgeContrast": 9.71,
+   "edgeWorst": "#b78b93",
+   "edgeWorstContrast": 1.83
+  }
+ },
+ "plate": {
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+  "state": {
+   "lock": true,
+   "started": true,
+   "built": false,
+   "held": 102
+  },
+  "headline": {
+   "css": "#ececef",
+   "glyphPixels": 10522,
+   "fg": "#ececef",
+   "ringPixels": 12464,
+   "bg": "#2a2420",
+   "contrast": 12.99,
+   "worstBg": "#2a2420",
+   "worst": 12.99
+  },
+  "subtitle": {
+   "css": "#7fe0a0",
+   "glyphPixels": 2413,
+   "fg": "#7fe0a0",
+   "ringPixels": 12128,
+   "bg": "#2a2420",
+   "contrast": 9.53,
+   "worstBg": "#2a2420",
+   "worst": 9.53
+  }
+ }
+}
