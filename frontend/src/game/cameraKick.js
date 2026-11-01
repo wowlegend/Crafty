@@ -21,12 +21,22 @@ export const KICK_PROFILES = {
   slam: [0, -0.16, 0.06],   // hard down + slight forward
   land: [0, -0.12, 0],      // straight down
   // E-ter: being HIT. Down + BACK, and deliberately the largest profile here: it is the only one the player
-  // does not choose, so it has to register as something happening TO them rather than by them. Reads as a
-  // flinch away from the blow. (A DIRECTIONAL flinch — biased by the store's `lastHitDir` angle, the way
-  // trauma.js already biases shake — is the obvious refinement and is NOT done here; it is a feel change
-  // that wants a human eye on a real hit, and the compositor has been intermittent.)
+  // does not choose, so it has to register as something happening TO them rather than by them. Its back push is
+  // turned away from the blow by hurtKick.
   hurt: [0, -0.10, -0.14],
 };
+
+/**
+ * The hurt kick, camera-local, for a hit from `angle`: the store's lastHitDir.angle, screen-relative as
+ * game/damageDirection.js makes it (0 ahead, +pi/2 right, -pi/2 left, pi behind). The hurt profile's down, with its back
+ * push turned to point away from the blow: a hit from the right throws the view left. A hit with no source position
+ * (angle null) keeps the profile, straight back.
+ */
+export function hurtKick(angle) {
+  const [, down, back] = KICK_PROFILES.hurt;
+  if (typeof angle !== 'number' || !Number.isFinite(angle)) return KICK_PROFILES.hurt;
+  return [Math.sin(angle) * back, down, Math.cos(angle) * back];
+}
 
 /**
  * Convert a camera-LOCAL kick profile [right, up, forward] to a WORLD impulse [x,y,z], given the

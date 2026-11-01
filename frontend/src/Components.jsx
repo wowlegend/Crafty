@@ -30,7 +30,7 @@ import { logImpulse } from './devtest/impulseLog.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
 import { stanceFrame, stanceWalk, dodgeBurst, resetStance } from './game/combatStance.js';
-import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
+import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick, hurtKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
 import { shakeOffset, SHAKE_WEIGHT_MAX, HITSTOP } from './game/trauma.js';
@@ -1421,11 +1421,12 @@ export const Player = ({ isWorldBuilt }) => {
     // this one originates in the store (damagePlayer), which has no camera, so the controller polls the hit
     // stamp instead of subscribing — a reactive subscription here is exactly the Game-Loop-Isolation trap.
     // `isNewHit` is the edge detector: without it one hit would kick every frame until the next one.
-    if (isNewHit(seenHitRef.current, useGameStore.getState().lastHitDir)) {
-      seenHitRef.current = useGameStore.getState().lastHitDir.t;
+    const lastHit = useGameStore.getState().lastHitDir;
+    if (isNewHit(seenHitRef.current, lastHit)) {
+      seenHitRef.current = lastHit.t;
       cancelHeavy(); // a hit taken breaks a heavy's charge
       const _hf = new THREE.Vector3(); camera.getWorldDirection(_hf);
-      addKick(kickRef.current, localToWorldKick(_hf.x, _hf.z, KICK_PROFILES.hurt));
+      addKick(kickRef.current, localToWorldKick(_hf.x, _hf.z, hurtKick(lastHit.angle)));
     }
 
     // Calculate displacement vector
