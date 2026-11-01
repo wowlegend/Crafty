@@ -77,11 +77,23 @@ describe('the waves', () => {
     expect(checked).toBe(60);
   });
 
-  it('put the night\'s ember elites on the first members of waves 2 and 3', () => {
+  // "Ember elites: min(3, floor((n - 1) / 2)), placed in waves 2 and 3" (encounters-siege plan, wave sizes): split between
+  // them, wave 2 taking the odd one, each on its first wave members, so wave 3 carries an elite beside its captain.
+  it('split the night\'s ember elites between waves 2 and 3, on the first wave members of each', () => {
     const plan = planNight({ night: 9, landScore: LAND });
     expect(eliteCount(9)).toBe(3);
     const embers = plan.waves.flatMap((w) => w.members.map((m, i) => (m.elite === 'ember' ? [w.index, i] : null))).filter(Boolean);
-    expect(embers).toEqual([[1, 0], [1, 1], [1, 2]]);
+    expect(embers, 'night 9: the elites are not two on wave 2 and one on wave 3 after its captain').toEqual([[1, 0], [1, 1], [2, 1]]);
+    for (let night = 1; night <= 12; night++) {
+      const e = eliteCount(night);
+      const perWave = planNight({ night, landScore: LAND }).waves.map((w) => {
+        const wave = w.members.filter((m) => m.role === 'wave');
+        const n = wave.filter((m) => m.elite === 'ember').length;
+        expect(wave.slice(0, n).every((m) => m.elite === 'ember'), `night ${night} wave ${w.index + 1}: an elite is not first`).toBe(true);
+        return n;
+      });
+      expect(perWave, `night ${night}: ${e} elites not split between waves 2 and 3`).toEqual([0, Math.ceil(e / 2), Math.floor(e / 2)]);
+    }
     expect(eliteCount(1)).toBe(0);
     expect(eliteCount(40)).toBe(3);
   });

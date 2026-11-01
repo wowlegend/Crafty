@@ -17,7 +17,9 @@ export const WAVE_CAP = 10;
 export const HUB_SLOTS = 4;
 /** The captain's health, x its type's: night 1's is gentle. */
 export const CAPTAIN_SCALE = Object.freeze({ firstNight: 1.6, later: 2.4 });
-/** The horn clears room among mobs farther than this from the player, so a cleared mob is never one the player sees go. */
+/** The horn clears room only among mobs farther than this from the player, farthest first, so what it retires is the
+ *  day's population least in play; at 30 m a mob can still be seen leave, which is why it goes through the death
+ *  dissolve rather than vanishing. */
 export const CLEAR_BEYOND_M = 30;
 /** A marcher that moves less than `moveM` in `windowMs` of world time sidesteps `sideM` for `sideMs`; after `tries`
  *  sidesteps it hunts the player instead. */
@@ -122,20 +124,23 @@ function pickType(rng, night) {
  * members } with `bearingIndex` into the sectors, a
  * member { type, role: 'wave' | 'captain', elite: null | 'ember' | 'captain', scale }. Wave 3 carries one captain,
  * FIRST in its list so the drain places it first: an ember husk at zone tier 1 or less, a moss brute from tier 2.
- * Ember elites ride on the first members of waves 2 and 3. `total` is every member of the night.
+ * The night's ember elites are split between waves 2 and 3, wave 2 taking the odd one, each on the first wave members
+ * (after wave 3's captain), so the last wave carries one beside its captain. `total` is every member of the night.
  */
 export function planNight({ night, zoneTier = 0, seed = 0, landScore = () => 0 }) {
   const rng = rngFor(seed, night);
   const sectors = chooseBearings({ night, seed, landScore });
-  let elites = eliteCount(night);
+  const e = eliteCount(night);
+  const elitesFor = [0, Math.ceil(e / 2), Math.floor(e / 2)];
   const waves = waveSizes(night).map((size, index) => {
     const members = [];
     if (index === 2) {
       const scale = night <= 1 ? CAPTAIN_SCALE.firstNight : CAPTAIN_SCALE.later;
       members.push({ type: zoneTier >= 2 ? 'moss_brute' : 'emberhusk', role: 'captain', elite: 'captain', scale });
     }
+    let elites = elitesFor[index];
     while (members.length < size) {
-      const elite = index > 0 && elites > 0 ? 'ember' : null;
+      const elite = elites > 0 ? 'ember' : null;
       if (elite) elites -= 1;
       members.push({ type: pickType(rng, night), role: 'wave', elite, scale: 1 });
     }
