@@ -17,8 +17,10 @@
 //   chestHasItems that chest currently stores something — the difference between removing a chest
 //                you placed and destroying one with your things in it
 //   forcePlace   the player holds the place key (input intent `forcePlace`, C): a right click places on the face the
-//                build ray hit where the ladder would interact with a chest or cast at a mob (QUEUE:Q26/b). The
-//                deliberate exception to "never place onto a mob": the player asked for the wall between them.
+//                build ray hit where the ladder would interact with a chest or cast at a mob (QUEUE:Q26/b). Terrain
+//                nearer than the mob already places, so what C adds is a block at or beyond the mob: under its feet,
+//                where the mob then stands on it (game/mobFloor.js), or on the wall behind it. The deliberate
+//                exception to "never place onto a mob": the player asked for a block there.
 
 export const AIM_CONE_RANGE = 24;          // ~spell range; through-mob guard reach
 export const AIM_CONE_ARC = Math.PI / 8;   // narrow crosshair cone (vs the wide PI/2 melee arc)
