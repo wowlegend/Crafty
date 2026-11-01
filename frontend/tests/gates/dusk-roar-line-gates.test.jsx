@@ -54,7 +54,7 @@ describe('the dusk warning', () => {
   it('with the roar unlocked on a desktop says a full bar wakes the beast, on the roar\'s own key, in both languages', () => {
     useGameStore.setState({ unlockedTalents: { [ROAR.talent]: 1 } });
     const s = shown();
-    expect(s.en, 'the English line lost the plain warning').toMatch(new RegExp(`^${STRINGS.en['notice.dusk'].replace(/[.!?]/g, '\\$&')} `));
+    expect(s.en.startsWith(`${STRINGS.en['notice.dusk']} `), 'the English line lost the plain warning').toBe(true);
     expect(s.zh.startsWith(STRINGS['zh-CN']['notice.dusk']), 'the Chinese line lost the plain warning').toBe(true);
     expect(s.en, 'the English line does not say a full bar wakes the beast on the roar\'s key').toContain(`wakes the beast (${ROAR.key}).`);
     expect(s.zh, 'the Chinese line does not name the roar\'s key').toContain(`唤醒野兽（${ROAR.key}）。`);
