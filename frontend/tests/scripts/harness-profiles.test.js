@@ -16,6 +16,7 @@
 //   I0 identity (a comment edit in _profile.mjs) SURVIVED.
 import { describe, it, expect } from 'vitest';
 import { PROFILES, DEFAULT_PROFILE, profileSeed, seedStorage } from '../../scripts/visual/_profile.mjs';
+import { initArgs, initScript } from '../../scripts/visual/_lookbookPage.mjs';
 
 /** A storage that records every write, the instrument the absences below are read from. */
 function fakeStorage() {
@@ -47,5 +48,34 @@ describe('the harness profiles', () => {
 
   it('an unknown profile is refused by name', () => {
     expect(() => profileSeed('veteran')).toThrow(/unknown profile "veteran".*fresh, returning/);
+  });
+});
+
+// The lookbook's and the media pipeline's init script (scripts/visual/_lookbookPage.mjs) takes its seed from initArgs, a
+// returning player unless the caller names another, and refuses an argument with no seed: its default used to be an
+// empty seed, the fresh profile, under a contract that says returning (DECISIONS 2026-11-01 (W3-A PR C) item 492).
+//
+// Mutation-Proof: via scripts/dev/mutate.sh, 2 tests, each observed RED:
+//   S1 initArgs defaults to fresh -> "initArgs seeds a returning player unless told otherwise"
+//   S2 initScript's refusal dropped (a missing seed writes nothing, the old default) -> "an init script with no seed is refused"
+//   I0 identity (a comment edit in _lookbookPage.mjs) SURVIVED.
+describe('the lookbook init script', () => {
+  it('initArgs seeds a returning player unless told otherwise', () => {
+    expect(initArgs()).toEqual({ touch: false, firstSession: false, seed: PROFILES.returning });
+    expect(initArgs({ touch: true, profile: 'fresh' })).toEqual({ touch: true, firstSession: false, seed: PROFILES.fresh });
+  });
+
+  it('an init script with no seed is refused, and one with a seed writes it', () => {
+    const s = fakeStorage();
+    const prev = globalThis.localStorage;
+    globalThis.localStorage = s;
+    try {
+      expect(() => initScript({ touch: false }), 'an init script with no seed is refused').toThrow(/no profile seed/);
+      expect(s.writes, 'a refused init script wrote').toEqual([]);
+      initScript(initArgs());
+      expect(s.writes, 'the returning seed, then the controls panel marked opened').toEqual([['crafty_onboarded', '1'], ['crafty_controls_seen', '1']]);
+    } finally {
+      globalThis.localStorage = prev;
+    }
   });
 });

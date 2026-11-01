@@ -37,10 +37,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serveVite, probePort } from './_serve.mjs';
-import { profileSeed } from './_profile.mjs';
 import { aimAt, indexChunkOf, servedBuildProblem } from './_lookbook.mjs';
 import {
-  resolveChromium, initScript, info, setCycle, clearHostiles, play, hudOn, respawnIfDead, restingBody, handsBaseline, holdActive,
+  resolveChromium, initScript, initArgs, info, setCycle, clearHostiles, play, hudOn, respawnIfDead, restingBody, handsBaseline, holdActive,
 } from './_lookbookPage.mjs';
 import {
   MEDIA_SHOTS, MEDIA_TIMES, MEDIA_MANIFEST, POSE_CLEAR_M, shotTableProblems, mediaShotVerdict, mobFeed, fightTarget, posePlace, mergeManifest, ogCardHtml,
@@ -267,7 +266,7 @@ async function main() {
     const page = await context.newPage();
     let pageErrors = 0;
     page.on('pageerror', () => { pageErrors += 1; });
-    await page.addInitScript(initScript, { touch: false, seed: profileSeed('returning') });
+    await page.addInitScript(initScript, initArgs({ touch: false }));
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     const hasSeam = await page.waitForFunction(() => typeof window.__craftyLookbook?.mobs === 'function', null, { timeout: 30000 }).then(() => true, () => false);
     if (!hasSeam) fail('this build has no lookbook seam with mobs() (window.__craftyLookbook)');
