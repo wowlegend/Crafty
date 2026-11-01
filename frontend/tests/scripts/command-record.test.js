@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from '../../scripts/ci/registry-harvest.mjs';
-import { openWorkRow, waitingRows } from '../../scripts/ci/command-record.mjs';
+import { NOW, openWorkRow, picNow, waitingRows } from '../../scripts/ci/command-record.mjs';
 
 // Sited in tests/scripts/: the subject is the Command Record's writer and its data file. The two registry readers are
 // driven on fixture rows whose answers are known by construction.
@@ -37,5 +37,41 @@ describe('the Command Record reads the registry', () => {
     const data = JSON.parse(readFileSync(join(ROOT, 'docs/superpowers/command-record.json'), 'utf8'));
     expect(data.details.waiting.title).toBe('Waiting on you');
     expect(data.details.waiting.rows).toBeUndefined();
+  });
+});
+
+describe('the Working-on-now pictures follow the cell state', () => {
+  const draw = (pic, state) => picNow({ alt: 'x', cells: [{ pic, state, tag: state === 'ok' ? 'Done' : 'Now', lines: ['a', 'b'] }] });
+  // check() draws <circle class="ok"> and busy() draws <circle class="run">; the tag is a rect, the shrine's glow another class.
+  const shows = (svg, marker) => svg.includes(`<circle class="${marker}"`);
+
+  it('draws the markers at all: a tick when done and a spinner under way, on the pictures that carry one', () => {
+    for (const pic of ['stall', 'rock']) {
+      expect(shows(draw(pic, 'ok'), 'ok'), `${pic} done has no tick`).toBe(true);
+      expect(shows(draw(pic, 'run'), 'run'), `${pic} under way has no spinner`).toBe(true);
+    }
+    expect(shows(draw('shrine', 'ok'), 'ok'), 'shrine done has no tick').toBe(true);
+  });
+
+  it('never shows the other state\'s marker, on every picture', () => {
+    const pics = Object.keys(NOW);
+    expect(pics.length).toBeGreaterThanOrEqual(5);
+    for (const pic of pics) {
+      expect(shows(draw(pic, 'ok'), 'run'), `${pic} done shows a spinner`).toBe(false);
+      expect(shows(draw(pic, 'run'), 'ok'), `${pic} under way shows a tick`).toBe(false);
+    }
+  });
+});
+
+describe('the data file keeps every detail line to 15 words', () => {
+  it('counts the lines it checks, and none runs over', () => {
+    const d = JSON.parse(readFileSync(join(ROOT, 'docs/superpowers/command-record.json'), 'utf8')).details;
+    const lines = [
+      ...d.log.rows.flatMap((day) => day.rows), ...d.hunt.groups.flatMap((g) => g.rows), ...d.hunt.lanes.rows,
+      ...d.calls.rows, ...d.next.rows, ...d.health.rows,
+    ].map((r) => r.text);
+    expect(lines.length).toBeGreaterThan(100);
+    const over = lines.filter((t) => t.split(/\s+/).length > 15);
+    expect(over).toEqual([]);
   });
 });
