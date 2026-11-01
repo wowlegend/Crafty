@@ -3,9 +3,10 @@ name: probe start-stall
 # THROWAWAY PROBE WORKFLOW (lane start-stall, fix round 2). It runs on this lane's own branch and is removed by the lane's
 # next commit; it never reaches main with a live trigger. It proves the reworked tests/e2e/start-before-built.spec.js
 # (carried in ci-probe/ and copied into place on the runner) on the runner: the shipped outlined caption 8 times, the same
-# with the round-1 probe's pointerrawupdate listener added 4 times, and each mutant once through scripts/dev/mutate-e2e.sh, which applies it, runs the spec and
-# restores it (nothing mutated is committed). mutate-e2e.sh is patched on the runner to print the spec's whole output,
-# so every 2 s sample is in the log.
+# with the round-1 probe's pointerrawupdate listener added 4 times (round 2), and each mutant once (the old screen three times)
+# through scripts/dev/mutate-e2e.sh, which applies it, runs the spec and restores it (nothing mutated is committed).
+# mutate-e2e.sh is patched on the runner to stream the spec's output as it runs (tee), so every 2 s sample reaches the log
+# even when a runner is shut down; the memory line lists the four largest processes.
 on:
   push:
     branches: [fix/start-before-built-stall]
@@ -30,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: [outline-a, outline-b, raw, e1, e1b, silence, slowleak, nobuild, nolock, e0]
+        case: [outline-a, outline-b, e1, e1b, e1c, silence, slowleak, nobuild, nolock, e0]
     steps:
       - uses: actions/checkout@v7
 
@@ -50,11 +51,11 @@ jobs:
         env:
           CASE: ${{ matrix.case }}
         run: |
-          (while true; do echo "[mem] $(date -u +%T) used/total MB $(free -m | awk 'NR==2{print $3"/"$2}') avail $(free -m | awk 'NR==2{print $7}')"; sleep 15; done) &
+          (while true; do echo "[mem] $(date -u +%T) used/total MB $(free -m | awk 'NR==2{print $3"/"$2}') avail $(free -m | awk 'NR==2{print $7}') top: $(ps -eo rss=,comm= --sort=-rss | head -4 | awk '{printf "%s %dMB; ", $2, $1/1024}')"; sleep 10; done) &
           SPEC=tests/e2e/start-before-built.spec.js
           cp ../ci-probe/start-before-built.spec.js "$SPEC"
-          sed -i 's|  rm -f "$BAK" "$OUT"|  cat "$OUT"; rm -f "$BAK" "$OUT"|' scripts/dev/mutate-e2e.sh
-          grep -c 'cat "$OUT"; rm -f' scripts/dev/mutate-e2e.sh
+          sed -i 's|^npx playwright test "$SPEC" --reporter=line --retries=0 > "$OUT" 2>&1$|npx playwright test "$SPEC" --reporter=line --retries=0 2>\&1 \| tee "$OUT"|' scripts/dev/mutate-e2e.sh
+          grep -c 'tee "$OUT"' scripts/dev/mutate-e2e.sh
           case "$CASE" in
             outline-a|outline-b) npx playwright test "$SPEC" --repeat-each=4 --retries=0 --reporter=list ;;
             raw) python3 ../ci-probe/arm.py variant raw && npx playwright test "$SPEC" --repeat-each=4 --retries=0 --reporter=list ;;

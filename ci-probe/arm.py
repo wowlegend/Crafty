@@ -66,6 +66,7 @@ SLOWLEAK = BUILT + '''  useEffect(() => {
 MUTANTS = {
     'e1': ('src/App.jsx', OUTLINE, OLD_SCREEN, 'E1 the screen as it was (bd06dacf): a translucent, blurred layer over the canvas with a spinning ring', ''),
     'e1b': ('src/App.jsx', OUTLINE, OLD_SCREEN, 'E1 again, a second sample', ''),
+    'e1c': ('src/App.jsx', OUTLINE, OLD_SCREEN, 'E1 again, a third sample', ''),
     'silence': ('src/App.jsx', BUILT, SILENCE, 'M-silence: 20 s after the lock the page releases it and blocks its main thread for 60 s', ''),
     'slowleak': ('src/App.jsx', BUILT, SLOWLEAK, 'M-slowleak: from 60 s after the lock, 16 MB/s of blobs sent to the browser process', ''),
     'nobuild': ('src/world/Terrain.jsx', 'if (payload.cx === 0 && payload.cz === 0) {', 'if (payload.cx === 0 && payload.cz === 0 && false) {',

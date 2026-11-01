@@ -20,8 +20,9 @@ import { execSync } from 'node:child_process';
 //    start, and HOLD_MS after the lock every held mesh is delivered in the order it came, before any later one, so play is
 //    entered and stays with the world unbuilt on any machine (on CI the build otherwise outran or trailed the click);
 //  - the flood is counted and must be there: each trusted pointermove adds the raw updates coalesced into it. The game
-//    already listens for pointermove (R3F's canvas events), so the count adds no kind of listener the shipped page lacks
-//    (a pointerrawupdate listener did: Chromium dispatches those only to a page that listens). A browser that grants no
+//    already listens for pointermove (R3F's canvas events), so the count adds no kind of listener the shipped page lacks.
+//    A pointerrawupdate listener did, and it is not free: with one added, the outlined caption's page failed 4 of 4
+//    attempts, against 0 of 8 without it (run 41269336217). A browser that grants no
 //    lock, or streams no flood, leaves the page nothing to drain: INCONCLUSIVE, a printed skip on a workstation and a
 //    FAILURE on CI (process.env.CI), so the gate cannot go dark there if CI's Chromium stops flooding.
 // Then, from the click, a sample every 2 s, each one printed: a bounded page read (4 s) and the RSS of the browser process
@@ -38,7 +39,8 @@ import { execSync } from 'node:child_process';
 //    gives it back (+275 and +328 MB, then +42, on the plated caption in run 41268462804); a leak raises the floor;
 //  - world: the spawn chunk is not built BUILD_BY_MS after the click.
 // The bound and the brake stop the sampling the moment either is passed, and on any failure the renderer is crashed first
-// through CDP, so a runner is not run out of memory with its log. Thresholds and the runs they were read from: DECISIONS
+// through CDP, so that a runner is not run out of memory with its log. That is not a guarantee: one old-screen attempt
+// filled its runner before any verdict (run 41269336217). Thresholds and the runs they were read from: DECISIONS
 // 2026-10-31 item 378.
 //
 // WHAT IT DOES NOT CHECK: a player's real mouse (a moving mouse streams input too, at its own rate; this measures the
@@ -192,7 +194,8 @@ test('a Start clicked before the world is built: the page keeps answering, the b
     late: [stopped !== null || (late !== null && late <= LATE_FLOOR_RISE_MB),
       late === null ? `not reached (sampling ${stopped ? `stopped by the ${stopped}` : 'ended first'})`
         : `browser floor ${late >= 0 ? '+' : ''}${late} MB over the window's last ${LATE_HALF_MS / 1000} s against the ${LATE_HALF_MS / 1000} s before (at most +${LATE_FLOOR_RISE_MB})`],
-    world: [builtAt !== null, builtAt === null ? `not built ${Math.round((Date.now() - t0) / 1000)} s after the click (by ${BUILD_BY_MS / 1000} s)` : `built ${Math.round(builtAt / 1000)} s after the click`],
+    world: [builtAt !== null || stopped !== null, builtAt !== null ? `built ${Math.round(builtAt / 1000)} s after the click`
+      : stopped !== null ? `not judged (sampling stopped by the ${stopped})` : `not built ${Math.round((Date.now() - t0) / 1000)} s after the click (by ${BUILD_BY_MS / 1000} s)`],
   };
   const line = `start-before-built: ${Object.entries(arms).map(([k, [ok, why]]) => `${k} ${ok ? 'ok' : 'FAIL'} (${why})`).join('; ')}; `
     + `${last ? last.moves : '?'} pointer updates by the last answer, lock ${lockSeen ? 'held' : 'never seen'}`;
