@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { getToonGradient, installRim, flashableMaterial, TOON, OUTLINE, RIM } from '../../src/render/characterStyle.js';
+import { getToonGradient, installRim, TOON, OUTLINE, RIM } from '../../src/render/characterStyle.js';
 
 describe('characterStyle', () => {
   it('toon gradient is a 2-band NearestFilter DataTexture (singleton)', () => {
@@ -34,14 +34,6 @@ describe('characterStyle', () => {
     const fs = shader.fragmentShader;
     expect(fs.indexOf('gl_FragColor.rgb +=')).toBeGreaterThan(fs.indexOf('#include <common>'));
     expect(fs.indexOf('gl_FragColor.rgb +=')).toBeLessThan(fs.indexOf('#include <dithering_fragment>'));
-  });
-
-  it('flashableMaterial allows Standard+Toon, rejects Basic+Shader (outline)', () => {
-    expect(flashableMaterial(new THREE.MeshStandardMaterial())).toBe(true);
-    expect(flashableMaterial(new THREE.MeshToonMaterial())).toBe(true);
-    expect(flashableMaterial(new THREE.MeshBasicMaterial())).toBe(false);
-    expect(flashableMaterial(new THREE.ShaderMaterial())).toBe(false);
-    expect(flashableMaterial(null)).toBe(false);
   });
 
   it('config constants are in sane stylized ranges', () => {

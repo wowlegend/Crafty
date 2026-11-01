@@ -444,6 +444,63 @@ export function eyeShotVerdict({ cycle, heading, stand, before, after, handsBase
 }
 
 /**
+ * Why a combat frame (lookbook.mjs shootCombat) is not the moment it stages; `[]` when it is. A combat frame holds one
+ * staged thing in front of the eye, so anything else in it is a contamination the frame would be judged with: a hostile
+ * the stage did not put there, a mob model drawn with no live mob (one left mounted after its mob was removed), a staged
+ * mob already hurt (a damage number and an XP popup came with it), a spell in view on a mob shot or more than the one
+ * staged on a cast, a staged cast still drawn after unstage(), or a toast up. `frame` is the seam's frame() at the shot,
+ * `spellsAfter` its spell count after unstage(), `after` its info() at the shot, `toasts` the notification stack's size.
+ * Blind to a damage number over a mob that has since died, and to a passive mob or an NPC walking in.
+ */
+export function combatVerdict({ cast, after, frame, toasts, spellsAfter, left = [] }) {
+  const why = [];
+  if (!after?.active) why.push('input not live');
+  if (after?.isAlive === false) why.push('player dead');
+  if (!(toasts === 0)) why.push(Number.isFinite(toasts) ? `${toasts} toast(s) up` : 'toasts not counted');
+  if (!frame || !Array.isArray(frame.mobs) || !Number.isFinite(frame.spells)) why.push('frame contents not read');
+  else {
+    const ghosts = frame.mobs.filter((m) => !m.entity).length;
+    if (ghosts) why.push(`${ghosts} mob model(s) drawn in view with no live mob`);
+    const strays = frame.mobs.filter((m) => m.entity && m.hostile && !m.staged).map((m) => m.type);
+    if (strays.length) why.push(`unstaged hostile(s) in view: ${strays.join(', ')}`);
+    const staged = frame.mobs.filter((m) => m.staged);
+    if (!cast && staged.length === 0) why.push('the staged mob is not drawn in view');
+    for (const m of staged) if (!(m.health >= m.maxHealth)) why.push(`the staged ${m.type} is hurt: ${m.health}/${m.maxHealth}`);
+    const want = cast ? 1 : 0;
+    if (frame.spells !== want) why.push(`${frame.spells} spell(s) drawn in view; the stage put ${want}`);
+  }
+  if (!(spellsAfter === 0)) why.push(Number.isFinite(spellsAfter) ? `${spellsAfter} spell(s) still drawn after unstage()` : 'spells after unstage() not counted');
+  if (left.length) why.push(`left behind: ${left.join(', ')}`);
+  return { valid: why.length === 0, why };
+}
+
+/** The turns a lit-band hit shot may take, degrees: 30 to 60 either way, so both visible faces stay wide on screen. */
+export const LIT_TURNS = Object.freeze([-60, -45, -30, 30, 45, 60]);
+/**
+ * The turn (degrees, the seam's stage() yawDeg) that puts one visible face of a mob staged straight ahead of an eye
+ * facing compass `heading` in the key light's lit band and the other in its shadow band. A staged mob faces the eye
+ * (rotation -heading), and a box face is lit when its normal leans toward the light: `key` is the direction toward the
+ * key light, [x, y, z]. `split` is the worse face's horizontal lean, toward the light for the lit one and away for the
+ * other; the feedback-grammar e2e reads the same split. Null when `key` is not a direction.
+ */
+export function litTurn(heading, key) {
+  if (!Array.isArray(key) || key.length !== 3 || !key.every(Number.isFinite)) return null;
+  const h = Math.hypot(key[0], key[2]);
+  if (!(h > 1e-6)) return null;
+  const dx = key[0] / h, dz = key[2] / h;
+  const toward = (r) => Math.sin(r) * dx + Math.cos(r) * dz;
+  const r0 = -heading * Math.PI / 180;
+  let best = null;
+  for (const yaw of LIT_TURNS) {
+    const front = r0 + yaw * Math.PI / 180;
+    const side = front + (yaw > 0 ? -Math.PI / 2 : Math.PI / 2);
+    const split = Math.max(Math.min(toward(front), -toward(side)), Math.min(-toward(front), toward(side)));
+    if (!best || split > best.split) best = { yawDeg: yaw, split };
+  }
+  return best;
+}
+
+/**
  * Whether a walking clip shows the walk it claims: from where the body was stood (`stand`), along `heading` from the
  * first frame to the last, far enough to be a walk. `start` / `end`: the seam's info() just before the key went down
  * and just after it came up. The clock check is on `start`: a 4 s clip spans more of the day than CYCLE_TOLERANCE by
@@ -1136,6 +1193,7 @@ export function contactSheetHtml(report) {
     const eye = (t.eye || []).map((s) => figure(s, `eye, facing ${s.heading}`, `eye level facing ${s.heading} at ${s.cycle}`)).join('\n');
     const material = (t.material || []).map((s) => figure(s, `${s.kind}, eye level`, `${s.kind} at eye level at ${s.cycle}`)).join('\n');
     const dragon = (t.dragon || []).map((s) => figure(s, `dragon, ${s.pose}`, `the dragon held ${s.pose} at ${s.cycle}`)).join('\n');
+    const combat = (t.combat || []).map((s) => figure(s, `combat, ${s.name}`, `${s.type} held at ${s.moment} at ${s.cycle}`)).join('\n');
     const clips = (t.clips || []).map((c) => {
       const src = `${esc(t.id)}/${esc(c.file)}`;
       const facts = [`cycle ${esc(c.cycle)}`, `facing ${esc(c.heading)}`, `walked ${esc(Number(c.movedM).toFixed(1))} m`, `${esc(c.frames)} frames`].join(' · ');
@@ -1146,7 +1204,7 @@ export function contactSheetHtml(report) {
     const sub = (title, body) => (body ? `<h3>${title}</h3><div class="grid">${body}</div>` : '');
     return `<section><h2>${esc(t.id)}</h2><p class="gl">${esc(t.engine)} · GL renderer: <code>${esc(t.renderer)}</code> (${esc(t.gpu)})` +
       `${t.launch ? ` · launch ${esc(t.launch)}` : ''}${t.entry ? ` · entered play by ${esc(t.entry)}` : ''}</p>${gpuNote}${notes}` +
-      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Material sights, eye level', material)}${sub('The dragon arena', dragon)}${sub('Walking, real input', clips)}</section>`;
+      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Material sights, eye level', material)}${sub('The dragon arena', dragon)}${sub('The combat stage, eye level', combat)}${sub('Walking, real input', clips)}</section>`;
   }).join('\n');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

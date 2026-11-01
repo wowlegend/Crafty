@@ -4,8 +4,10 @@
 // judges looks on REAL-GPU, MOTION-ON frames of the SHIPPED bundle. The DEV test bridge and capture mode are compiled
 // out of that bundle, and capture is the wrong instrument anyway: it turns weather, mobs, NPCs, particles and spawning
 // off and pins the sun at noon. So the probe needs to pose the camera, stand the player and turn their head, set the
-// time of day, make input live, clear the hostiles in the player's face, list the mobs a frame could show and read GPU
-// time per post pass in the production build — and nothing else.
+// time of day, make input live, clear the hostiles in the player's face, list the mobs a frame could show, read GPU
+// time per post pass, and stage a mob held in one combat moment (a windup, a hit) with the world frozen around it
+// (stage(), for the feedback grammar's danger and contact frames), and read what else a frame holds (frame(), so a shot
+// with anything the stage did not put there is marked invalid) in the production build — and nothing else.
 //
 // TWO WAYS TO FRAME A SHOT. pose() pins the camera for an elevated hero shot (below). stand() and look() frame what a
 // player sees instead: they move the player's body and turn the camera the way mouse look does (input/pointerLook.js
@@ -39,8 +41,23 @@ import {
   parseLookbookParam, lookbookPose, setLookbookPose, setLookbookHandPose, setLookbookPassesOff, setLookbookDragonHold,
   lookbookHandPose, lookbookPassesOff, lookbookDragonHold, _resetLookbookStateForTest,
 } from './lookbookState.js';
+import { WINDUP_MS } from '../game/attackTelegraph.js';
+import { Vector3 } from 'three';
 
 let _passTimer = null; // the page-wide handle from render/passTimer.js, once the probe asked for timings
+
+/** The moments stage() can hold: a mob at rest, partway through its windup, or at the instant of a hit; or a spell
+ *  ('cast', `type` its element) in flight with its impact beyond it. */
+export const STAGE_MOMENTS = Object.freeze(['idle', 'windup', 'hit', 'cast']);
+const STAGE_WINDUP_RAMP = 0.8; // how far through its windup a staged mob is held (game/attackTelegraph.js windupRamp)
+const STAGE_HOLD_MS = 600000; // the world freeze's cap; unstage() ends it at once
+// What stage() put in the world: the mobs, whether the per-frame hit stamp runs, and whether the world is held for it.
+const _stage = { mobs: [], stamping: false, holding: false, cast: false };
+/** How far from the eye frame() looks for mobs and spells drawn in view. */
+export const FRAME_M = 60;
+const MATCH_M = 1.5; // a drawn mob stands on its live ECS mob within this (the render damp lags a walking mob)
+const _p = new Vector3();
+const _v = new Vector3();
 
 /** The poses dragon() can hold the dragon in: at rest, each attack's tell partway through its windup (render/BossEntity.jsx
  *  draws its ground decal and its glow), and staggered. */
@@ -196,14 +213,18 @@ function finite(v, name) {
  *          glInfo: () => object|null, contextLosses: () => number, hostiles?: () => Iterable<object>,
  *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>,
  *          sunDir?: () => number[], handNodes?: () => number,
- *          spawnDragon?: (o: {position?: number[]}) => {position: number[], ground: number|null}}} deps  `hostiles`: the
+ *          spawnDragon?: (o: {position?: number[]}) => {position: number[], ground: number|null},
+ *          worldNow?: () => number, keyDir?: () => number[], roots?: () => Map<any, {store: any}>}} deps  `hostiles`: the
  *          ECS mob query, every mob (the seam picks the hostiles out). `sunDir`: the sun's direction this frame
  *          (render/mood.js skyFrameRef). `handNodes`: the objects mounted in the viewmodel's hands group
  *          (render/viewmodel.js handNodeCount). `spawnDragon`: the boss system's lookbook spawn (world/bossSystem.js).
+ *          `worldNow`: the world clock (game/worldClock.js), which a staged windup is planted on. `keyDir`: the key
+ *          light's direction this frame, the sun by day and the moon by night (render/mood.js skyFrameRef). `roots`:
+ *          React Three Fiber's roots (its `_roots`), where frame() finds the scene the game camera draws.
  */
 export function installLookbookSeam(win, {
   store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir, handNodes,
-  spawnDragon,
+  spawnDragon, worldNow, keyDir, roots,
 }) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   const unposed = (verb) => {
@@ -211,6 +232,21 @@ export function installLookbookSeam(win, {
   };
   const body = () => store.getState().playerRigidBodyRef?.current ?? null;
   const camera = () => store.getState().gameCamera ?? null;
+  // The scene the game camera draws: the R3F root whose camera it is.
+  const sceneOf = (cam) => {
+    for (const r of roots?.()?.values() ?? []) {
+      const s = r?.store?.getState?.();
+      if (s?.camera === cam) return s.scene ?? null;
+    }
+    return null;
+  };
+  // A world point in the camera's view, in front of it and within FRAME_M.
+  const inView = (cam, p) => {
+    if (p.distanceTo(cam.position) > FRAME_M) return false;
+    if (_v.copy(p).applyMatrix4(cam.matrixWorldInverse).z >= 0) return false;
+    _v.copy(p).project(cam);
+    return Math.abs(_v.x) <= 1 && Math.abs(_v.y) <= 1;
+  };
   win.__craftyLookbook = Object.freeze({
     /** Pin the camera: { position: [x,y,z], lookAt: [x,y,z], fov? }. Throws on a malformed pose. */
     pose: (p) => { setPose(p); return copyPose(lookbookPose()); },
@@ -330,6 +366,120 @@ export function installLookbookSeam(win, {
       setLookbookPassesOff(off);
       return [...off].sort();
     },
+    /** Put a `type` mob `distance` m along the eye's level forward (and `side` m to its right), on the floor, facing the
+     *  eye turned by `yawDeg`, and HOLD `moment` (STAGE_MOMENTS): the world is frozen through the store's own hitstop, so
+     *  the AI neither moves it nor replaces its windup; 'windup' plants windupUntil at 0.8 of the ramp, and 'hit' renews
+     *  lastHit every frame. Returns { id, position }. unstage() removes what was staged and lets the world go. */
+    stage: ({ type, distance = 3, moment = 'idle', yawDeg = 0, side = 0, elite = null } = {}) => {
+      if (!STAGE_MOMENTS.includes(moment)) {
+        throw new TypeError(`lookbook: stage moment must be one of ${STAGE_MOMENTS.join(', ')}, got ${JSON.stringify(moment)}`);
+      }
+      if (elite !== null && elite !== 'ember' && elite !== 'captain') throw new TypeError(`lookbook: stage elite must be 'ember', 'captain' or null, got ${JSON.stringify(elite)}`);
+      const d = finite(distance, 'distance');
+      const turn = finite(yawDeg, 'yawDeg') * DEG;
+      const s = finite(side, 'side');
+      if (!hostiles || !worldNow) throw new Error('lookbook: stage() needs the mob query and the world clock');
+      const st = store.getState();
+      const cam = camera();
+      if (!cam || !st.spawnMob) throw new Error('lookbook: stage() before the camera and the spawner exist');
+      const e = cam.matrixWorld.elements; // forward is -Z of the camera, levelled
+      const fl = Math.hypot(e[8], e[10]) || 1;
+      const fx = -e[8] / fl, fz = -e[10] / fl;
+      const x = cam.position.x + fx * d - fz * s;
+      const z = cam.position.z + fz * d + fx * s;
+      const y = st.getMobFloor?.(x, z, cam.position.y - 1.6);
+      if (!Number.isFinite(y)) throw new Error(`lookbook: stage() found no ground at ${x.toFixed(1)}, ${z.toFixed(1)}`);
+      if (moment === 'cast') {
+        // `type` is the element: the spell system's deterministic cast (EnhancedMagicSystem spawnDeterministicCast),
+        // its projectile `distance` m along the eye's forward at eye height. Its cast telegraph and its impact go 3 m
+        // BEHIND the eye, out of the frame: held at their first instant they would fill it (a rune circle at the muzzle,
+        // the impact's flash sphere), and the frame is the projectile's.
+        if (!st.spawnDeterministicCast) throw new Error('lookbook: stage() cast before the spell system exists');
+        const [ix, iz] = [cam.position.x - fx * 3, cam.position.z - fz * 3];
+        const iy = st.getMobFloor?.(ix, iz, cam.position.y - 1.6);
+        const at = [x, cam.position.y - 0.2, z];
+        st.spawnDeterministicCast({
+          spellType: type,
+          muzzle: [ix, cam.position.y - 0.3, iz],
+          projectile: at,
+          impact: [ix, (Number.isFinite(iy) ? iy : y) + 0.1, iz],
+          direction: [fx, -0.05, fz],
+        });
+        if (!_stage.holding) { st.triggerHitstop(STAGE_HOLD_MS); _stage.holding = true; }
+        _stage.cast = true;
+        return { id: null, position: at };
+      }
+      const before = new Set(hostiles());
+      if (!st.spawnMob(x, z, type, y)) throw new TypeError(`lookbook: the spawner refused the type ${JSON.stringify(type)}`);
+      const mob = [...hostiles()].find((m) => !before.has(m));
+      if (!mob) throw new Error('lookbook: the spawner reported a spawn the mob query does not show');
+      if (elite) mob.elite = elite; // a crest or a captain's banner (src/night/eliteLook.js), set before the mob mounts
+      mob.rotation = Math.atan2(cam.position.x - x, cam.position.z - z) + turn;
+      mob.snapSync = true; // a held world takes no damp step: copy the pose
+      if (!_stage.holding) { st.triggerHitstop(STAGE_HOLD_MS); _stage.holding = true; }
+      if (moment === 'windup') mob.windupUntil = worldNow() + (1 - STAGE_WINDUP_RAMP) * (mob.windupMs ?? WINDUP_MS);
+      if (moment === 'hit') mob.lookbookHit = true;
+      _stage.mobs.push(mob);
+      const raf = win.requestAnimationFrame ?? globalThis.requestAnimationFrame;
+      if (moment === 'hit' && !_stage.stamping && raf) {
+        _stage.stamping = true;
+        const stamp = () => {
+          if (!_stage.stamping) return;
+          for (const m of _stage.mobs) if (m.lookbookHit) m.lastHit = performance.now();
+          raf(stamp);
+        };
+        stamp();
+      }
+      return { id: mob.id ?? null, position: [mob.position.x, mob.position.y, mob.position.z] };
+    },
+    /** End a staged cast (the spell system's own clear: its projectile, telegraph and impact), remove every staged mob
+     *  (no kill, XP or loot), then end the world's hold: a spell left flying would strike the next mobs staged in front
+     *  of the eye. Returns how many mobs it removed. */
+    unstage: () => {
+      if (_stage.cast) store.getState().endDeterministicCast?.();
+      _stage.cast = false;
+      const n = _stage.mobs.length;
+      for (const m of _stage.mobs) removeEntity?.(m);
+      _stage.mobs = [];
+      _stage.stamping = false;
+      if (_stage.holding) {
+        const now = performance.now();
+        if (store.getState().hitstopUntil > now) store.setState({ hitstopUntil: now });
+        _stage.holding = false;
+      }
+      return n;
+    },
+    /** What a frame holds besides the stage, for the probe's validity check, read from what is DRAWN: every mob model
+     *  (MobModel's group, named 'mob') in the game camera's view within FRAME_M, each matched to the live ECS mob it
+     *  stands on (type, staged, hostile, health) or reported with `entity: false` when none is (a model left drawn
+     *  after its mob was removed; a bound ally too, which the lookbook's world has none of), with where it is drawn
+     *  (`at`) and its distance from the eye; and how many spells are
+     *  drawn in view (projectile heads and impact pops, named 'spell'). `{ mobs: null, spells: null }` when the build
+     *  hands the seam no scene. */
+    frame: () => {
+      const cam = camera();
+      if (!cam) throw new Error('lookbook: frame() before the game camera exists');
+      const scene = sceneOf(cam);
+      if (!scene) return { mobs: null, spells: null };
+      cam.updateMatrixWorld();
+      const live = hostiles ? [...hostiles()] : [];
+      const mobs = [];
+      let spells = 0;
+      scene.traverse((o) => {
+        if (o.name !== 'mob' && o.name !== 'spell') return;
+        o.getWorldPosition(_p);
+        if (o.name === 'spell') { if (inView(cam, _p)) spells += 1; return; }
+        const e = live.find((m) => m?.position && Math.hypot(m.position.x - _p.x, m.position.z - _p.z) < MATCH_M && Math.abs(m.position.y - _p.y) < MATCH_M);
+        const at = [+_p.x.toFixed(2), +_p.y.toFixed(2), +_p.z.toFixed(2)];
+        _p.y += 1; // the body, not the feet
+        if (!inView(cam, _p)) return;
+        const distanceM = +_p.distanceTo(cam.position).toFixed(1);
+        mobs.push(e
+          ? { entity: true, type: e.type ?? null, staged: _stage.mobs.includes(e), hostile: isLiveHostile(e), health: e.health ?? null, maxHealth: e.maxHealth ?? null, at, distanceM }
+          : { entity: false, type: null, staged: false, hostile: null, health: null, maxHealth: null, at, distanceM });
+      });
+      return { mobs, spells };
+    },
     /** What the probe records per shot. */
     info: () => {
       const s = store.getState();
@@ -366,6 +516,9 @@ export function installLookbookSeam(win, {
         hostiles: hostiles && (cam || t) ? hostileReach(hostiles(), cam ? cam.position.toArray() : [t.x, t.y, t.z]) : null,
         // Where the sun is, so a shot can face it (GodRays shows only near it); null when the build hands no reader.
         sun: sunDir ? sunBearing(sunDir()) : null,
+        // The key light's direction (toward it), the sun by day and the moon by night: a hit shot turns the mob so one
+        // visible face is in the lit band. Null when the build hands no reader.
+        key: keyDir ? copy3(keyDir()) : null,
         // The passes switched off, and the postprocessing effects that must show skipped in the chain while they are.
         passesOff: { names: [...lookbookPassesOff()].sort(), effects: lookbookEffectNames(lookbookPassesOff()) },
         // The fight a frame shows: whether the dragon is up, the pose the seam holds it in, and where it is.
@@ -381,4 +534,8 @@ export function installLookbookSeam(win, {
 export function _resetLookbookForTest() {
   _resetLookbookStateForTest();
   _passTimer = null;
+  _stage.mobs = [];
+  _stage.stamping = false;
+  _stage.holding = false;
+  _stage.cast = false;
 }

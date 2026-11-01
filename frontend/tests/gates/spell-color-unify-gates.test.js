@@ -57,8 +57,7 @@ describe('v7-S3.2 spell palette lane-separation + bloom discipline (ENERGY_PROFI
     expect(lb).toBeGreaterThan(0x90);
   });
 
-  it('fire shrinks the white core + pushes the orange HDR (the de-pink-wash fix)', () => {
-    expect(ENERGY_PROFILE.fireball.coreScale).toBeLessThanOrEqual(0.32); // was 0.40 (smaller white heart)
+  it('fire pushes the orange HDR (the de-pink-wash fix; the white core sphere is gone, W3-A PR A)', () => {
     expect(ENERGY_PROFILE.fireball.glowIntensity).toBeGreaterThanOrEqual(6.5); // orange pushed into HDR
   });
 
