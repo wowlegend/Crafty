@@ -577,13 +577,15 @@ export function checkReferences(rows, { isAncestor, decisionsText, headDate, mer
  * isAncestor, DECISIONS and HEAD's committer date read from the git checkout at `root`.
  *
  * A sha counts as on the history when HEAD reaches it, or, while a merge is unfinished, when MERGE_HEAD does. The
- * documented way to take main into a lane is a merge commit (CLAUDE.md "Landing"), and its pre-commit hook runs S6 on
- * the staged registry while HEAD is still the lane's own tip: without the second root every closedBy sha main added
- * read "not an ancestor of HEAD", and the only way through was --no-verify. Once the merge commits, HEAD reaches
- * MERGE_HEAD's commits and the allowance has nothing left to add. It is no wider than that: a sha on a branch the
- * merge does not take in, or on no branch, is still refused, and so is every sha after `git merge --abort`. `git
- * rev-parse --verify` finds the merge state in a linked worktree too, where `.git` is a file. An octopus merge reads
- * only its first merged commit; a squash merge leaves no MERGE_HEAD and so no allowance.
+ * documented way to take main into a lane is a merge commit (CLAUDE.md "Landing"). A merge that stops, on a conflict or
+ * with --no-commit, is finished with `git commit`, whose pre-commit hook can run S6 on the registry in the working
+ * tree while HEAD is still the lane's own tip: without the second root every closedBy sha main added read "not an
+ * ancestor of HEAD", and the only way through was --no-verify. (A clean merge commits at once and runs no pre-commit
+ * hook, so CI is the first place S6 reads it.) Once the merge commits, HEAD reaches MERGE_HEAD's commits and the
+ * allowance has nothing left to add. It is no wider than that: a sha on a branch the merge does not take in, or on no
+ * branch, is still refused, and so is every sha after `git merge --abort`. A merge is in progress when the merge-state
+ * file exists, never because a ref is NAMED MERGE_HEAD. An octopus merge reads only its first merged commit; a squash
+ * merge leaves no MERGE_HEAD and so no allowance.
  */
 export function liveReferences(root = ROOT) {
   // A hook's GIT_DIR must not choose the repository: `root` does.
@@ -591,10 +593,15 @@ export function liveReferences(root = ROOT) {
   const git = (args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', env, maxBuffer: 256 << 20, stdio: ['ignore', 'pipe', 'pipe'] });
   let mergeHead = null;
   try {
-    mergeHead = git(['rev-parse', '-q', '--verify', 'MERGE_HEAD']).trim() || null;
+    // A merge is in progress when the merge-state file exists. `rev-parse MERGE_HEAD` alone is a name lookup that goes
+    // on to refs/MERGE_HEAD, refs/tags/MERGE_HEAD and refs/heads/MERGE_HEAD, and anyone can create a tag or branch by
+    // that name. `--git-path` finds the file in a linked worktree too, where the merge state is not under `root/.git`.
+    if (existsSync(resolve(root, git(['rev-parse', '--git-path', 'MERGE_HEAD']).trim()))) {
+      mergeHead = git(['rev-parse', '-q', '--verify', 'MERGE_HEAD']).trim() || null;
+    }
   } catch {
-    // -q exits 1, silently, for "no such ref": no merge in progress. A git that is failing for any other reason fails
-    // the rev-list below the same way, and a MERGE_HEAD it cannot read leaves the strict rule, never a looser one.
+    // A git that is failing here fails the rev-list below the same way, and a MERGE_HEAD it cannot read (-q exits 1,
+    // silently, for an unreadable one) leaves the strict rule, never a looser one.
   }
   // One rev-list instead of a merge-base per sha: the set of commits HEAD reaches is what --is-ancestor asks about.
   const reachable = new Map();
