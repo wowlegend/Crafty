@@ -42,8 +42,9 @@ branch `feat/w3a-first-night`. The rest of PR C (U1 onward) is the next phase. I
    `input-and-pointer-lock.md` exists for); the touch controls and the music player sit on the iOS `enterPlay` cold
    start (the second needs the Start tap's gesture); the synth voices (`audio/synthVoices.js`, about 11.6 KB) are
    SoundManager's, which U1 and then W2-M edit next and whose first sound comes with play; `i18n/strings.js` is PR B's
-   file. **The arithmetic after PR B** (item 453 of PR B's entry: 651,620 B at its head): with PR B and C0 both in, about
-   648,622 B, so PR C's index units have about 3,878 B against their 4.7 KB of shares. The next room, unmeasured as a
+   file. **The arithmetic after PR B** (item 453 of PR B's entry: 651,620 B at its head): with PR B and C0 both in,
+   648,622 B, measured on the build of this lane's merge of PR B (`a7ec7ed4`), so PR C's index units have 3,878 B
+   against their 4.7 KB of shares. The next room, unmeasured as a
    build: `ui/CombatInstructions.jsx` (about 4,161 B minified on its own; the title's controls panel, the desktop-only
    first-session card and the hint, four unit gates to re-harness) and `AchievementsPanel`, an on-demand panel still in
    `QuestSystem.jsx` outside the panel chunk. A unit over its share takes one of them, or moves code to the night chunk.
