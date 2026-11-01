@@ -307,11 +307,13 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
     expect(placedOn, `the hold did not let the player go once chunk -1_0 was back ${JSON.stringify(at())}`).not.toBeNull();
   });
 
-  it('a load whose column never streams in is held the same time at 60 and 120 Hz, longer than the origin spawn\'s wait, then gives up for the origin', () => {
+  it('a load whose column never streams in is held the same time at 60, 90 and 120 Hz, longer than the origin spawn\'s wait, then gives up for the origin', () => {
     // A save far outside the loaded chunks: its column never answers, so the hold runs to its end (game/spawnPlacement.js
-    // resolveResumeSpawn). The wait is time, so a 120 Hz display holds as long as a 60 Hz one.
+    // resolveResumeSpawn). The wait is time, so a 120 Hz display holds as long as a 60 Hz one. At 90 Hz the 900 steps of
+    // 1/90 s sum to a hair under 10 s, so a hold read without the tolerance for that ends a frame late; at 60 and 120 Hz
+    // the sum reaches 10 s (the static review of lane L13 part 2, its F4).
     const held = {};
-    for (const hz of [60, 120]) {
+    for (const hz of [60, 90, 120]) {
       cleanup();
       standPlayer(hz);
       const saved = { x: 200.5, y: 40, z: 200.5 };
