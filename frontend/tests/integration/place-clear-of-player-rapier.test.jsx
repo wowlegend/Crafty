@@ -648,6 +648,19 @@ describe('a placed cell is solid to the player from the click, however late its 
     expect(real.seen.listed, 'SETUP: the far chunk\'s new trimesh is not handed to the cut').toEqual([real.seen.far]);
     expect(real.walk, `the far chunk's first trimesh, at x ${real.seen.xAtSweep} when the sweep ran, cut the walk over the origin to ${real.walk.toFixed(3)} of ${open.toFixed(3)} m`).toBeCloseTo(open, 4);
     expect(real.S.recs.get(key).collider.translation().x, 'SETUP: the far chunk\'s trimesh is not at its place after the step').toBe(FAR[0] * CHUNK_SIZE);
+
+    // Two far chunks streaming in together, first-mounted in one commit in that one window: the second lands with the
+    // first's trimesh already listed, and its own trimesh must be put where its body is as well.
+    const key2 = [FAR[0] + 1, FAR[1]].join('_');
+    const two = thirdWalk((S) => {
+      S.chunks.set(key, highLand());
+      S.chunks.set(key2, highLand());
+      mountChunks(S, [{ key, editSeq: 0 }, { key: key2, editSeq: 0 }]);
+      const far = [key, key2].map((k) => S.recs.get(k).collider);
+      return { listed: S.cells.unindexed().map((c) => c.handle), far: far.map((c) => c.handle), xAtSweep: far.map((c) => c.translation().x) };
+    });
+    expect(two.seen.listed, 'SETUP: the two far chunks\' new trimeshes are not both handed to the cut').toEqual(two.seen.far);
+    expect(two.walk, `two far chunks' first trimeshes, at x ${two.seen.xAtSweep.join(' and ')} when the sweep ran, cut the walk over the origin to ${two.walk.toFixed(3)} of ${open.toFixed(3)} m`).toBeCloseTo(open, 4);
   });
 
   it('between its trimesh landing and the next step, a ray at the placed cell still meets it', () => {
