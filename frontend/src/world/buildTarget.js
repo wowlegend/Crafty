@@ -1,5 +1,5 @@
-// The cell a left click mines and the build outline frames, from the build ray's hit (world/Terrain.jsx castBuildRay and
-// TargetOutline share it, so the outline always frames the cell the click takes).
+// The cell a left click mines and the build outline frames, from the build ray's hit (world/buildRay.js castBuildRay and
+// Terrain.jsx's TargetOutline share it, so the outline always frames the cell the click takes).
 import { steadyEye } from '../combat/swingOrigin.js';
 
 const _eye = { x: 0, y: 0, z: 0 };

@@ -13,10 +13,11 @@
 //  - each placed cell held solid from the click by world/placedCellColliders.js, retired one step after its trimesh;
 //  - a display frame: @react-three/rapier's stepper first (a fixed 1/60 s accumulator, so at 120 Hz every other frame
 //    takes no step, each step followed by placedCells.afterStep), then the Player frame (Components.jsx): the void guard,
-//    the spawn branch, the blind drop's follow and the stuck-in-rock recovery, grounded from the last sweep, the ledge
+//    the spawn branch, the blind drop's follow and the stuck-in-rock recovery, grounded from the last sweep where a
+//    walkable face bears the capsule (game/grounding.js), the ledge
 //    vault, jump / glue / gravity with the form's multipliers, the queued form swap, and one moveKinematic write with the
 //    unindexed colliders;
-//  - clicks between frames: the build ray from the steady eye (Terrain.jsx castBuildRay, its direction scaled by the
+//  - clicks between frames: the build ray from the steady eye (world/buildRay.js castBuildRay, its direction scaled by the
 //    hit's toi), the real placeAtHit, and the real mineTarget and mineAtHit (the single mine and the Delete Tool), over
 //    the real world/cellEdits.js; the worker applies each edit to the logical world at its click, in order, and its
 //    answer to a batched edit reaches the main thread half the trimesh lag later (rounded up: the reply is posted before
@@ -41,6 +42,8 @@ import { createPlacedCellColliders, createEditSeq } from '../../../src/world/pla
 import { generateMesh } from '../../../src/world/mesher.js';
 import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, CHUNK_HEIGHT, chunkOf } from '../../../src/world/chunkLayout.js';
 import { moveKinematic, placeBody } from '../../../src/game/kinematicMove.js';
+import { supportedGround, MAX_SLOPE_CLIMB_RAD } from '../../../src/game/grounding.js';
+import { castRayNearest } from '../../../src/world/buildRay.js';
 import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/beasts.js';
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
 import { steadyEye, EYE_HEIGHT_M } from '../../../src/combat/swingOrigin.js';
@@ -227,7 +230,7 @@ function makeKcc(world) {
   const kcc = world.createCharacterController(0.05);
   kcc.enableAutostep(1.05, 0.2, true);
   kcc.enableSnapToGround(0.5);
-  kcc.setMaxSlopeClimbAngle(Math.PI / 4);
+  kcc.setMaxSlopeClimbAngle(MAX_SLOPE_CLIMB_RAD);
   return kcc;
 }
 function playerParts(world, body, collider) {
@@ -333,7 +336,7 @@ function playerFrame(S, input) {
   }
   const store = useGameStore.getState();
   const loco = formLocomotion(store.beastFormActive ? store.activeBeastForm : null);
-  const grounded = kcc.computedGrounded();
+  const grounded = supportedGround(kcc, S.world, body, body.collider(0), filter);
   const look = { x: Math.cos(input.yaw ?? 0), z: Math.sin(input.yaw ?? 0) };
   // Phase 23 ledge vault: in the air, walking forward, a chest ray meets a wall within 0.8 m and a head ray finds none.
   if (!grounded && input.forward && S.vy <= 2.0) {
@@ -661,11 +664,12 @@ export function escape(S) {
 }
 
 // ---- the verbs ------------------------------------------------------------------------------------------------------
-/** Terrain.jsx castBuildRay from the steady eye: the hit, its normal, and the direction scaled by toi (the quirk). */
+/** world/buildRay.js castBuildRay from the steady eye (its query, cells made since the last step included): the hit, its
+ *  normal, and the direction scaled by toi (the quirk). */
 export function buildRay(S, dir) {
   const from = steadyEye(S.p.body.translation(), {});
   const d = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
-  const hit = S.world.castRayAndGetNormal(new RAPIER.Ray(from, d), 8.0, true, undefined, undefined, undefined, S.p.body, S.p.filter);
+  const hit = castRayNearest(S.world, new RAPIER.Ray(from, d), 8.0, undefined, S.p.body, S.p.filter, S.cells.unindexed());
   if (!hit) return null;
   const toi = hit.timeOfImpact;
   const scaled = d.multiplyScalar(toi);
@@ -792,8 +796,8 @@ export function leftClick(S, h) {
   return c;
 }
 
-/** The Delete Tool's left click (world/mineAtHit.js): the real executor, the cell mineTarget takes as Terrain.jsx
- *  castBuildRay names it, its batched removal answered against the logical world at the click. */
+/** The Delete Tool's left click (world/mineAtHit.js): the real executor, the cell mineTarget takes as
+ *  world/buildRay.js castBuildRay names it, its batched removal answered against the logical world at the click. */
 export function deleteClick(S, h, size) {
   const store = useGameStore.getState();
   const c = mineTarget(h.hitPoint, h.direction, store);
