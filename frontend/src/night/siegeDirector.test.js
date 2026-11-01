@@ -125,6 +125,40 @@ describe('the bearings', () => {
     expect(chooseBearings({ night: 1, seed: 3, landScore: one }), 'the bearing with the most land lost').toEqual([Math.PI]);
   });
 
+  // The static review's F1 (round 2 of phase 2a): picked one at a time, the best bearing first, a land arc of three
+  // octants loses its pair whenever the tie puts its middle first, since both ends are 45 degrees from it.
+  it('take a land pair 90 degrees apart whenever one exists, whichever bearing the tie puts first', () => {
+    const octant = (b) => ((Math.round(b / (Math.PI / 4)) % 8) + 8) % 8;
+    const arc = (b) => ([4, 5, 6].includes(octant(b)) ? 3 : 0); // land at 180, 225 and 270 degrees only
+    let cases = 0;
+    const sea = [];
+    for (let night = 3; night <= 12; night++) {
+      for (let seed = 1; seed <= 50; seed++) {
+        const degrees = chooseBearings({ night, seed, landScore: arc }).map((b) => octant(b) * 45).sort((a, b) => a - b);
+        if (degrees.join() !== '180,270') sea.push({ night, seed, degrees });
+        cases += 1;
+      }
+    }
+    expect(cases).toBe(500);
+    expect(sea.slice(0, 3), `${sea.length} of 500 nights took a sea bearing beside a land pair 90 degrees apart`).toEqual([]);
+    // The best single bearing (225, all land) loses to a weaker pair that is all land: a pair is judged whole.
+    const peak = (b) => ({ 4: 1, 5: 3, 6: 1 })[octant(b)] ?? 0;
+    for (const seed of [1, 2, 3, 12345]) {
+      expect(chooseBearings({ night: 5, seed, landScore: peak }).map((b) => octant(b) * 45).sort((a, b) => a - b),
+        `seed ${seed}: the best single bearing took a sea one beside it`).toEqual([180, 270]);
+    }
+    // Two all-land pairs: 0 and 90 degrees hold 5 between them, 45 and 225 hold 4. Where the tie ranks 45 first, its
+    // partner (225) comes before the richer pair in rank order, so only the sum picks 0 and 90.
+    const rich = (b) => ({ 0: 3, 1: 3, 2: 2, 5: 1 })[octant(b)] ?? 0;
+    let middleFirst = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      expect(chooseBearings({ night: 4, seed, landScore: rich }).map((b) => octant(b) * 45),
+        `seed ${seed}: the pair with less land won, or its richer bearing (waves 1 and 3) is not first`).toEqual([0, 90]);
+      if (octant(chooseBearings({ night: 4, seed, count: 1, landScore: rich })[0]) === 1) middleFirst += 1;
+    }
+    expect(middleFirst, 'SETUP: no seed ranks 45 degrees before 0, so the sum is never what decides').toBeGreaterThan(0);
+  });
+
   it('score a bearing by three probes from the anchor, 32 to 48 m out, above the sea', () => {
     const probes = [];
     const surface = (x, z) => { probes.push([Math.round(x), Math.round(z)]); return { surfaceY: z > -40 ? SEA_LEVEL + 5 : SEA_LEVEL }; };

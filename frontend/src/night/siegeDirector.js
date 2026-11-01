@@ -57,19 +57,37 @@ export function landScoreFrom(surfaceAt, cx = 0, cz = 0) {
 
 const angleApart = (a, b) => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
 
+/** Higher wins at the first place two values differ; equal is not better. */
+const outranks = (a, b) => {
+  const i = a.findIndex((x, k) => x !== b[k]);
+  return i >= 0 && a[i] > b[i];
+};
+
 /**
- * `count` siege bearings among the eight compass points, the best land first (a seeded tie-break among equals); a second
- * one at least 90 degrees from the first, so two waves never come from one side.
+ * `count` siege bearings among the eight compass points, pairwise at least 90 degrees apart so two waves never come from
+ * one side, the best land first. A set is judged whole, never one bearing at a time: a land arc of three octants holds its
+ * pair at its two ends, 45 degrees from its middle, so a pick that took the middle first would take the second bearing
+ * from the sea. The set with the most land bearings wins, then the most land in all; among equals the seeded tie decides.
  */
 export function chooseBearings({ night, seed = 0, count = bearingCount(night), landScore }) {
   const rng = rngFor(seed, night);
   const ranked = Array.from({ length: 8 }, (_, k) => ({ b: (k * Math.PI) / 4, score: landScore((k * Math.PI) / 4), tie: rng() }))
     .sort((p, q) => q.score - p.score || p.tie - q.tie);
-  const out = [];
-  for (const c of ranked) {
-    if (out.length < count && out.every((b) => angleApart(b, c.b) >= Math.PI / 2 - 1e-9)) out.push(c.b);
-  }
-  return out;
+  const value = (set) => [set.filter((c) => c.score > 0).length, set.reduce((s, c) => s + c.score, 0)];
+  let best = null;
+  let bestValue = null;
+  const visit = (from, set) => {
+    if (set.length === count) {
+      const v = value(set);
+      if (!best || outranks(v, bestValue)) [best, bestValue] = [set, v];
+      return;
+    }
+    for (let i = from; i < ranked.length; i++) {
+      if (set.every((c) => angleApart(c.b, ranked[i].b) >= Math.PI / 2 - 1e-9)) visit(i + 1, [...set, ranked[i]]);
+    }
+  };
+  visit(0, []);
+  return (best || []).map((c) => c.b);
 }
 
 // The night's hostiles a wave draws from, by MOB_TYPES weight: night 1's husks only, and from night 2 every hostile
