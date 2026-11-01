@@ -48,6 +48,20 @@ branch `feat/w3a-first-night`. The rest of PR C (U1 onward) is the next phase. I
    first-session card and the hint, four unit gates to re-harness) and `AchievementsPanel`, an on-demand panel still in
    `QuestSystem.jsx` outside the panel chunk. A unit over its share takes one of them, or moves code to the night chunk.
 
+481. **U0b: every harness plays a returning player unless it says fresh.** First-minute D11, pulled forward.
+   `scripts/visual/_profile.mjs` is the one table: `returning` writes `crafty_onboarded` (the flag a first session
+   writes once its world is built, `App.jsx`), `fresh` writes nothing, which is what a new Playwright context already
+   holds. The e2e fixture takes it as an option (`profile`, default `returning`; a spec opts out with
+   `test.use({ profile: 'fresh' })`) and writes it before the page's scripts run; the lookbook and the media pipeline
+   now hand their init script the same seed instead of a literal. Only the onboarding flag: the controls card's two
+   flags are another axis, which the lookbook's `firstSession` and `panels.spec.js` set themselves. So from this
+   commit every e2e spec runs without the two goal-loop toasts (1.6 s and 8.6 s after the world is built), which none
+   of them read; `hud-at-rest.spec.js`'s own seed is now redundant and is left. Red first: `harness-profiles.test.js`
+   failed on the missing module, then held five mutants of the table; `harness-profiles.spec.js` reads the storage the
+   page holds before its own scripts run, and went red with the fixture's seed deleted and with the option ignored.
+   The task script's second check, a no-seed mutant turning `day-night-cycle.spec.js` red, can only bite once D2 makes
+   a fresh profile start cold, so D2 runs it.
+
 ## 2026-11-01 (ultrareview chunks 4-6) — [LOOP] the three parts of the game no review had read are reviewed: what the cloud delivered, what a local replica found beside it, and the rows filed
 
 Registry row AUDIT:critic:coverage-gaps/ultra asked for the deep review of the ui, render and audio-and-scene areas, the

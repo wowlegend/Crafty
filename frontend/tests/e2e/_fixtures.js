@@ -14,6 +14,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedFailureTracker, gameEntryOf } from './_isolatedFailures.js';
 import { slimCoverage } from './_coverage.js';
+import { DEFAULT_PROFILE, profileSeed, seedStorage } from '../../scripts/visual/_profile.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = resolve(ROOT, 'test-results/coverage');
@@ -72,9 +73,14 @@ const lockOnTrustedGestureOnly = () => {
   };
 };
 
+// WHO THE PLAYER IS (scripts/visual/_profile.mjs; DECISIONS 2026-11-01 (W3-A PR C) item 481): a returning player unless a
+// spec says `test.use({ profile: 'fresh' })`, so a spec about something else never meets the first-session beats. An
+// OPTION, written before the page's scripts run, for the same reason as the cap below.
 export const test = base.extend({
   e2eDprCap: [E2E_DPR_CAP, { option: true }],
-  page: async ({ page, e2eDprCap, hasTouch }, use, testInfo) => {
+  profile: [DEFAULT_PROFILE, { option: true }],
+  page: async ({ page, e2eDprCap, hasTouch, profile }, use, testInfo) => {
+    await page.addInitScript(seedStorage, profileSeed(profile));
     if (e2eDprCap != null) await page.addInitScript((cap) => { window.__craftyE2eDprCap = cap; }, e2eDprCap);
     if (hasTouch) await page.addInitScript(lockOnTrustedGestureOnly);
     // What the game's isolated reactors and effects throw while this test runs (src/game/isolatedEffects.js), collected

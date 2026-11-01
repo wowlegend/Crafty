@@ -47,11 +47,15 @@ export function contextOptions(target) {
   return o;
 }
 
-/** Before any page script: skip the first-session toasts; for a returning player (the default) mark the controls panel
+/** Before any page script: write the profile's `seed` (_profile.mjs profileSeed; the lookbook shoots a returning
+ *  player, so the first-session toasts stay away); for a returning player (the default) mark the controls panel
  *  opened, so the first-run controls card and its hint stay away, and for a first-session player (`firstSession`)
- *  clear both controls flags; on touch, remove Pointer Lock as iOS has none. */
-export function initScript({ touch = false, firstSession = false } = {}) {
-  try { localStorage.setItem('crafty_onboarded', '1'); } catch { /* storage blocked: toasts may show */ }
+ *  clear both controls flags; on touch, remove Pointer Lock as iOS has none. Self-contained (it runs in the page), so
+ *  the seed is handed in rather than imported. */
+export function initScript({ touch = false, firstSession = false, seed = {} } = {}) {
+  for (const [key, value] of Object.entries(seed)) {
+    try { localStorage.setItem(key, value); } catch { /* storage blocked: toasts may show */ }
+  }
   try {
     if (firstSession) {
       localStorage.removeItem('crafty_controls_seen');
