@@ -157,6 +157,8 @@ const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
 const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud', 'self', 'dragon', 'combat'];
 const SETS = arg('--sets', 'hero,eye,clips').split(',');
+// --combat-shots: shoot only these COMBAT_SHOTS (comma-separated names), for a before/after of a few of them.
+const COMBAT_ONLY = arg('--combat-shots', null)?.split(',') ?? null;
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
 try {
@@ -385,6 +387,7 @@ const COMBAT_PITCH = -8;
 const COMBAT_CLEAR_M = FRAME_M; // hostiles removed before each combat shot: as far as frame() looks for one
 const ELITE_TYPES = ['zombie', 'skeleton', 'spider', 'skitterling', 'duskhound', 'moss_brute', 'emberhusk']; // every hostile type can roll one
 const ELITE_DISTANCE = (type) => (type === 'moss_brute' ? 5 : 3.5); // the brute's crest leaves the frame's top at 3.5 m
+const ELITE_PITCH = 5;
 const COMBAT_SHOTS = Object.freeze([
   // A spell held in flight 4 m out (the seam's 'cast': the spell system's deterministic cast), first, before any mob is
   // staged at that spot.
@@ -401,9 +404,10 @@ const COMBAT_SHOTS = Object.freeze([
   { name: 'windup-zombie-far', type: 'zombie', moment: 'windup', distance: 14 },
   // Elites (W3-A F5): every hostile type's ember crest, and the siege captain's crest and banner (a husk at the first
   // tiers, a brute after), turned to show it.
-  ...ELITE_TYPES.map((type) => ({ name: `idle-${type}-ember`, type, moment: 'idle', distance: ELITE_DISTANCE(type), elite: 'ember' })),
-  { name: 'windup-zombie-captain', type: 'zombie', moment: 'windup', distance: 4, yawDeg: 140, elite: 'captain' },
-  ...['emberhusk', 'moss_brute'].map((type) => ({ name: `idle-${type}-captain`, type, moment: 'idle', distance: ELITE_DISTANCE(type) + 0.5, yawDeg: 140, elite: 'captain' })),
+  // Looked at 5 degrees up, so the crest and the nametag over it are in the frame.
+  ...ELITE_TYPES.map((type) => ({ name: `idle-${type}-ember`, type, moment: 'idle', distance: ELITE_DISTANCE(type), elite: 'ember', pitch: ELITE_PITCH })),
+  { name: 'windup-zombie-captain', type: 'zombie', moment: 'windup', distance: 4, yawDeg: 140, elite: 'captain', pitch: ELITE_PITCH },
+  ...['emberhusk', 'moss_brute'].map((type) => ({ name: `idle-${type}-captain`, type, moment: 'idle', distance: ELITE_DISTANCE(type) + 0.5, yawDeg: 140, elite: 'captain', pitch: ELITE_PITCH })),
 ]);
 const TOAST_WAIT_MS = 6000; // ui/notifications.js TOAST_MS (4 s) and the stack's exit
 // A lit-band hit shot looks along the first of these headings whose best turn leans each visible face at least
@@ -470,6 +474,7 @@ async function shootCombat(page, report, dir, target, facts) {
       console.log(`lookbook combat control ${target.id}: ${seen ? 'the stray zombie was seen (invalid, as it must be)' : `BLIND: ${JSON.stringify(v.why)}`}`);
     }
     for (const shot of COMBAT_SHOTS) {
+      if (COMBAT_ONLY && !COMBAT_ONLY.includes(shot.name)) continue;
       const t0 = Date.now();
       await clearHostiles(page, COMBAT_CLEAR_M);
       await play(page);
@@ -486,6 +491,7 @@ async function shootCombat(page, report, dir, target, facts) {
         if (!lit) { report.notes.push(`combat ${shot.name} at ${c}: no key light read, so no lit turn`); continue; }
         await lb('look', { heading: lit.heading, pitch: COMBAT_PITCH });
       }
+      if (shot.pitch !== undefined) await lb('look', { heading: COMBAT_HEADING, pitch: shot.pitch });
       let staged = null;
       try { staged = await lb('stage', { type: shot.type, distance: shot.distance, moment: shot.moment, yawDeg: lit ? lit.yawDeg : shot.yawDeg ?? 0, elite: shot.elite ?? null }); }
       catch (e) { report.notes.push(`combat ${shot.name} at ${c}: stage() refused: ${String(e.message).slice(0, 160)}`); continue; }
@@ -496,7 +502,7 @@ async function shootCombat(page, report, dir, target, facts) {
       const after = await info(page);
       const pt = await passTimes(page);
       const v = await verdictOf(shot.moment === 'cast', staged, after);
-      if (lit) await lb('look', { heading: COMBAT_HEADING, pitch: COMBAT_PITCH });
+      if (lit || shot.pitch !== undefined) await lb('look', { heading: COMBAT_HEADING, pitch: COMBAT_PITCH });
       const why = [...v.why, ...(report.combatControl?.seen === false ? ['the check failed its control'] : []),
         ...(lit && lit.split < 0.25 ? [`no heading put the key light to the side (best split ${lit.split.toFixed(2)})`] : [])];
       report.combat.push({ file, cycle: c, ...shot, ...(lit ? { lit } : {}), staged, frame: v.frame, toasts: v.toasts, spellsAfter: v.spellsAfter,
