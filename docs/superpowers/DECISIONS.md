@@ -110,6 +110,76 @@ builder made are in items 502, 506 and 509.
 513. **What the lane leaves open:** `REVIEW:l4:gate-reach-round1` (the 3.3 s and 6.5 s mutants, item 506), so the lane row
    stays open. New rows: the Rapier upgrade decision (item 511).
 
+Round 2 (from `fbd940c3`, after the round-1 static and dynamic reviews), items 514 to 519. Code changes went red first
+on the real Player and real Rapier at 60 and 120 Hz, and their mutants were run through `scripts/dev/mutate.sh` and are
+named in each commit's trailer, with an identity mutant beside each batch that survived.
+
+514. **What keeping y 0 solid did to the generated cells above it** (static F2; no code change). Measured on both
+   workers (the carve before and after `9605e7d5`, each behind its own `self`), 144 chunks round the spawn (192 x 192 m),
+   each column's solidity read back from its mesh's up and down faces. Default seed 12345: the y-0 cell changed in 9,198
+   of 36,864 columns; above it 1,969 columns changed, 2,259 cells at y 1 to 6 are rock now (1,932 at y 1, 192 at 2, 64 at
+   3, 33 at 4, 24 at 5, 14 at 6), none opened, and no up face kept its place with another block type. Seed 987654321: 2,341 cells
+   at y 1 to 6 rock now, 4 opened. The cave automaton (`world/caveCA.js`) writes y 1 up but reads y 0, which is why.
+   **What a save gains or loses:** a save holds only its edits, as absolute cell values over the regenerated world
+   (`saveSchema.js` `world_data.blocks`, the worker's `load_modifications`), so no edit, placed block or mined cell is
+   lost, and unexplored chunks regenerate with the new caves. What changes is generated rock in the deepest caves: of
+   93,392 spots a player could stand on in the old world there, 107 are rock now (94 with open room a cell up, the floor
+   risen). A save standing on one is lifted to its column's top, through the cave's roof: the fit's rise is 0.6 m and
+   its search along open cells (item 515) starts in the rock. Filed as `REVIEW:l13:load-fit-floor-risen-a-cell`.
+   `world-floor-gates` says what it does not read; its presence check now counts a cave reaching the bottom either way,
+   so the old carve reds on the floor line, 2,070 open (`6e975fcf`; it went red on SETUP before, the dynamic F4 nit).
+515. **The stuck-in-rock rescue goes on along open cells before the column's top** (`c84501cf`, static F1). Reproduced:
+   in the cave tunnel, a block in the eye's cell (a save from before the invisible-box fix) sent the fit, since
+   `008baf08` read that body, to the top of its column: y 36.95, through cells (-6, 31 to 35, -10), at 60 and 120 Hz.
+   `fitLoadedSpot` now searches on to 1.4 m (the 0.92 m that clears such a block, along an axis or the diagonal) on a
+   0.2 m grid, and takes a spot only where the straight move from the centre stays in open cells, read every 5 cm (a
+   corner cut by less than that is not seen); a centre in solid ground takes none of these, as the clipped bodies of
+   DECISIONS 2026-10-30 item 213 need. The column's top stays the last resort, the one answer that can cross solid: the fit says so (`by: 'column'`),
+   the Player's warning names it, and the chaos harness counts it (`stuckToColumnTop`). *Proof:* after, stood at (-5.5,
+   30.95, -10.5) in the tunnel in 0.25 s and 0.283 s, crossing nothing; with nothing in reach the column's top and the
+   warning; boxed in by four pillars, never past a pillar's corner (all six cases red at `845be264`). This supersedes
+   item 504's "stood on top of it" for a block with open room beside it: the player is stood beside it now.
+   Index chunk: 652,343 B to 652,424 B for this and item 516, 76 B under the 652,500 B ceiling, which is unchanged.
+516. **The load's hold reads which chunks have answered** (`845be264`, dynamic F1). Item 500 read the fit's four corner
+   columns, and a corner column dug through the world answers nothing, as one in a chunk not streamed in does: shafts
+   two and three wide, the rim of a two-wide one, one at a chunk corner, and a save on the ground beside a one-wide
+   shaft under a corner were still held 9.967 s (60 Hz) and 9.983 s (120 Hz) and sent to the origin. The placed-cell
+   registry (`world/placedCellColliders.js`) now answers per chunk: landed, an empty mesh too, with nothing unindexed
+   since the last step. Not the mounted set in `world/loadedChunks.js`: it is marked in a layout effect before the
+   trimesh exists, and never holds an empty chunk. The spot beside an empty column is the nearest ground within 8 m (the
+   spawn fallback's search), once every chunk nearer the save than it and round it has answered. *Proof:* every case let
+   go within 0.5 s on the nearest ground at both rates. This supersedes item 500's reading of the corners; its row's
+   closure names both commits and its scope: a save whose nearest ground lies past 8 m still holds and goes to the
+   origin.
+517. **The rim wedge's closure names its sighting, and the escape test's grounding is told apart** (static F3, dynamic
+   F2). Item 502 measured the base capsule's sighting (cave, 120 Hz, lag 0, seed 1, frame 360). L6's sighting (cave,
+   60 Hz, lag 2, the arcane form) is another case, measured now: the golem is refused in a 1 x 1 pit, and in a 2 x 2 pit
+   dug one deep under the two-high tunnel it is swapped in and held until the form ends, at 60 and 120 Hz, lag 0 and 2.
+   Filed as `REVIEW:l13:golem-held-in-pit-under-low-ceiling` (the escape test also walks every form at the base form's
+   speed and jump, which that row records). On the rim placements the two groundings agree; `4260e533` adds a case where
+   they do not: in a one-wide shaft capped over the head, a body 1.5 or 2 m over the floor falls out under
+   `supportedGround` and reads held on `computedGrounded()` (the glue slides it at 0.5 m/s), so the mutant that survived
+   item 502 dies.
+518. **The review's smaller findings.** The e2e's stand-clear step is bounded: the page counts its own drawn frames from
+   the release, at most 60 (half a second of play at up to 120 Hz, against the watch's 0.3 s), then reads no placed
+   block in the body; it was a 30 s poll (`bafa9901`, static F5; not mutation-run here, its proof is the real-Player
+   case it mirrors). The resume hold's tolerance mutant, which survived at 60 and 120 Hz where the steps sum to 10 s,
+   dies at 90 Hz, where 900 steps sum under it (`826df564`, static F4). Removing the lift from `moveKinematic`
+   (`b393d08f`) regrouped a float sum (`d + next - at` for `d + (next - at)`), which moved three of item 510's
+   field-origin counts by one (dynamic F3; measured again at `1db282e0`): seed 7's swapsRefused 3 to 2 and ownShellOut 2
+   to 3, seed 8's swapsRefused 7 to 8. The floors (1 and 0) hold either way. Seeds 1 to 8, all five chaos files, at
+   `1db282e0`: 40 runs green, deepest 0.000 m in every session line, and field-origin's 8 clips each stood on the
+   column's top (`stuckToColumnTop` 8 of 8 recoveries: a clipped body's centre is in the rock). `verb-ledger-gates`' remount case places its own block first, so it passes run alone
+   (`1db282e0`). `reachesIntoRock`'s trimesh-only filter is unpinned (its mutant survives): no collider but the
+   terrain's, a placed cell's stand-in, which placement keeps out of the capsule, and the player's exists, so nothing
+   reaches it; recorded on its row.
+519. **The six flake sightings of PR CI run 41311336652** are on their rows: canvas-pace-panels :29
+   (`REVIEW:w2d:canvas-pace-esc-setup`), feedback-grammar :140 (`REVIEW:e2e-flakes:feedback-grammar-lit-band-white`) and
+   :93, another assertion of the same spec (a new row, `REVIEW:e2e-flakes:feedback-grammar-windup-interior-dims`),
+   music-bus :74, input-live :72, and light-pool :25, whose presence line went red first this time. **Left open:**
+   `REVIEW:l4:gate-reach-round1` (item 506), so the lane row stays open; new rows in the backlog: the golem in a pit
+   (item 517) and the risen floor (item 514).
+
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
 
 The 2026-11-01 W3-A task script's "PR B" (it lives on branch `feat/w3a-first-night` until that lane lands), branch
