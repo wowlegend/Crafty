@@ -967,7 +967,7 @@ export const useGameStore = create((set, get) => ({
     victoryPending: false,
     damageFlash: false,
     screenShake: 0,
-    lastHitDir: null, // {angle,t} of the most recent directional hit (combat-legibility cue); null until a sourced hit
+    lastHitDir: null, // {angle,t} of the most recent hit (combat-legibility cue); angle null for a hit with no source
 
     setPlayerHealth: (healthArg) => set((state) => ({ playerHealth: typeof healthArg === 'function' ? healthArg(state.playerHealth) : healthArg })),
     setMaxHealth: (max) => set({ maxHealth: max }),
@@ -1029,8 +1029,10 @@ export const useGameStore = create((set, get) => ({
             damageFlash: true,
             screenShake: finalDamage / 10,
             // `lastHitDir.t` is the HIT SIGNAL the per-frame camera controller edge-detects for its kick, so lastHitDir is
-            // stamped on every accepted hit, not only when an attacker position was supplied.
-            lastHitDir: dir != null ? { angle: dir, t: now } : { angle: state.lastHitDir?.angle ?? null, t: now },
+            // stamped on every accepted hit, not only when an attacker position was supplied. A hit with none (a
+            // projectile, the dragon's fireball impact, lava) has no direction: its angle is null, so the kick goes
+            // straight back and the edge glow shows nothing, rather than both pointing at whatever hit last.
+            lastHitDir: { angle: dir ?? null, t: now },
         });
         if (stopMs > 0) get().triggerHitstop(stopMs);
 

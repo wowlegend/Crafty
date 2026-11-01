@@ -13,8 +13,9 @@ import RAPIER from '@dimforge/rapier3d-compat';
  * ahead, +pi/2 right), and the loop edge-detects the stamp and kicks the follow camera. This mounts the real Player with
  * the real Rapier, as tests/gates/player-view-hold-gates.test.jsx does (R3F stubbed so the test drives the frame callback;
  * a floor, a kinematic capsule and the loop's own character controller), stands the player on the floor facing -z, and
- * stamps one hit per case the way damagePlayer does (a store write, no shake: the kick is read alone). One frame later
- * the drawn camera's offset from the steady eye is read along the camera's right and forward.
+ * stamps one hit per case the way damagePlayer does (a store write, no shake: the kick is read alone); the last case
+ * calls the real damagePlayer, a mob's hit from the left and then a projectile's with no source position. One frame
+ * later the drawn camera's offset from the steady eye is read along the camera's right and forward.
  *
  * Each side is first measured against the same frame with no hit (PRESENCE: the offset at rest is under a millimetre).
  *
@@ -140,5 +141,34 @@ describe('the hurt kick through the real Player', () => {
     expect(got.ahead.forward, `a hit from ahead did not push the camera back: ${JSON.stringify(got.ahead)}`).toBeLessThan(-SIDE_M);
     expect(got.behind.forward, `a hit from behind did not push the camera forward: ${JSON.stringify(got.behind)}`).toBeGreaterThan(SIDE_M);
     expect(got['no source'].forward, `a hit with no source did not push the camera back: ${JSON.stringify(got['no source'])}`).toBeLessThan(-SIDE_M);
+  });
+
+  it('through the real damagePlayer, a hit with no source after one from the left kicks back, not toward the old side', () => {
+    // A projectile, the dragon's fireball impact and its lava reach damagePlayer with no attacker position, so the store
+    // has no direction for them. The angle the hit is stamped with is the one the loop turns the kick by.
+    standPlayer();
+    useGameStore.setState({ playerPosition: { x: 0, y: 51, z: 0 }, gameCamera: null, _spawnTime: 0, damageLockouts: {},
+      isPlayerInvincible: () => false, playerHealth: 100, maxHealth: 100 });
+    const now = vi.spyOn(Date, 'now');
+    try {
+      now.mockReturnValue(1e12);
+      useGameStore.getState().damagePlayer(5, 'mob', { x: -5, y: 51, z: 0 }, 'mob-left');
+      frame();
+      const sourced = offset();
+      expect(sourced.right, `SETUP: the hit from a mob on the left did not push the camera right: ${JSON.stringify(sourced)}`).toBeGreaterThan(SIDE_M);
+      for (let i = 0; i < 90; i++) frame();
+      const settled = offset();
+      expect(Math.hypot(settled.right, settled.forward), `SETUP: the first kick had not settled: ${JSON.stringify(settled)}`).toBeLessThan(1e-3);
+
+      now.mockReturnValue(1e12 + 1000);
+      useGameStore.getState().damagePlayer(5, 'projectile');
+      expect(useGameStore.getState().lastHitDir?.t, 'SETUP: the unsourced hit was not stamped as a hit').toBe(1e12 + 1000);
+      frame();
+      const unsourced = offset();
+      expect(unsourced.forward, `the hit with no source did not push the camera back: ${JSON.stringify(unsourced)}`).toBeLessThan(-SIDE_M);
+      expect(Math.abs(unsourced.right), `the hit with no source pushed the camera sideways, by the earlier hit's angle: ${JSON.stringify(unsourced)}`).toBeLessThan(0.01);
+    } finally {
+      now.mockRestore();
+    }
   });
 });
