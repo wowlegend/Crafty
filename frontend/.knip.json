@@ -14,7 +14,8 @@
     "!src/brand.js!",
     "!src/i18n/keyReachability.js!",
     "!src/theme/contrast.js!",
-    "!src/world/detile.js!"
+    "!src/world/detile.js!",
+    "!src/game/lights.js!"
   ],
   "ignoreExportsUsedInFile": true,
   "ignoreBinaries": [

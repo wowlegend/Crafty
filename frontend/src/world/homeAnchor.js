@@ -27,6 +27,13 @@ const STONE = 3;                  // existing block id (no new blocks in M1 — 
  */
 export const HEARTH_FIRE = Object.freeze({ color: '#FFB050', intensity: 1.6, distance: 9, height: 1.6 });
 
+/**
+ * Where the brazier stands on the pad, world x and z (world/Terrain.jsx HomeAnchorRender's brazier group): the Hearth as
+ * a light (game/lights.js). @internal game/lights.js reads it, and no game code runs that module before W3-A's D2, N2 and
+ * N8, the first of which points the brazier group here too.
+ */
+export const HEARTH_BRAZIER = Object.freeze({ x: 2.4, z: 2.4 });
+
 // The 4 origin chunks the plinth touches: cx,cz in {-1,0} (world [-16,16) spans the corner quad).
 export function isHearthChunk(cx, cz) {
   return (cx === -1 || cx === 0) && (cz === -1 || cz === 0);

@@ -322,6 +322,20 @@ ceiling.
    units, which hold about 3.35 KB of shares (L1's 0.3 KB among them, once the lights move to the boot chunk), so the
    next room is taken before those units build (the controls card and hint, item 495), or the shares are cut.
 
+499. **L1: the lights, pure, and left out of production knip until the game reads them.** `game/lights.js`:
+   `litLights(state, shrines)` (the Hearth at its brazier while `hearthLit` and its flame above 0, each lantern at its
+   cell's centre, and W3-B's lit shrines as world positions), `isWarded` (squared distance against 16 squared),
+   `nearestLit`, and `objectiveFor` (the lit light nearest the player within 32 m, else the player). The brazier's
+   place moved into `world/homeAnchor.js` as `HEARTH_BRAZIER` (2.4, 2.4), where `Terrain.jsx` draws it inline; D2,
+   which edits that render next, points it there. Red first: `src/game/lights.test.js` red on the missing module, then
+   9 mutants red (the task script's R-for-R-squared among them), the identity survived. Nothing the game runs imports
+   it yet (D2, N2 and N8 will; N8's own landing probe is a game module importing `nearestLit`, so this unit imports it
+   nowhere), so production knip saw an unused file. It is listed out of the production project in `.knip.json`, as the
+   tooling modules are (item 115), and `HEARTH_BRAZIER` carries `@internal`. So the exception cannot outlive its reason,
+   `tests/scripts/knip-production-exclusions.test.js` fails, naming the importer, once any non-test src module imports a
+   listed module (red with `night/night.js` importing the lights; its scan of dynamic imports and its exclusion of test
+   files each shown by a mutant). Index: 0 B (646,343 B before and after).
+
 ---
 
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
