@@ -211,13 +211,16 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
       align(hz, phase);
       const p = h.body.translation();
       h.body.setTranslation({ x: p.x, y: 200, z: p.z }, true);
+      // The fall's speed: the frame's own move, read from the target each frame's move is added to (nextTranslation), not from
+      // translation(), which at 120 Hz moves only on the frames that step, two frames' fall at a time.
       let fall = 0;
       for (let i = 0; i < 200; i++) {
-        const y0 = h.body.translation().y;
+        const y0 = h.body.nextTranslation().y;
         frame(hz);
-        fall = Math.max(fall, (y0 - h.body.translation().y) * hz);
+        fall = Math.max(fall, (y0 - h.body.nextTranslation().y) * hz);
       }
-      expect(fall, 'SETUP: the fall never reached terminal speed').toBeGreaterThan(49);
+      expect(fall, 'SETUP: the fall never reached terminal speed').toBeGreaterThan(45);
+      expect(fall, 'SETUP: the fall read faster than terminal speed: the reading is not the speed').toBeLessThan(50.5);
       expect(h.body.translation().y, 'SETUP: the fall reached the ground').toBeGreaterThan(LAND_TOP + 20);
       // Through the world: the body under it, as a fall at that speed where no ground has streamed in leaves it.
       const q = h.body.translation();
