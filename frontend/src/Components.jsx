@@ -1052,9 +1052,11 @@ export const Player = ({ isWorldBuilt }) => {
       if (store.resumeSpawn) {
         const r = store.resumeSpawn;
         const probing = !!store.getMobGroundLevel && !store.worldReloading;
-        const probeY = probing ? resumeColumnProbe(store.getMobGroundLevel, r) : null;
+        // Which chunks have answered: the placed-cell registry's, which Terrain.jsx tells each chunk mesh that lands.
+        const answered = GameMethods.placedCells?.answered;
+        const probeY = probing ? resumeColumnProbe(store.getMobGroundLevel, answered, r) : null;
         // A saved column with nothing in it, once its chunks have answered: the spot beside it (resumeBesideEmptyColumn).
-        const beside = probing && !Number.isFinite(probeY) ? resumeBesideEmptyColumn(store.getMobGroundLevel, r) : null;
+        const beside = probing && !Number.isFinite(probeY) ? resumeBesideEmptyColumn(store.getMobGroundLevel, answered, r) : null;
         const resume = resolveResumeSpawn(r, probeY, resumeWaitRef.current, delta, beside);
         if (resume.hold) {
           resumeWaitRef.current += delta;

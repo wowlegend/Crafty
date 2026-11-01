@@ -253,8 +253,8 @@ function spawnBranch(S) {
   if (store.resumeSpawn) {
     const r = store.resumeSpawn;
     const probe = (x, z) => groundProbe(S, x, z);
-    const probeY = store.worldReloading ? null : resumeColumnProbe(probe, r);
-    const beside = store.worldReloading || Number.isFinite(probeY) ? null : resumeBesideEmptyColumn(probe, r);
+    const probeY = store.worldReloading ? null : resumeColumnProbe(probe, S.cells.answered, r);
+    const beside = store.worldReloading || Number.isFinite(probeY) ? null : resumeBesideEmptyColumn(probe, S.cells.answered, r);
     const resume = resolveResumeSpawn(r, probeY, S.resumeWait, 1 / S.hz, beside);
     if (resume.hold) {
       S.resumeWait += 1 / S.hz;

@@ -263,22 +263,22 @@ describe('followBlindDrop', () => {
   });
 });
 
+// Which chunks have answered (world/placedCellColliders.js answered): every chunk but those listed.
+const answeredBut = (...missing) => (cx, cz) => !missing.some(([x, z]) => x === cx && z === cz);
+
 describe('resumeColumnProbe', () => {
-  it('is the saved column\'s ground once all four corners answer, and asks each corner\'s column', () => {
+  it('is the saved column\'s ground once every chunk the fit\'s square touches has answered, and asks each corner\'s chunk', () => {
     const asked = [];
-    const probe = (x, z) => { asked.push([x, z]); return 51; };
-    expect(resumeColumnProbe(probe, { x: 15.95, y: 52, z: 0.5 })).toBe(51);
-    // 1 m either way of 15.95 is 14.95 and 16.95: columns 14 and 16, across the chunk border at 16; 0.5 gives -1 and 1.
-    expect(asked.slice(0, 4).map(([x, z]) => [Math.floor(x), Math.floor(z)]).sort()).toEqual([[14, -1], [14, 1], [16, -1], [16, 1]]);
-    expect(asked[4]).toEqual([15.95, 0.5]);
+    const answered = (cx, cz) => { asked.push([cx, cz]); return true; };
+    expect(resumeColumnProbe(() => 51, answered, { x: 15.95, y: 52, z: 0.5 })).toBe(51);
+    // 1.02 m either way of 15.95 is 14.93 and 16.97: chunks 0 and 1, across the border at 16; 0.5 gives chunks -1 and 0.
+    expect(asked.sort()).toEqual([[0, -1], [0, 0], [1, -1], [1, 0]]);
   });
-  it('is null while any corner has not answered, whatever the saved column says', () => {
-    for (let k = 0; k < 4; k++) {
-      let n = 0;
-      const probe = () => (n++ === k ? null : 51);
-      expect(resumeColumnProbe(probe, { x: 15.95, y: 52, z: 0.5 }), `corner ${k} unanswered`).toBeNull();
+  it('is null while any of those chunks has not answered, whatever the saved column says, and with no registry', () => {
+    for (const chunk of [[0, -1], [0, 0], [1, -1], [1, 0]]) {
+      expect(resumeColumnProbe(() => 51, answeredBut(chunk), { x: 15.95, y: 52, z: 0.5 }), `chunk ${chunk} unanswered`).toBeNull();
     }
-    expect(resumeColumnProbe(() => NaN, { x: 0.5, y: 52, z: 0.5 })).toBeNull();
+    expect(resumeColumnProbe(() => 51, undefined, { x: 0.5, y: 52, z: 0.5 })).toBeNull();
   });
 });
 
@@ -291,28 +291,55 @@ describe('resumeBesideEmptyColumn', () => {
     if (holes.some(([hx, hz]) => hx === cx && hz === cz)) return null;
     return heights[`${cx}_${cz}`] ?? 51;
   };
+  const all = answeredBut();
   const STAND = BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius + CONTROLLER_OFFSET;
   it('stands the base capsule on the nearest column beside a saved column with nothing in it, at its middle', () => {
-    const at = resumeBesideEmptyColumn(land([[15, 0]]), saved);
+    const at = resumeBesideEmptyColumn(land([[15, 0]]), all, saved);
     expect(at).not.toBeNull();
     expect(Math.hypot(at.x - saved.x, at.z - saved.z), JSON.stringify(at)).toBeCloseTo(1, 6);
     expect([at.x % 1, at.z % 1].map((v) => Math.abs(v)), JSON.stringify(at)).toEqual([0.5, 0.5]);
     expect(at.y).toBeCloseTo(51 + STAND, 6);
     // The nearest wins over a higher one further off: (14, 0) stands 1 m away and (14, -1), 9 m higher, 1.41 m.
-    const near = resumeBesideEmptyColumn(land([[15, 0]], { '14_-1': 60 }), saved);
+    const near = resumeBesideEmptyColumn(land([[15, 0]], { '14_-1': 60 }), all, saved);
     expect(near).toMatchObject({ x: 14.5, z: 0.5 });
     expect(near.y).toBeCloseTo(51 + STAND, 6);
+    // Ground under the sea's floor of the origin spawn (PROBE_MIN_Y) answers here: the deep seabed lies at 6.
+    expect(resumeBesideEmptyColumn(land([[15, 0]], { '14_0': 6 }), all, saved)).toMatchObject({ x: 14.5, z: 0.5 });
   });
-  it('is null while the saved column answers, or a corner the fit reads has not answered', () => {
-    expect(resumeBesideEmptyColumn(land(), saved)).toBeNull();
-    for (const corner of [[14, -1], [14, 1], [16, -1], [16, 1]]) {
-      expect(resumeBesideEmptyColumn(land([[15, 0], corner]), saved), `corner ${corner}`).toBeNull();
+  it('reaches past the fit\'s square over a shaft wider than it, to the nearest ground within FALLBACK_REACH', () => {
+    // Three wide round the save, then five: the nearest ground is 2 m off, then 3 m.
+    const square = (n) => Array.from({ length: n * n }, (_, i) => [15 - (n - 1) / 2 + (i % n), Math.floor(i / n) - (n - 1) / 2]);
+    for (const [n, d] of [[3, 2], [5, 3]]) {
+      const at = resumeBesideEmptyColumn(land(square(n)), all, saved);
+      expect(at, `a shaft ${n} wide`).not.toBeNull();
+      expect(Math.hypot(at.x - saved.x, at.z - saved.z), `a shaft ${n} wide ${JSON.stringify(at)}`).toBeCloseTo(d, 6);
+    }
+    // Nothing answers within the reach: no spot (the hold runs out for the origin).
+    expect(resumeBesideEmptyColumn(() => null, all, saved)).toBeNull();
+  });
+  it('is null while the saved column answers, or a chunk the fit reads has not answered', () => {
+    expect(resumeBesideEmptyColumn(land(), all, saved)).toBeNull();
+    for (const chunk of [[0, -1], [0, 0], [1, -1], [1, 0]]) {
+      expect(resumeBesideEmptyColumn(land([[15, 0]]), answeredBut(chunk), saved), `chunk ${chunk}`).toBeNull();
     }
   });
-  it('is null when a corner round the spot beside has not answered (the fit reads as far round it)', () => {
-    // The spot is (16.5, 0.5) once 14 and 15 are dug at z 0; its corners reach column 17, which here answers nothing.
-    const probe = land([[15, 0], [14, 0], [15, -1], [15, 1], [17, -1]]);
-    expect(resumeBesideEmptyColumn(probe, saved)).toBeNull();
+  // Chunk (1, 0), x 16 on, not streamed in: its columns answer nothing, as its trimesh is not there.
+  const streaming = (probe) => (x, z) => (Math.floor(x + 0.1) >= 16 ? null : probe(x, z));
+  it('is null while a chunk nearer the save than the ground it found has not answered (nearer ground may be streaming in)', () => {
+    // A save at (14, 8.5), every column 11 to 15 dug for z 5 to 12: in chunk 0 the nearest ground is column 10, 3.5 m off,
+    // and column 16, in chunk (1, 0), 2.5 m off. The fit's own square (x 12.98 to 15.02) and the spot's lie in chunk 0.
+    const at = { x: 14, y: 20, z: 8.5 };
+    const dug = [11, 12, 13, 14, 15].flatMap((x) => [5, 6, 7, 8, 9, 10, 11, 12].map((z) => [x, z]));
+    expect(resumeBesideEmptyColumn(land(dug), all, at), 'SETUP: with chunk (1, 0) in, column 16 is the nearest ground').toMatchObject({ x: 16.5, z: 8.5 });
+    expect(resumeBesideEmptyColumn(streaming(land(dug)), answeredBut([1, 0]), at)).toBeNull();
+  });
+  it('is null while a chunk the fit reads round the spot beside has not answered (the fit reads as far round it)', () => {
+    // A save at (14.5, 8.5) with (13, 8), (14, 7), (14, 8) and (14, 9) dug: the nearest ground is column 15, 1 m off, in
+    // chunk 0, and the fit's square round it reaches x 16.52, in chunk (1, 0).
+    const at = { x: 14.5, y: 20, z: 8.5 };
+    const dug = [[13, 8], [14, 7], [14, 8], [14, 9]];
+    expect(resumeBesideEmptyColumn(land(dug), all, at), 'SETUP: with chunk (1, 0) in, column 15 is the nearest ground').toMatchObject({ x: 15.5, z: 8.5 });
+    expect(resumeBesideEmptyColumn(streaming(land(dug)), answeredBut([1, 0]), at)).toBeNull();
   });
   it('the hold lets go on the spot beside, and keeps the saved spot when the saved column answers', () => {
     const beside = { x: 16.5, y: 51 + STAND, z: 0.5 };

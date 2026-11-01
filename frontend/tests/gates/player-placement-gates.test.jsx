@@ -71,6 +71,8 @@ const { setIntent, setActive, resetInput } = await import('../../src/input/input
 const { generateMesh } = await import('../../src/world/mesher.js');
 const { CHUNK_SIZE, CHUNK_VOLUME, voxelIndex } = await import('../../src/world/chunkLayout.js');
 const { genCell, deepestSolid, eyeCell, solidAt, LAND_TOP, DEEP_SEABED, FIELD_CAVE } = await import('../integration/chaosPlay/harness.js');
+const { createPlacedCellColliders, createEditSeq } = await import('../../src/world/placedCellColliders.js');
+const { GameMethods } = await import('../../src/GameMethods');
 
 const TOL = 0.05 / 10; // the chaos gate's I1 tolerance (tests/integration/chaosPlay/suite.js says why)
 const DT = 1 / 60; // @react-three/rapier 2.2.0's fixed step
@@ -93,13 +95,26 @@ for (const key of KEYS) {
   meshes.set(key, generateMesh(cx, cz, b, undefined));
 }
 
-let t = 0, acc = 0, steps = 0;
+let t = 0, acc = 0, steps = 0, cells = null;
 const chunks = new Map();
-function mountChunk(key) {
+/** A chunk's trimesh, from `voxels` (its generated ones unless given), on a fixed body at its place in place of the one it
+ *  had, as a React commit mounts or re-mounts it; and the placed-cell registry told it landed, as Terrain.jsx's ChunkMesh
+ *  tells it (world/placedCellColliders.js: once a world step has run since, the load's hold reads the chunk as answered). */
+function mountChunk(key, voxels) {
   const [cx, cz] = key.split('_').map(Number);
+  if (chunks.has(key)) h.world.removeRigidBody(chunks.get(key).body);
   const body = h.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE));
-  const m = meshes.get(key);
-  chunks.set(key, { body, collider: h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body) });
+  const m = voxels ? generateMesh(cx, cz, voxels, undefined) : meshes.get(key);
+  const collider = h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body);
+  chunks.set(key, { body, collider });
+  cells.landed(cx, cz, 0, collider);
+}
+/** The chunk unloaded, as one not streamed back yet: its body and trimesh gone, and the registry told. */
+function unmountChunk(key) {
+  const [cx, cz] = key.split('_').map(Number);
+  h.world.removeRigidBody(chunks.get(key).body);
+  chunks.delete(key);
+  cells.dropChunk(cx, cz);
 }
 /** Terrain.jsx getMobGroundLevel: a ray straight down from y = 255 at (x + 0.1, z + 0.1), the player's body excluded. */
 function groundProbe(x, z) {
@@ -111,7 +126,7 @@ function groundProbe(x, z) {
 function frame(hz) {
   const before = steps;
   acc += 1 / hz;
-  while (acc >= DT - 1e-9) { h.world.step(); steps++; acc -= DT; }
+  while (acc >= DT - 1e-9) { h.world.step(); cells.afterStep(); steps++; acc -= DT; }
   t += 1 / hz;
   h.frame({ camera: h.camera, clock: { getElapsedTime: () => t, elapsedTime: t } }, 1 / hz);
   return steps - before;
@@ -132,6 +147,8 @@ const initial = useGameStore.getInitialState();
 beforeEach(() => {
   useGameStore.setState(initial, true);
   h.world = new RAPIER.World({ x: 0, y: -30, z: 0 });
+  cells = createPlacedCellColliders(h.world, RAPIER, createEditSeq());
+  GameMethods.placedCells = cells;
   chunks.clear();
   for (const key of KEYS) mountChunk(key);
   h.body = h.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 40, 0));
@@ -147,6 +164,7 @@ afterEach(() => {
   cleanup();
   resetInput();
   vi.restoreAllMocks();
+  delete GameMethods.placedCells;
   useGameStore.setState(initial, true);
 });
 
@@ -245,9 +263,7 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
     const hz = 60;
     standPlayer(hz);
     // A save in the ground 0.05 m from the border at z = 16, the chunk across it (-1_0) not streamed back yet.
-    const late = chunks.get('-1_0');
-    h.world.removeRigidBody(late.body);
-    chunks.delete('-1_0');
+    unmountChunk('-1_0');
     const saved = { x: -8.5, y: 21, z: 16.05 };
     load(saved, hz, 2);
     expect(groundProbe(saved.x, saved.z), 'SETUP: the saved column has not answered').toBeCloseTo(LAND_TOP, 3);
@@ -273,9 +289,7 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
     // (registry REVIEW:chaos-play:corner-probe-span-short).
     const hz = 60;
     standPlayer(hz);
-    const late = chunks.get('-1_0');
-    h.world.removeRigidBody(late.body);
-    chunks.delete('-1_0');
+    unmountChunk('-1_0');
     const saved = { x: -8.5, y: LAND_TOP + 0.95, z: 17.01 };
     load(saved, hz, 2);
     expect(groundProbe(saved.x, saved.z - 1.0), 'SETUP: the column a metre short of the border has not answered').toBeCloseTo(LAND_TOP, 3);
@@ -333,50 +347,64 @@ function digColumns(cols) {
     }
     grid.logical.set(key, b);
     undo.push(() => grid.logical.set(key, was));
-    h.world.removeRigidBody(chunks.get(key).body);
-    const body = h.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE));
-    const m = generateMesh(cx, cz, b, undefined);
-    chunks.set(key, { body, collider: h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body) });
+    mountChunk(key, b);
   }
   return () => undo.forEach((u) => u());
 }
+
+/** The columns of a square `n` wide from (x0, z0). */
+const square = (x0, z0, n) => Array.from({ length: n * n }, (_, i) => [x0 + (i % n), z0 + Math.floor(i / n)]);
 
 // A save made in a shaft the player dug through the world (a fall down it, or standing on its rim with the centre over
 // it): every chunk the load fit reads streams back, and the saved column answers nothing because there is nothing in it.
 // The hold waited its whole 10 s for that column and then sent the player to the origin spawn (registry
 // REVIEW:l6:load-hold-empty-column). Once the chunks round it have answered, the load stands the player on the nearest
-// column that has ground.
-describe('a load whose saved column was dug out of the world stands the player beside it once its chunks answer', () => {
+// column that has ground. A corner of the square the fit reads (game/formFit.js LOAD_FIT_SPAN) can lie over the shaft
+// too, in a shaft two or three wide or beside a save on the ground, and that column answers nothing either: read
+// column by column, the hold took it for a chunk still streaming and ran out (the dynamic review of lane L13 part 2,
+// its F1). `beside` is how far the nearest column with ground stands from the save.
+const SHAFTS = [
+  { shaft: 'one column wide, the save in it', cols: [[-4, 3]], saved: { x: -3.5, y: 20, z: 3.5 }, beside: 1 },
+  { shaft: 'two wide, the save at its middle', cols: square(-5, 2, 2), saved: { x: -4, y: 20, z: 3 }, beside: Math.hypot(1.5, 0.5) },
+  { shaft: 'two wide, the save on its rim', cols: square(-5, 2, 2), saved: { x: -4.8, y: LAND_TOP + 0.95, z: 3 }, beside: Math.hypot(0.7, 0.5) },
+  { shaft: 'three wide, the save at its middle', cols: square(-5, 2, 3), saved: { x: -3.5, y: 20, z: 3.5 }, beside: 2 },
+  { shaft: 'two wide at a chunk corner (x 0, z 16), the save at its middle', cols: square(-1, 15, 2), saved: { x: 0, y: 20, z: 16 }, beside: Math.hypot(1.5, 0.5) },
+  { shaft: 'one wide under a corner of the fit\'s square, the save on the ground beside it', cols: [[-5, 2]], saved: { x: -3.5, y: LAND_TOP + 0.95, z: 3.5 }, beside: 0 },
+];
+describe('a load whose saved column, or a column the fit reads, was dug out of the world stands the player on the nearest ground once its chunks answer', () => {
   for (const hz of [60, 120]) {
-    it(`${hz} Hz: the save in a shaft through the world is let go within half a second, on the ground of a column beside it`, () => {
-      standPlayer(hz);
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const saved = { x: -3.5, y: 20, z: 3.5 };
-      const undo = digColumns([[-4, 3]]);
-      try {
-        expect(groundProbe(saved.x - 0.1, saved.z - 0.1), 'SETUP: the dug column still answers').toBeNull();
-        for (const [x, z] of [[-5, 3], [-3, 3], [-4, 2], [-4, 4]]) {
-          expect(groundProbe(x, z), `SETUP: the column (${x}, ${z}) beside the shaft does not answer the land`).toBeCloseTo(LAND_TOP, 3);
+    for (const { shaft, cols, saved, beside } of SHAFTS) {
+      it(`${hz} Hz, a shaft through the world ${shaft}: the load is let go within half a second, on the nearest ground`, () => {
+        standPlayer(hz);
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const undo = digColumns(cols);
+        try {
+          for (const [x, z] of cols) expect(groundProbe(x, z), `SETUP: the dug column (${x}, ${z}) still answers`).toBeNull();
+          const ring = [...new Set(cols.flatMap(([x, z]) => [[x - 1, z], [x + 1, z], [x, z - 1], [x, z + 1]].map(String)))]
+            .map((k) => k.split(',').map(Number)).filter(([x, z]) => !cols.some(([a, b]) => a === x && b === z));
+          for (const [x, z] of ring) {
+            expect(groundProbe(x, z), `SETUP: the column (${x}, ${z}) beside the shaft does not answer the land`).toBeCloseTo(LAND_TOP, 3);
+          }
+          load(saved, hz, 2);
+          let placedOn = null;
+          for (let i = 0; i < 12 * hz && placedOn === null; i++) {
+            frame(hz);
+            if (!useGameStore.getState().resumeSpawn) placedOn = i;
+          }
+          const held = placedOn === null ? null : +((placedOn + 1) / hz).toFixed(3);
+          const r = { held, ...playFrom(hz, placedOn, hz), voids: voidWarnings(warn), ring: ring.length };
+          expect(placedOn, `SETUP: the hold never let the player go ${JSON.stringify(r)}`).not.toBeNull();
+          expect(held, `the hold waited for a column with nothing in it ${JSON.stringify(r)}`).toBeLessThanOrEqual(0.5);
+          expect(r.voids, `the player fell out of the world after the load ${JSON.stringify(r)}`).toBe(0);
+          expect(Math.hypot(r.end.x - saved.x, r.end.z - saved.z), `the player was not stood on the nearest ground ${JSON.stringify(r)}`).toBeLessThan(beside + 0.5);
+          expect(r.end.y, `the player does not stand on the land beside the shaft ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+          expect(r.worst.depth, `the capsule reached into solid after the release ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
+          expect(r.worst.eyeIn, `the eye was in solid after the release ${JSON.stringify(r)}`).toBe(false);
+        } finally {
+          undo();
         }
-        load(saved, hz, 2);
-        let placedOn = null;
-        for (let i = 0; i < 12 * hz && placedOn === null; i++) {
-          frame(hz);
-          if (!useGameStore.getState().resumeSpawn) placedOn = i;
-        }
-        const held = placedOn === null ? null : +((placedOn + 1) / hz).toFixed(3);
-        const r = { held, ...playFrom(hz, placedOn, hz), voids: voidWarnings(warn) };
-        expect(placedOn, `SETUP: the hold never let the player go ${JSON.stringify(r)}`).not.toBeNull();
-        expect(held, `the hold waited for a column with nothing in it ${JSON.stringify(r)}`).toBeLessThanOrEqual(0.5);
-        expect(r.voids, `the player fell out of the world after the load ${JSON.stringify(r)}`).toBe(0);
-        expect(Math.hypot(r.end.x - saved.x, r.end.z - saved.z), `the player was not stood beside the shaft ${JSON.stringify(r)}`).toBeLessThan(1.5);
-        expect(r.end.y, `the player does not stand on the land beside the shaft ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
-        expect(r.worst.depth, `the capsule reached into solid after the release ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
-        expect(r.worst.eyeIn, `the eye was in solid after the release ${JSON.stringify(r)}`).toBe(false);
-      } finally {
-        undo();
-      }
-    });
+      });
+    }
   }
 });
 
@@ -401,10 +429,7 @@ function digSpawnCorner() {
       if (Math.floor(x / CHUNK_SIZE) !== cx || Math.floor(z / CHUNK_SIZE) !== cz) continue;
       for (let y = 0; y < 40; y++) b[voxelIndex(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE)] = 0;
     }
-    h.world.removeRigidBody(chunks.get(key).body);
-    const body = h.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE));
-    const m = generateMesh(cx, cz, b, undefined);
-    chunks.set(key, { body, collider: h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body) });
+    mountChunk(key, b);
   }
 }
 
@@ -480,13 +505,7 @@ describe('the respawn over the dug corner stands the body\'s own capsule clear o
 
 /** Chunks meshed again from the voxels in `grid.logical`, as a React commit re-mounts them. */
 function remesh(keys) {
-  for (const key of keys) {
-    const [cx, cz] = key.split('_').map(Number);
-    h.world.removeRigidBody(chunks.get(key).body);
-    const body = h.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE));
-    const m = generateMesh(cx, cz, grid.logical.get(key), undefined);
-    chunks.set(key, { body, collider: h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body) });
-  }
+  for (const key of keys) mountChunk(key, grid.logical.get(key));
 }
 
 // A capsule reaching sideways into rock with its centre and its lowest point in the open (registry
