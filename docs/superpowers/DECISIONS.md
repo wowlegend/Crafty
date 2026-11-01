@@ -19,6 +19,31 @@
 
 ---
 
+## 2026-11-01 (wrap-up records) — [LOOP] the sweep is the command session's: a lane reports what it left, read-only
+
+The records landing of 2026-11-01 (`land/2026-11-01`, from main `39786876`), before the pause Kevin ordered that day.
+Its registry rows, the cursor, STATUS and the Command Record are routine and are in the commits; the one rule it changes
+is below.
+
+536. **A lane never runs `kill-test-procs.sh`; the command session runs it from its main thread after each lane
+   returns, never while another lane runs heavy work** (the command decision of 17:35Z on AB Command's answer,
+   session-truth st-8c04899eede7). *Why:* AB's subagent signal guard (Q203; `hooks/_lib/agent_contract_guard.py` in
+   Agentic-Brain, its strict kill allowlist since `77038133`) lets a subagent signal only processes it started, and it
+   walks into a shell script the command runs as a file. The sweep's `kill "-$1" "$pid"` signals pids read in a loop
+   (`frontend/scripts/dev/kill-test-procs.sh:85-86`), so the guard denies it to every subagent. AB Command measured
+   that on 2026-11-01, literal-signal variants included, and will not whitelist the script or have it rewritten to
+   slip past the walk. The rule said every run ends with the sweep, so lanes since 2026-10-27 reported the sweep blocked
+   and checked by hand, and the briefs carried a workaround ("check your ports by hand and say so") where the rule
+   should have been (the command session's whole-session reflection of
+   2026-11-01; its refuter confirmed the block and saw at least four distinct reports). Now the rule says what a lane
+   can do: kill what it launched, which the guard allows, then report its processes and listening ports read-only
+   (`pgrep`, `lsof`), naming any it did not start. The command session sweeps from the main thread, where the guard
+   does not walk into a script file, and not while another lane runs heavy work, because a sweep beside a live run
+   has cost that run before (AB episode :745). *Where:* `CLAUDE.md` "Browser and test-process hygiene" and
+   `.claude/rules/gates-and-probes.md` "Where things go". *Not changed:* the script and its test; the cold-takeover
+   eval's q8 still wants an answer that names the script, which the new text does. *Enforcer:* the guard denies a lane
+   the sweep; that the command session runs it after each lane, and not beside heavy work, is advisory.
+
 ## 2026-11-01 (lane L13 part 2) — [LOOP] the stuck-in-solid remainder's rows: a save in a dug column, the world's floor, a capsule in rock sideways, the waits to the frame, and the gate holes beside them
 
 Lane L13 part 2 (`fix/l13-stuck-in-solid`, main `84a04099` merged at `d865f25a`) took the fourteen rows part 1 left in

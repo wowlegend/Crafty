@@ -74,10 +74,12 @@ CI runs the heavy suites.
 
 ## Browser and test-process hygiene (Kevin, 2026-07-13)
 
-Anything you launch, you kill: close the browser in a `finally`, kill the vite process group, then
-`sh frontend/scripts/dev/kill-test-procs.sh`. A run that binds a port can leave a tab in Kevin's browser that you cannot
-see: say "a local run bound port N; I cannot see whether a tab was left", never "all clean". `cmux close-surface` is
-denied. Measure load (`uptime`) before blaming a gate. Detail: `.claude/rules/gates-and-probes.md`.
+Anything you launch, you kill: close the browser in a `finally`, kill the vite process group. A lane reports what is
+left read-only (`pgrep`, `lsof`): the subagent signal guard denies a lane `sh frontend/scripts/dev/kill-test-procs.sh`,
+which the command session runs from its main thread after each lane returns, never while another lane runs heavy work
+(DECISIONS 2026-11-01 item 536). A run that binds a port can leave a tab in Kevin's browser that you cannot see: say
+"a local run bound port N; I cannot see whether a tab was left", never "all clean". `cmux close-surface` is denied.
+Measure load (`uptime`) before blaming a gate. Detail: `.claude/rules/gates-and-probes.md`.
 
 ## Invariants, each with its enforcer
 

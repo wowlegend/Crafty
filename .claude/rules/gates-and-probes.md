@@ -162,7 +162,15 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
   `lookbook.mjs` checked).
 - Probes go in `scripts/visual/`, use `_serve.mjs` for the vite+browser lifecycle and `_probe.mjs` for
   honest taps and baselines. **Anything you launch, you kill** — close the browser in a `finally`, kill the
-  vite process GROUP, then sweep `scripts/dev/kill-test-procs.sh`.
+  vite process GROUP. **The sweep, `scripts/dev/kill-test-procs.sh`, is the command session's alone**
+  (DECISIONS 2026-11-01 item 536): it runs it from its main thread after each lane returns, and never while
+  another lane runs heavy work, because a sweep beside another lane's live run has cost that run before (AB episode
+  :745; the script now reads ownership from the process tree, which is only as right as the tree at that instant).
+  The estate's subagent signal guard (AB `hooks/_lib/agent_contract_guard.py`, Q203) lets a subagent signal only
+  processes it started, so it denies every subagent the script, whose `kill "-$1" "$pid"` signals pids read in
+  a loop; AB Command measured that on 2026-11-01 and will not whitelist it. A lane therefore never runs the sweep
+  and reports what it left read-only instead: its own processes (`pgrep -fl` on vite, vitest, playwright and
+  chrome) and listening ports (`lsof -nP -iTCP -sTCP:LISTEN`), naming any it did not start as not its own.
 - Prefer Playwright's `webServer` config over a hand-started dev server — it owns its own lifecycle, so
   there is nothing to forget to kill. Hand-started means hand-killed, in the same turn.
 - **Ports are ALLOCATED, not chosen.** `serveVite(probePort(import.meta.url))` — the frozen basename→port
