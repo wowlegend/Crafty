@@ -6,8 +6,9 @@
 // until the next step (world/placedCellColliders.js lists them as `unindexed`). Two clicks between one pair of frames
 // aimed the second through the first click's new cell, at the ground behind it. So the query also casts against each of
 // those colliders by itself (Collider.castRayAndGetNormal reads the shape, not the BVH) and takes the nearer hit.
-// Lives here, not in Terrain.jsx, because Terrain.jsx makes its worker at module scope and vitest cannot import it
-// (tests/gates/build-ray-unindexed-gates.test.js drives this module).
+// Lives here, not in Terrain.jsx, so a unit drives it with no terrain worker (tests/gates/build-ray-unindexed-gates.test.js).
+// Terrain.jsx's own wiring, the click's ray and the target outline each handing it placedCells.unindexed(), is driven in
+// the mounted world with the worker stood in for (tests/gates/verb-ledger-gates.test.jsx).
 //
 // Cost: one pairwise ray cast per unindexed collider, on a frame that has any (a placement or a chunk landing makes one);
 // none otherwise.
