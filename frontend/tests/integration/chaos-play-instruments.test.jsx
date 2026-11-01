@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
+import { BASE_CAPSULE } from '../../src/game/beasts.js';
 import {
   makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, leftClick, buildRay, lookDir, mulberry32, STONE, AIR,
   LAND_TOP, checkEscape, writeSave, loadSave, LOAD_RELEASE_FRAMES, voidReset, groundUnder, DEEP_SEABED, clipInto, recovered,
@@ -180,6 +181,29 @@ describe('the chaos-play instruments see what they report on', () => {
     const sunk = read.filter((r) => !r.settle && r.x === -4.55 && r.z === -6.32);
     expect(sunk.map((r) => r.depth > TOL), `SETUP: the sighting's spot does not stand the capsule in the rim ${JSON.stringify(sunk)}`).toEqual([true, true, true, true]);
     expect(read.filter((r) => r.by !== 'walk'), 'a body in the rim of a pit under the ceiling could not walk or jump out').toEqual([]);
+  });
+
+  // The escape test reads the game's grounding (game/grounding.js supportedGround), not the controller's flag, which counts
+  // a wall: in a one-wide shaft five deep, capped over the body's head, a body pressed to the walls 1.5 or 2 m over the
+  // floor falls out under the game's rule, and on the flag the glue slid it under a metre in the second and read it held
+  // (the static and dynamic reviews of lane L13 part 2: the rim cases above read alike on either rule).
+  it('the escape test falls a body down a capped one-wide shaft as the game does, where the controller\'s flag would glue it to the wall', () => {
+    const read = [];
+    const x = -8, z = 20, depth = 5, floor = LAND_TOP - depth;
+    for (const cap of [0.3, 0.6, 0.9]) for (const below of [1.5, 2]) for (const fx of [0.5, 0.58]) {
+      const S = makeSession({ spot: 'field', rnd: mulberry32(1), hz: 60, lag: 0, tol: TOL });
+      for (let d = 1; d <= depth; d++) setCell(S, x, LAND_TOP - d, z, AIR);
+      const cy = floor + below + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
+      const capY = Math.floor(cy + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius + cap);
+      setCell(S, x, capY, z, STONE);
+      S.p.body.setTranslation({ x: x + fx, y: cy, z: z + 0.5 }, true);
+      S.p.body.collider(0).setTranslation(S.p.body.translation());
+      expect([solidAt(S, x - 1, floor + 2, z), solidAt(S, x + 1, floor + 2, z), solidAt(S, x, floor - 1, z), solidAt(S, x, capY, z), solidAt(S, x, floor + 1, z)],
+        'SETUP: the shaft is not walled, floored and capped, open where the body falls').toEqual([true, true, true, true, false]);
+      read.push({ cap, below, fx, by: escape(S).by });
+    }
+    expect(read.length, 'SETUP: not every placement was read').toBe(12);
+    expect(read.filter((r) => r.by !== 'walk'), 'a body over the floor of a capped shaft read held: the escape test does not fall it as the game does').toEqual([]);
   });
 
   it('I1 counts a capsule 0.04 m into a wall (between TOL and the shallowest trap the gate exists for, 0.05 m)', () => {
