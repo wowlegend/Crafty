@@ -9,8 +9,8 @@
 // under 1483 of 6400 columns within 40 m of the spawn). The void line handles a fall out of the world; this handles a
 // body in the rock.
 //
-// The centre's cell is read from the trimeshes (formFit.js cellSolid: a ray up the cell's middle crosses an odd number of
-// faces from inside the ground) once every STUCK_CHECK_SEC, and the body is moved only once every reading for
+// The centre's cell (and, when it is clear, the cell over the lowest point) is read from the trimeshes (formFit.js
+// cellSolid: a ray up the cell's middle crosses an odd number of faces from inside the ground) once every STUCK_CHECK_SEC, and the body is moved only once every reading for
 // STUCK_CONFIRM_SEC has been solid: a reading is of the colliders, which change between steps as chunks land and re-mesh,
 // and a body truly in the rock is still in it three readings on. The spot is the load fit's search (formFit.js
 // fitLoadedSpot, for the body's own shape): the nearest spot within a few decimetres whose cell is not solid and where the
@@ -23,6 +23,13 @@ import { cellSolid, fitLoadedSpot } from './formFit.js';
 export const STUCK_CHECK_SEC = 0.1;
 export const STUCK_CONFIRM_SEC = 0.2;
 const EPS = 1e-9; // a frame's steps summed in floating point fall a hair short of the second they add up to
+// THE LOWEST POINT IS READ TOO. A capsule can reach into the rock with its centre in the air: a chunk border landing round
+// a body sunk with its centre 0.05 m over the top face held it 0.4 m deep, at 60 and 120 Hz (the controller frees a body
+// sunk inside one chunk's face, not one straddling two chunks' closed edges; tests/gates/stuck-in-rock-gates.test.jsx).
+// So when the centre's cell reads clear, the cell just above the capsule's lowest point is read as well. A standing capsule
+// keeps its lowest point the controller's offset (0.05 m) over its ground, so a reading 0.02 m above that point is in the
+// open cell over the ground in play (the chaos gate's I7 counts a recovery of a body that never clipped).
+const LOWEST_READ_UP = 0.02;
 
 /** A watch: the seconds since its last reading, and how long its readings have been solid (-1: the last one was not). */
 export function makeStuckWatch() {
@@ -44,14 +51,16 @@ export function stuckInRock(watch, world, rapier, body, stepSec, probe, unindexe
   const since = watch.sinceRead;
   watch.sinceRead = 0;
   const at = body.translation();
-  if (!cellSolid(world, rapier, Math.floor(at.x), Math.floor(at.y), Math.floor(at.z))) {
+  const c = body.collider(0);
+  const cx = Math.floor(at.x), cz = Math.floor(at.z);
+  const lowest = at.y - c.halfHeight() - c.radius() + LOWEST_READ_UP;
+  if (!cellSolid(world, rapier, cx, Math.floor(at.y), cz) && !cellSolid(world, rapier, cx, Math.floor(lowest), cz)) {
     watch.solidFor = -1;
     return null;
   }
   watch.solidFor = watch.solidFor < 0 ? 0 : watch.solidFor + since;
   if (watch.solidFor < STUCK_CONFIRM_SEC - EPS) return null;
   watch.solidFor = -1;
-  const c = body.collider(0);
   const spot = fitLoadedSpot(world, rapier, body, at, probe, { unindexed, shape: { halfHeight: c.halfHeight(), radius: c.radius() } });
   return { x: spot.x, y: spot.y, z: spot.z };
 }
