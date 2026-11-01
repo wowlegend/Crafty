@@ -91,6 +91,17 @@ describe('moveKinematic: no frame\'s move is lost to a frame that took no world 
     expect(w.body.translation().x).toBeCloseTo(40.1, 3);
   });
 
+  it('a fall drifting along z over frames that take no step keeps every frame\'s move: the pending move is swept again on y and z too', () => {
+    const w = makeWorld();
+    w.body.setTranslation({ x: 0, y: 5, z: 0 }, true);
+    w.world.step();
+    const y0 = w.body.translation().y, z0 = w.body.translation().z;
+    for (let i = 0; i < 3; i++) moveKinematic(w.body, w.kcc, w.collider, { x: 0, y: -0.1, z: 0.05 }); // no world step follows
+    w.world.step();
+    expect(y0 - w.body.translation().y, 'a frame\'s fall was lost to a frame that took no step').toBeCloseTo(0.3, 4);
+    expect(w.body.translation().z - z0, 'a frame\'s drift along z was lost to a frame that took no step').toBeCloseTo(0.15, 4);
+  });
+
   it('nextTranslation is where the next frame\'s step starts: the body plus every move not yet stepped', () => {
     const w = makeWorld();
     const at = w.body.translation();
@@ -99,58 +110,6 @@ describe('moveKinematic: no frame\'s move is lost to a frame that took no world 
     expect(next.x).toBeCloseTo(at.x + m.x, 6);
     w.world.step();
     expect(w.body.nextTranslation().x).toBeCloseTo(w.body.translation().x, 6);
-  });
-});
-
-describe('a form swap\'s grow lift lands unswept whether or not a world step follows its frame (real Rapier)', () => {
-  // A capsule grown by LIFT at each end, standing where the base capsule stood, so its base is LIFT into the floor, and
-  // a ceiling CLEAR above its top, inside the lift. The lift is a depenetration: it moves the body without a sweep.
-  const LIFT = 0.2, CLEAR = 0.1;
-  function grownUnderCeiling() {
-    const w = makeWorld();
-    w.world.removeCollider(w.collider, false);
-    w.collider = w.world.createCollider(RAPIER.ColliderDesc.capsule(BASE_CAPSULE.halfHeight + LIFT, BASE_CAPSULE.radius), w.body);
-    const y0 = w.body.translation().y;
-    const top = y0 + BASE_CAPSULE.halfHeight + LIFT + BASE_CAPSULE.radius;
-    const ceiling = w.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, top + CLEAR + 0.5, 0));
-    w.world.createCollider(RAPIER.ColliderDesc.cuboid(50, 0.5, 50), ceiling);
-    w.world.step();
-    return { w, y0 };
-  }
-  const still = { x: 0, y: 0, z: 0 };
-
-  it('the swap frame, then a step (60 Hz): the body rises the whole lift', () => {
-    const { w, y0 } = grownUnderCeiling();
-    moveKinematic(w.body, w.kcc, w.collider, still, LIFT);
-    w.world.step();
-    moveKinematic(w.body, w.kcc, w.collider, still, 0);
-    w.world.step();
-    expect(w.body.translation().y - y0).toBeCloseTo(LIFT, 4);
-  });
-
-  it('the swap frame takes no step (120 Hz): the next frame does not sweep the lift into the ceiling', () => {
-    const { w, y0 } = grownUnderCeiling();
-    moveKinematic(w.body, w.kcc, w.collider, still, LIFT);
-    moveKinematic(w.body, w.kcc, w.collider, still, 0);
-    w.world.step();
-    expect(w.body.translation().y - y0, 'the lift was swept and stopped at the ceiling: the capsule stays in the floor').toBeCloseTo(LIFT, 4);
-  });
-
-  it('the lift rides with a walk across frames that take no step, and a teleport drops it', () => {
-    const { w, y0 } = grownUnderCeiling();
-    const x0 = w.body.translation().x;
-    moveKinematic(w.body, w.kcc, w.collider, { x: 0.1, y: 0, z: 0 }, LIFT);
-    moveKinematic(w.body, w.kcc, w.collider, { x: 0.1, y: 0, z: 0 }, 0);
-    moveKinematic(w.body, w.kcc, w.collider, { x: 0.1, y: 0, z: 0 }, 0);
-    w.world.step();
-    expect(w.body.translation().y - y0, 'the lift was lost or doubled over three frames with no step').toBeCloseTo(LIFT, 3);
-    expect(w.body.translation().x - x0, 'a frame\'s walk was lost beside the lift').toBeCloseTo(0.3, 3);
-    const t = grownUnderCeiling();
-    moveKinematic(t.w.body, t.w.kcc, t.w.collider, still, LIFT);
-    t.w.body.setTranslation({ x: 40, y: t.y0, z: 40 }, true);
-    moveKinematic(t.w.body, t.w.kcc, t.w.collider, still, 0);
-    t.w.world.step();
-    expect(t.w.body.translation().y - t.y0, 'a lift dropped by a teleport came back').toBeCloseTo(0, 4);
   });
 });
 
@@ -168,13 +127,13 @@ describe('the cut at a collider made since the last step lets a capsule that sta
   }
   it('a jump straight up out of the cell keeps its whole move', () => {
     const { w, cell } = inCell();
-    const m = moveKinematic(w.body, w.kcc, w.collider, { x: 0, y: 0.3, z: 0 }, 0, undefined, [cell]);
+    const m = moveKinematic(w.body, w.kcc, w.collider, { x: 0, y: 0.3, z: 0 }, undefined, [cell]);
     expect(m.y, 'the move out of the cell was cut').toBeCloseTo(0.3, 3);
   });
   it('the control: a move into the cell from outside it is still cut short of it', () => {
     const w = makeWorld();
     const cell = w.world.createCollider(RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5).setTranslation(1.0 + BASE_CAPSULE.radius + 0.5, 1, 0));
-    const m = moveKinematic(w.body, w.kcc, w.collider, { x: 2, y: 0, z: 0 }, 0, undefined, [cell]);
+    const m = moveKinematic(w.body, w.kcc, w.collider, { x: 2, y: 0, z: 0 }, undefined, [cell]);
     expect(m.x, 'SETUP: the sweep did not move toward the cell').toBeGreaterThan(0.5);
     expect(m.x, 'the cut let the capsule into the cell').toBeLessThanOrEqual(1.0 - 0.04);
   });

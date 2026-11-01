@@ -59,7 +59,7 @@ function play(world, p, hz, sec, move) {
     while (acc >= DT - 1e-9) { world.step(); acc -= DT; }
     vy = grounded ? GLUE_VELOCITY : applyGravity(vy, 1, 1 / hz);
     const v = move(f);
-    moveKinematic(p.body, p.kcc, p.collider, { x: v.x / hz, y: vy / hz, z: v.z / hz }, 0, p.filter);
+    moveKinematic(p.body, p.kcc, p.collider, { x: v.x / hz, y: vy / hz, z: v.z / hz }, p.filter);
     const kcc = p.kcc.computedGrounded();
     grounded = supportedGround(p.kcc, world, p.body, p.collider, p.filter);
     n.frames++;
@@ -98,7 +98,7 @@ describe('supportedGround: the controller\'s ground, kept only where a walkable 
       const a = (deg * Math.PI) / 180, d = BASE_CAPSULE.radius + 0.05;
       const p = makePlayer(world, { x: 4.5, y: TOP + d * Math.cos(a) + BASE_CAPSULE.halfHeight, z: LEDGE.z + d * Math.sin(a) });
       world.step();
-      moveKinematic(p.body, p.kcc, p.collider, { x: 0, y: GLUE_VELOCITY / 60, z: 0 }, 0, p.filter);
+      moveKinematic(p.body, p.kcc, p.collider, { x: 0, y: GLUE_VELOCITY / 60, z: 0 }, p.filter);
       read[deg] = { kcc: p.kcc.computedGrounded(), supported: supportedGround(p.kcc, world, p.body, p.collider, p.filter) };
     }
     expect(read[50].kcc, `SETUP: the controller does not call the brink ground, so the case measures nothing ${JSON.stringify(read)}`).toBe(true);

@@ -363,7 +363,7 @@ function playerFrame(S, input) {
   const speed = input.forward ? moveSpeed(loco) : 0;
   const d = { x: (look.x * speed + S.kb.x) * dt, y: S.vy * dt, z: (look.z * speed + S.kb.z) * dt };
   FORM_SWAP.consume(S);
-  moveKinematic(body, kcc, body.collider(0), d, 0, filter, S.cells.unindexed());
+  moveKinematic(body, kcc, body.collider(0), d, filter, S.cells.unindexed());
   for (let i = 0; i < kcc.numComputedCollisions(); i++) {
     const c = kcc.computedCollision(i);
     if (c && Math.abs(c.normal1.y) < 0.3) { S.stats.wallContactFrames++; break; }
@@ -604,7 +604,7 @@ function walkOut(sb, k, jump, t0) {
     sb.w.step();
     const g = supportedGround(kcc, sb.w, sb.body, sb.collider, sb.filter);
     if (jump && g) vy = jumpVelocity(formLocomotion(null)); else if (g) vy = GLUE_VELOCITY; else vy = applyGravity(vy, 1, DT);
-    moveKinematic(sb.body, kcc, sb.collider, { x: Math.cos(a) * s, y: vy * DT, z: Math.sin(a) * s }, 0, sb.filter);
+    moveKinematic(sb.body, kcc, sb.collider, { x: Math.cos(a) * s, y: vy * DT, z: Math.sin(a) * s }, sb.filter);
     const e = sb.body.nextTranslation();
     out = Math.hypot(e.x - t0.x, e.z - t0.z) >= ESCAPE_M || Math.abs(e.y - t0.y) >= ESCAPE_M;
   }

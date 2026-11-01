@@ -1479,7 +1479,7 @@ export const Player = ({ isWorldBuilt }) => {
     // it is ground the capsule stands and stalls on for its 2 s.
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
-      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, 0, filterPredicate, GameMethods.placedCells?.unindexed(),
+      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, filterPredicate, GameMethods.placedCells?.unindexed(),
         rapier.QueryFilterFlags.EXCLUDE_DYNAMIC);
     }
 
