@@ -4,7 +4,14 @@ import { resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { globSync } from 'node:fs';
 import { STRINGS } from '../../src/i18n/strings.js';
+import { NIGHT_STRINGS, mergeStrings } from '../../src/night/nightStrings.js';
 import { classifyKeys, tallyKinds, deadKeys } from '../../src/i18n/keyReachability.js';
+
+// The night chunk's lines join STRINGS at run time (night/night.js installNight, through mergeStrings). They are merged
+// here the same way before anything is read, so the table below is the one t() reads once the night is in: a key that
+// lives only in the night's table resolves, and is classified like any other, and a night line whose text clashes with a
+// shipped one throws here as it would in the game (DECISIONS 2026-11-01 (W3-A PR C) item 533).
+const NIGHT_MERGED = mergeStrings(NIGHT_STRINGS);
 
 // EVERY t() CALL SITE RESOLVES TO A REAL KEY.
 //
@@ -57,6 +64,12 @@ describe('i18n key resolution', () => {
     expect(sites.length).toBeGreaterThan(40);
   });
 
+  it('reads the table with the night chunk\'s lines merged in, every one of them', () => {
+    const night = Object.keys(NIGHT_STRINGS.en);
+    expect(NIGHT_MERGED, 'a night line was not merged into the table this gate reads').toEqual(night);
+    expect(night.filter((k) => !(k in STRINGS.en && k in STRINGS['zh-CN'])), 'a night line is missing from the merged table').toEqual([]);
+  });
+
   it('every static t() key exists in the en dictionary', () => {
     const missing = sites
       .filter((s) => !(s.key in STRINGS.en))
@@ -64,7 +77,8 @@ describe('i18n key resolution', () => {
     expect(
       missing,
       `These call sites pass a key the dictionary does not define. t() falls back to returning the key,\n` +
-        `so each of these renders its own key as UI text. Add it to BOTH locales in src/i18n/strings.js.`
+        `so each of these renders its own key as UI text. Add it to BOTH locales in src/i18n/strings.js, or, for a line\n` +
+        `only the night chunk speaks, to NIGHT_STRINGS in src/night/nightStrings.js.`
     ).toEqual([]);
   });
 
