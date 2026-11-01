@@ -59,7 +59,7 @@ import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingOrigin.js';
-import { moveKinematic, placeBody } from './game/kinematicMove.js';
+import { moveKinematic, placeBody, CONTROLLER_OFFSET } from './game/kinematicMove.js';
 import { supportedGround, MAX_SLOPE_CLIMB_RAD } from './game/grounding.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
@@ -136,8 +136,7 @@ export const Player = ({ isWorldBuilt }) => {
   // Initialize Rapier Kinematic Character Controller
   useEffect(() => {
     if (world) {
-      const offset = 0.05; // Gap offset between character capsule and environment
-      const c = world.createCharacterController(offset);
+      const c = world.createCharacterController(CONTROLLER_OFFSET);
       c.enableAutostep(1.05, 0.2, true); // Step-up height of 1.05m
       c.enableSnapToGround(0.5); // snap to ground when descending slopes
       c.setMaxSlopeClimbAngle(MAX_SLOPE_CLIMB_RAD); // 45 degrees: what game/grounding.js calls walkable
@@ -1084,8 +1083,10 @@ export const Player = ({ isWorldBuilt }) => {
 
       // Player center 1.2 above ground (instant land), the collider with it: the next frame sweeps from here, not from
       // the sky the body waited in (game/kinematicMove.js placeBody). A wait that ran out stands on the nearest ground
-      // that answers, before any blind drop (game/spawnPlacement.js spawnSpot).
-      const at = spawnSpot(spawn, probeAvailable ? store.getMobGroundLevel : null);
+      // that answers, before any blind drop, clear of every column the body's capsule reaches in the shape it has now: a
+      // beast form outlives the void guard's reset (game/spawnPlacement.js spawnSpot).
+      const capsule = rigidBodyRef.current.collider(0);
+      const at = spawnSpot(spawn, probeAvailable ? store.getMobGroundLevel : null, { halfHeight: capsule.halfHeight(), radius: capsule.radius() });
       placeBody(world, rigidBodyRef.current, { x: at.x, y: at.y, z: at.z });
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
 

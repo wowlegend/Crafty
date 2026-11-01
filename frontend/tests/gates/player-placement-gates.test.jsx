@@ -64,7 +64,7 @@ vi.mock('../../src/world/ElementZoneSystem.jsx', () => ({ ElementZoneSystem: () 
 const { Player } = await import('../../src/Components.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore.jsx');
 const { buildSaveData } = await import('../../src/game/saveSchema.js');
-const { BASE_CAPSULE } = await import('../../src/game/beasts.js');
+const { BASE_CAPSULE, BEAST_FORMS } = await import('../../src/game/beasts.js');
 const { spawnTargetY, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } = await import('../../src/game/spawnPlacement.js');
 const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
 const { setIntent, setActive, resetInput } = await import('../../src/input/inputState.js');
@@ -333,6 +333,56 @@ describe('the respawn over a spawn corner dug out of the world stands on the nea
       expect(r.resets, `the respawn over the dug corner looped ${JSON.stringify(r)}`).toBeLessThanOrEqual(1);
       expect(end.y, `the player does not stand on the land after the minute ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
       expect(Math.hypot(end.x, end.z), `the player stands far from the spawn corner ${JSON.stringify(r)}`).toBeLessThan(3);
+    });
+  }
+});
+
+/** Column (x, z) one cell higher than the land: the cell at LAND_TOP is ground in the voxels deepestSolid reads, and
+ *  digSpawnCorner, which meshes from those voxels, builds it into the chunk's trimesh. Returns the undo for the voxels. */
+function raiseColumn(x, z) {
+  const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE), key = `${cx}_${cz}`;
+  const was = grid.logical.get(key);
+  const b = was.slice();
+  b[voxelIndex(x - cx * CHUNK_SIZE, LAND_TOP, z - cz * CHUNK_SIZE)] = genCell(x, LAND_TOP - 1, z);
+  grid.logical.set(key, b);
+  return () => grid.logical.set(key, was);
+}
+
+// The respawn's wait runs out over the dug corner while the bull form is on (a form outlives the void guard's reset), and
+// the column nearest the corner stands beside one a block higher. The bull's radius, 0.62 m, reaches 0.12 m past the
+// column it stands over into that one (game/spawnPlacement.js spawnSpot reads every column the body's capsule reaches).
+describe('the respawn over the dug corner stands the body\'s own capsule clear of every column it reaches', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: in the bull form, beside a column a block higher, the respawn does not stand the capsule in it`, () => {
+      const bull = BEAST_FORMS.ice;
+      standPlayer(hz);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      act(() => { useGameStore.setState({ beastFormActive: true, activeBeastForm: 'ice' }); });
+      for (let i = 0; i < 4; i++) frame(hz);
+      expect(h.body.collider(0).radius(), 'SETUP: the bull form did not swap in').toBeCloseTo(bull.radius, 6);
+      const undo = raiseColumn(-3, -1);
+      try {
+        digSpawnCorner();
+        expect(groundProbe(-3, -1), 'SETUP: the raised column does not stand a block over the land').toBeCloseTo(LAND_TOP + 1, 4);
+        let placed = null, worst = { depth: 0, cell: null };
+        for (let i = 0; i < 12 * hz && !(placed && i > placed.frame + hz); i++) {
+          frame(hz);
+          if (!placed && voidWarnings(warn) > 0 && h.body.translation().y < SPAWN_FREEZE_Y - 1) {
+            placed = { frame: i, at: at(), radius: +h.body.collider(0).radius().toFixed(2) };
+          }
+          if (placed) {
+            const d = deepestSolid(grid, h.body);
+            if (d.depth > worst.depth) worst = { depth: +d.depth.toFixed(3), cell: d.cell, at: at() };
+          }
+        }
+        const r = { placed, worst, resets: voidWarnings(warn), end: at() };
+        expect(placed, `SETUP: the respawn never stood the player down ${JSON.stringify(r)}`).not.toBeNull();
+        expect(placed.radius, `SETUP: the bull form had ended when the wait ran out ${JSON.stringify(r)}`).toBe(bull.radius);
+        expect(worst.depth, `the respawn stood the bull's capsule in a column it reaches ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
+        expect(r.resets, `the respawn beside the dug corner looped ${JSON.stringify(r)}`).toBe(1);
+      } finally {
+        undo();
+      }
     });
   }
 });

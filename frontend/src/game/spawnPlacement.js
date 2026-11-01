@@ -3,7 +3,7 @@
 // handed the Rapier world, the body and the camera. No React or Rapier import.
 import { LOAD_FIT_SPAN } from './formFit.js';
 import { BASE_CAPSULE } from './beasts.js';
-import { placeBody } from './kinematicMove.js';
+import { placeBody, CONTROLLER_OFFSET } from './kinematicMove.js';
 import { resetStance } from './stanceState.js';
 
 export const SPAWN_FREEZE_Y = 120;      // hold in the sky until the world builds / on void-fall
@@ -86,10 +86,15 @@ export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
 // from SPAWN_FALLBACK_Y down the hole, fell out of the world, and the void guard sent it back to wait again: nine resets in
 // a minute's idle (registry REVIEW:l4:origin-corner-dug-through-respawn-loop; tests/gates/player-placement-gates.test.jsx).
 // So when the wait runs out, the column nearest the corner within FALLBACK_REACH whose ground answers (above PROBE_MIN_Y,
-// the spawn's own rule) is stood on, at its middle, where the capsule fits inside the column. A column in a chunk that has
-// not streamed in answers nothing either, so this stands no player on ground that is not there; with none answering, the
-// blind drop goes ahead and is followed (followBlindDrop).
-// Cost: up to (2 x FALLBACK_REACH)^2 probes, once, on the frame the wait runs out.
+// the spawn's own rule) is stood on, at its middle. A column in a chunk that has not streamed in answers nothing either,
+// so this stands no player on ground that is not there; with none answering, the blind drop goes ahead and is followed
+// (followBlindDrop).
+// THE CAPSULE IS THE BODY'S AS IT IS. A beast form outlives the void guard's reset (returnToSpawn ends none), and the
+// bull's radius (0.62 m) and the golem's (0.5 m), with the controller's offset, reach past the column's 0.5 m half-width:
+// stood on that column's ground alone, the bull went 0.12 m into a column beside it one block higher
+// (tests/gates/player-placement-gates.test.jsx). So the ground is the highest of the columns the capsule reaches, the
+// way the load fit's column fallback reads them (game/formFit.js fitLoadedSpot); one that answers nothing adds nothing.
+// Cost: up to (2 x FALLBACK_REACH)^2 probes, and the up to nine the capsule reaches, once, on the frame the wait runs out.
 const FALLBACK_REACH = 8;
 
 /** The middle of the column nearest the spawn corner within FALLBACK_REACH whose ground answers, and its ground; or null. */
@@ -107,17 +112,33 @@ function nearestAnsweringColumn(probe) {
   return best;
 }
 
+/** The highest ground that answers under a capsule of `shape` centred over (x, z), from `ground`, the column's own: every
+ *  column its radius and the controller's offset reach. */
+function groundUnder(probe, x, z, ground, shape) {
+  const reach = shape.radius + CONTROLLER_OFFSET;
+  let top = ground;
+  for (let cx = Math.floor(x - reach); cx <= Math.floor(x + reach); cx++) {
+    for (let cz = Math.floor(z - reach); cz <= Math.floor(z + reach); cz++) {
+      const y = probe(cx, cz);
+      if (Number.isFinite(y)) top = Math.max(top, y);
+    }
+  }
+  return top;
+}
+
 /**
  * Where the spawn stands the body (Components.jsx's spawn branch): over the corner on resolveSpawnGround's ground, or, once
- * its wait has run out (`blind`), on the nearest column whose ground answers. Returns { x, y, z, blind }: the centre to
- * place the body at, and whether the drop is blind (the caller follows it, followBlindDrop).
+ * its wait has run out (`blind`), on the nearest column whose ground answers, as high as the highest column the body's
+ * capsule reaches there. Returns { x, y, z, blind }: the centre to place the body at, and whether the drop is blind (the
+ * caller follows it, followBlindDrop).
  *   spawn  resolveSpawnGround's answer for a frame that spawns (not a retry)
  *   probe  the ground probe (Terrain.jsx getMobGroundLevel), or null when there is none
+ *   shape  the body's capsule as it is now ({ halfHeight, radius }: a beast form's, or the base one)
  */
-export function spawnSpot(spawn, probe) {
+export function spawnSpot(spawn, probe, shape = BASE_CAPSULE) {
   if (spawn.blind && probe) {
     const near = nearestAnsweringColumn(probe);
-    if (near) return { x: near.x, y: spawnTargetY(near.y), z: near.z, blind: false };
+    if (near) return { x: near.x, y: spawnTargetY(groundUnder(probe, near.x, near.z, near.y, shape)), z: near.z, blind: false };
   }
   return { x: 0, y: spawnTargetY(spawn.groundY), z: 0, blind: !!spawn.blind };
 }

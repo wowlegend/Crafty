@@ -41,7 +41,7 @@ import { buildFootprint } from '../../../src/game/buildFootprint.js';
 import { createPlacedCellColliders, createEditSeq } from '../../../src/world/placedCellColliders.js';
 import { generateMesh } from '../../../src/world/mesher.js';
 import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, CHUNK_HEIGHT, chunkOf } from '../../../src/world/chunkLayout.js';
-import { moveKinematic, placeBody } from '../../../src/game/kinematicMove.js';
+import { moveKinematic, placeBody, CONTROLLER_OFFSET } from '../../../src/game/kinematicMove.js';
 import { supportedGround, MAX_SLOPE_CLIMB_RAD } from '../../../src/game/grounding.js';
 import { castRayNearest } from '../../../src/world/buildRay.js';
 import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/beasts.js';
@@ -227,7 +227,7 @@ export function setCell(S, x, y, z, t) {
 
 // ---- the player ------------------------------------------------------------------------------------------------------
 function makeKcc(world) {
-  const kcc = world.createCharacterController(0.05);
+  const kcc = world.createCharacterController(CONTROLLER_OFFSET);
   kcc.enableAutostep(1.05, 0.2, true);
   kcc.enableSnapToGround(0.5);
   kcc.setMaxSlopeClimbAngle(MAX_SLOPE_CLIMB_RAD);
@@ -281,7 +281,8 @@ function spawnBranch(S) {
     S.p.body.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
     return;
   }
-  const at = spawnSpot(spawn, (x, z) => groundProbe(S, x, z));
+  const c = S.p.body.collider(0); // the body's capsule as it is now, as the Player's spawn branch reads it
+  const at = spawnSpot(spawn, (x, z) => groundProbe(S, x, z), { halfHeight: c.halfHeight(), radius: c.radius() });
   placeBody(S.world, S.p.body, { x: at.x, y: at.y, z: at.z });
   S.spawn.placed.current = true;
   S.stats.respawns++;

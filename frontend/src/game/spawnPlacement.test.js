@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe, returnToSpawn, followBlindDrop,
-  SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_SEC, SPAWN_EYE_OFFSET, SPAWN_FREEZE_Y,
+  spawnSpot, SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_SEC, SPAWN_EYE_OFFSET, SPAWN_FREEZE_Y,
 } from './spawnPlacement.js';
+import { CONTROLLER_OFFSET } from './kinematicMove.js';
 import { stance } from './stanceState.js';
 import { BASE_CAPSULE, BEAST_FORMS } from './beasts.js';
 import { DEEP_FLOOR } from '../world/oceanProfile.js';
@@ -153,6 +154,76 @@ describe('spawnCornerGround', () => {
       }
     }
     expect(spawnCornerGround(probeOf({ ...flat, '0,0': 16 })), 'a column just over the floor is an answer').toBe(51);
+  });
+});
+
+// When the spawn's wait runs out over a corner that answers nothing, the body is stood on the nearest column whose ground
+// answers. The capsule is the body's as it is: a beast form outlives the void guard's reset (returnToSpawn ends none), and
+// the bull's radius (0.62 m) and the golem's (0.5 m) with the controller's offset reach past a column's 0.5 m half-width
+// into the columns round it. Each block is read against the capsule's segment, so a spot inside a column it overhangs fails.
+describe('spawnSpot: the wait run out, the nearest ground that answers, and every column the capsule reaches', () => {
+  const CORNER = ['-1,-1', '0,-1', '-1,0', '0,0'];
+  // The land at 30 for 8 m round the corner, the corner's four columns dug out (they answer nothing), and `tops` over it.
+  const land = (tops = {}) => (x, z) => (`${x},${z}` in tops ? tops[`${x},${z}`] : CORNER.includes(`${x},${z}`) ? null : 30);
+  const SHAPES = { base: BASE_CAPSULE, ...Object.fromEntries(Object.values(BEAST_FORMS).map((f) => [f.id, f])) };
+  /** The capsule's least gap to the column (x, z)'s blocks, which run from its ground down: negative when inside them. */
+  const gapTo = (at, shape, x, z, top) => {
+    const dx = Math.max(x - at.x, 0, at.x - (x + 1)), dz = Math.max(z - at.z, 0, at.z - (z + 1));
+    const dy = Math.max(0, (at.y - shape.halfHeight) - top);
+    return Math.hypot(dx, dy, dz) - shape.radius;
+  };
+  /** The least gap to any column within two of the spot, and which column it is. */
+  const nearestBlock = (at, shape, probe) => {
+    let worst = { gap: Infinity, column: null };
+    for (let x = Math.floor(at.x) - 2; x <= Math.floor(at.x) + 2; x++) for (let z = Math.floor(at.z) - 2; z <= Math.floor(at.z) + 2; z++) {
+      const top = probe(x, z);
+      if (top == null) continue;
+      const gap = gapTo(at, shape, x, z, top);
+      if (gap < worst.gap) worst = { gap: +gap.toFixed(4), column: `${x},${z}` };
+    }
+    return worst;
+  };
+
+  it('stands the body over the middle of the nearest column whose ground answers above the probe floor', () => {
+    const probe = (x, z) => ({ '-2,-1': 15, '1,0': 41, '3,3': 30 })[`${x},${z}`] ?? null;
+    // (-2, -1) and (1, 0) are equally near the corner; the first reads 15, the probe's floor, which is no answer.
+    expect(spawnSpot({ blind: true, groundY: SPAWN_FALLBACK_Y }, probe)).toEqual({ x: 1.5, y: spawnTargetY(41), z: 0.5, blind: false });
+  });
+  it('stands every shape the player can have its controller\'s offset clear of every column, beside one a block higher', () => {
+    // The land round the dug corner with the column west of the nearest one, (-2, -1), a block higher; then, on ground
+    // that answers only there, a column a block higher on each side of the one stood on ((-2, -1), or (1, -1) for its
+    // east side, which at (-2, -1) is the dug corner).
+    const cases = [
+      { name: 'land, west', probe: land({ '-3,-1': 31 }), stand: [-2, -1] },
+      ...[[[-2, -1], [-3, -1]], [[-2, -1], [-2, -2]], [[-2, -1], [-2, 0]], [[1, -1], [2, -1]]].map(([c, n]) => ({
+        name: `${n} beside ${c}`, stand: c, probe: (x, z) => ({ [`${c}`]: 30, [`${n}`]: 31 })[`${x},${z}`] ?? null,
+      })),
+    ];
+    const out = {};
+    for (const { name, probe, stand } of cases) {
+      for (const [form, shape] of Object.entries(SHAPES)) {
+        const at = spawnSpot({ blind: true, groundY: SPAWN_FALLBACK_Y }, probe, shape);
+        out[`${name}: ${form}`] = { at: { x: at.x, y: at.y, z: at.z }, over: at.x === stand[0] + 0.5 && at.z === stand[1] + 0.5, ...nearestBlock(at, shape, probe) };
+      }
+    }
+    expect(Object.keys(out).length, 'SETUP: the cases and shapes read').toBe(25);
+    expect(Object.entries(out).filter(([, v]) => !v.over), 'SETUP: a spawn did not stand over the nearest column').toEqual([]);
+    const close = Object.entries(out).filter(([, v]) => !(v.gap >= CONTROLLER_OFFSET - 1e-9));
+    expect(close, `a spawn stood a capsule closer than the controller's offset to a block ${JSON.stringify(out)}`).toEqual([]);
+    // The base capsule stands on its own column as before: it reaches no other.
+    const base = Object.entries(out).filter(([k]) => k.endsWith(': base'));
+    expect(base.filter(([, v]) => v.at.y !== spawnTargetY(30)), 'the base capsule was not stood on its own column').toEqual([]);
+    expect(base.length, 'SETUP: the base capsule\'s cases').toBe(5);
+  });
+  it('reads a column the capsule overhangs only where it answers, and keeps the corner and the blind drop as they were', () => {
+    const bull = BEAST_FORMS.ice;
+    // The column beside it dug out too (null) or not streamed in: nothing stands there, and the spot is the column's own.
+    expect(spawnSpot({ blind: true, groundY: SPAWN_FALLBACK_Y }, land({ '-3,-1': null }), bull)).toEqual({ x: -1.5, y: spawnTargetY(30), z: -0.5, blind: false });
+    // A corner whose four columns answer: stood over the corner on resolveSpawnGround's ground, whatever the shape.
+    expect(spawnSpot({ groundY: 51 }, () => 51, bull)).toEqual({ x: 0, y: spawnTargetY(51), z: 0, blind: false });
+    // Nothing answers within reach, or there is no probe: the blind drop over the corner.
+    expect(spawnSpot({ blind: true, groundY: SPAWN_FALLBACK_Y }, () => null, bull)).toEqual({ x: 0, y: spawnTargetY(SPAWN_FALLBACK_Y), z: 0, blind: true });
+    expect(spawnSpot({ blind: true, groundY: SPAWN_FALLBACK_Y }, null, bull)).toEqual({ x: 0, y: spawnTargetY(SPAWN_FALLBACK_Y), z: 0, blind: true });
   });
 });
 
