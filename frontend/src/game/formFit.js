@@ -40,20 +40,30 @@ const LOAD_REACH = 0.6;
 export const LOAD_FIT_SPAN = LOAD_REACH + BASE_CAPSULE.radius * BALL_GROWTH + MARGIN;
 const LOAD_RISE = 0.6;
 const LOAD_DROP = 1.2;
+// FURTHER OUT, ONLY ALONG OPEN CELLS. Nothing within LOAD_REACH clears the capsule when a block fills the cell over the
+// centre (a save from before the invisible-box fix can hold one in the eye's cell, and the stuck-in-rock watch stands
+// that body clear): the block is cleared 0.92 m sideways, and the column-top fallback stood the player on the top of the
+// column, up through the roof over a tunnel, four metres of rock (tests/gates/player-placement-gates.test.jsx; the static
+// review of lane L13 part 2, its F1). So the search goes on to LOAD_WIDE, which reaches that 0.92 m along an axis or
+// the diagonal (1.30 m), on a grid of WIDE_STEP, and takes a spot only where the straight move to it stays in open
+// cells, read every STEP (a corner cut by less than that is not seen). A centre in solid ground takes none of these: its
+// move starts in the rock.
+const LOAD_WIDE = 1.4;
+const WIDE_STEP = 0.2;
 const LOAD_FALLBACK_GAP = 0.05; // the drop onto the column's top when nothing near the saved spot is clear
 
 const IDENTITY = { w: 1, x: 0, y: 0, z: 0 };
 const _offsets = new Map();
 
-/** Every shift on the grid within `reach` sideways, `drop` down and `rise` up, nearest first (made once per range). */
-function offsets(reach = REACH, drop = DROP, rise = RISE) {
-  const key = `${reach}_${drop}_${rise}`;
+/** Every shift on a grid of `step` within `reach` sideways, `drop` down and `rise` up, nearest first (made once per range). */
+function offsets(reach = REACH, drop = DROP, rise = RISE, step = STEP) {
+  const key = `${reach}_${drop}_${rise}_${step}`;
   if (_offsets.has(key)) return _offsets.get(key);
   const out = [];
-  const n = Math.round(reach / STEP), up = Math.round(rise / STEP), down = Math.round(drop / STEP);
+  const n = Math.round(reach / step), up = Math.round(rise / step), down = Math.round(drop / step);
   for (let i = -n; i <= n; i++) for (let k = -n; k <= n; k++) {
-    if (Math.hypot(i, k) * STEP > reach + 1e-9) continue;
-    for (let j = -down; j <= up; j++) out.push([i * STEP, j * STEP, k * STEP]);
+    if (Math.hypot(i, k) * step > reach + 1e-9) continue;
+    for (let j = -down; j <= up; j++) out.push([i * step, j * step, k * step]);
   }
   out.sort((a, b) => Math.hypot(...a) - Math.hypot(...b));
   _offsets.set(key, out);
@@ -129,8 +139,10 @@ export function fitCapsule(world, rapier, body, shape, opts = {}) {
 /**
  * Where a loaded save stands the base capsule (Components.jsx's resume branch, once the saved column's colliders are
  * in): the saved centre where the capsule is clear of every collider and its centre's cell is not solid ground, else the
- * nearest such spot within LOAD_REACH sideways, LOAD_DROP down and LOAD_RISE up, else on the highest of the columns the
- * capsule stands across (`probe`, Terrain.jsx getMobGroundLevel: the topmost face under y 255). A save on disk can hold a
+ * nearest such spot within LOAD_REACH sideways, LOAD_DROP down and LOAD_RISE up, else the nearest within LOAD_WIDE
+ * sideways that a straight move through open cells reaches, else on the highest of the columns the capsule stands across
+ * (`probe`, Terrain.jsx getMobGroundLevel: the topmost face under y 255; `by: 'column'`, the one answer that can cross
+ * solid ground, which the caller reports). A save on disk can hold a
  * position no capsule fits at: the Save button before DECISIONS 2026-10-30 item 153 wrote the camera rounded to whole
  * metres, and the frozen pre-cut fixture (tests/fixtures/pre-cut-save.json) stands nine metres under the ground in the
  * chaos harness's world. The stuck-in-rock recovery (game/stuckInRock.js) stands a body found in the rock the same way,
@@ -154,9 +166,19 @@ export function fitLoadedSpot(world, rapier, body, saved, probe, opts = {}) {
     if (!solid.has(key)) solid.set(key, cellSolid(world, rapier, x, y, z));
     return solid.get(key);
   };
-  for (const [dx, dy, dz] of offsets(LOAD_REACH, LOAD_DROP, LOAD_RISE)) {
-    const p = { x: saved.x + dx, y: saved.y + dy, z: saved.z + dz };
-    if (!inGround(p) && clear(p)) return { ...p, by: dx || dy || dz ? 'near' : 'saved' };
+  // Whether the straight move by (dx, dy, dz) from the saved centre stays in open cells, read every STEP.
+  const open = (dx, dy, dz) => {
+    const n = Math.ceil(Math.hypot(dx, dy, dz) / STEP);
+    for (let i = 0; i < n; i++) if (inGround({ x: saved.x + (dx * i) / n, y: saved.y + (dy * i) / n, z: saved.z + (dz * i) / n })) return false;
+    return true;
+  };
+  // Within LOAD_REACH, then out to LOAD_WIDE along open cells only: the coarse grid's spots within LOAD_REACH are spots
+  // of the fine one, already read.
+  for (const grid of [offsets(LOAD_REACH, LOAD_DROP, LOAD_RISE), offsets(LOAD_WIDE, LOAD_DROP, LOAD_RISE, WIDE_STEP)]) {
+    for (const [dx, dy, dz] of grid) {
+      const p = { x: saved.x + dx, y: saved.y + dy, z: saved.z + dz };
+      if (!inGround(p) && (Math.hypot(dx, dz) <= LOAD_REACH || open(dx, dy, dz)) && clear(p)) return { ...p, by: dx || dy || dz ? 'near' : 'saved' };
+    }
   }
   let top = -Infinity;
   for (let x = Math.floor(saved.x - shape.radius); x <= Math.floor(saved.x + shape.radius); x++) {

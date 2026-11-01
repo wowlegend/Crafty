@@ -426,6 +426,7 @@ export function clipInto(S, p) {
  *  body had clipped, and whether the spot is near where it clipped, not the origin. */
 export function recovered(S, spot) {
   S.stats.stuckRecoveries++;
+  if (spot.by === 'column') S.stats.stuckToColumnTop++; // the fit's last resort: through any rock over the body
   S.recent.push(`f${S.f} stood clear of the rock at ${JSON.stringify(vec(spot))}`);
   if (!S.clip) {
     note(S, 'I7', { why: 'a stuck-in-rock recovery fired on a player who had not clipped', spot: vec(spot) });
@@ -968,7 +969,7 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
       originColumnEdits: 0, wallContactFrames: 0, swaps: 0, swapsUnderCeiling: 0, swapsAgainstWall: 0, swapsRefused: 0, formExits: 0,
       clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, ownShellOut: 0,
       saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0,
-      voidResets: 0, framesUnderOldVoidLine: 0, shaftDigs: 0, shaftsThroughWorld: 0, clips: 0, clippedFrames: 0, stuckRecoveries: 0, blindDropsFollowed: 0 },
+      voidResets: 0, framesUnderOldVoidLine: 0, shaftDigs: 0, shaftsThroughWorld: 0, clips: 0, clippedFrames: 0, stuckRecoveries: 0, stuckToColumnTop: 0, blindDropsFollowed: 0 },
   };
   S.cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
   S.edits = createCellEdits((msg) => workerEdit(S, msg));

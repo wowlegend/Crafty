@@ -591,6 +591,125 @@ describe('a block in the eye\'s cell, the centre and lowest point clear, does no
   }
 });
 
+/** The solid cells a straight move from `a` to `b` passes through, read on the voxel grid every 5 cm. */
+function solidOnLine(a, b) {
+  const crossed = new Set();
+  const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) / 0.05);
+  for (let i = 0; i <= n; i++) {
+    const c = [a.x + ((b.x - a.x) * i) / n, a.y + ((b.y - a.y) * i) / n, a.z + ((b.z - a.z) * i) / n].map(Math.floor);
+    if (solidAt(grid, ...c)) crossed.add(c.join(','));
+  }
+  return [...crossed];
+}
+
+// The same block under a roof: in the cave tunnel (x -6 to -5, z -14 to -6, two high under rock to the cliff's top at 36),
+// nothing near the body fits the capsule beside the block, and the fit's last resort is the top of the column it stands
+// in (game/formFit.js fitLoadedSpot), four metres up through the tunnel's roof. The tunnel's open cell beside the block
+// is a metre away, reached without passing through any solid cell (the static review of lane L13 part 2, its F1).
+describe('a block in the eye\'s cell under a roof stands the player clear in the open beside it, never up through the roof', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: the body in the cave tunnel with a block in its eye's cell is stood clear in the tunnel within a second`, () => {
+      standPlayer(hz);
+      const x = -6, z = -10, key = '-1_-1';
+      const was = grid.logical.get(key);
+      const b = was.slice();
+      b[voxelIndex(x + CHUNK_SIZE, LAND_TOP + 1, z + CHUNK_SIZE)] = genCell(x, LAND_TOP - 1, z);
+      grid.logical.set(key, b);
+      try {
+        remesh([key]);
+        const start = { x: x + 0.5, y: LAND_TOP + 0.95, z: z + 0.5 };
+        h.body.setTranslation(start, true);
+        h.world.propagateModifiedBodyPositionsToColliders();
+        expect(solidAt(grid, ...eyeCell(h.body)), 'SETUP: the eye is not in the block').toBe(true);
+        expect([solidAt(grid, x, LAND_TOP, z), solidAt(grid, x, LAND_TOP + 2, z), solidAt(grid, x + 1, LAND_TOP + 1, z)],
+          'SETUP: the centre\'s cell is solid, the roof over the block is not, or the tunnel beside the block is not open').toEqual([false, true, false]);
+        let outAt = null;
+        for (let i = 0; i < hz && outAt === null; i++) {
+          frame(hz);
+          const r = reading();
+          if (r.depth <= TOL && !r.eyeIn) outAt = +((i + 1) / hz).toFixed(3);
+        }
+        for (let i = 0; i < hz / 2; i++) frame(hz);
+        const end = h.body.translation();
+        const r = { outAt, start, end: at(), crossed: solidOnLine(start, end), ...reading() };
+        expect(outAt, `the block in the eye's cell held the player for the whole second ${JSON.stringify(r)}`).not.toBeNull();
+        expect(r.crossed, `the player was moved through solid rock ${JSON.stringify(r)}`).toEqual([]);
+        expect(end.y + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius, `the player is not under the tunnel's roof ${JSON.stringify(r)}`).toBeLessThan(LAND_TOP + 2);
+        expect([r.depth <= TOL, r.eyeIn], `the player went back into the block ${JSON.stringify(r)}`).toEqual([true, false]);
+        process.stdout.write(`\nblock in the eye's cell under a roof ${hz} Hz: ${JSON.stringify(r)}\n`);
+      } finally {
+        grid.logical.set(key, was);
+      }
+    });
+
+    // With the tunnel one block high for two metres either way (cells y 31, z -11 to -8, both x), nothing within the fit's
+    // reach takes the capsule: the column's top is the last resort, through the roof, and the Player's warning says so.
+    it(`${hz} Hz: with nothing in reach that fits, the player is stood on the column's top and the warning names the rock crossed`, () => {
+      standPlayer(hz);
+      const key = '-1_-1';
+      const was = grid.logical.get(key);
+      const b = was.slice();
+      for (const x of [-6, -5]) for (const z of [-11, -10, -9, -8]) b[voxelIndex(x + CHUNK_SIZE, LAND_TOP + 1, z + CHUNK_SIZE)] = genCell(x, LAND_TOP - 1, z);
+      grid.logical.set(key, b);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        remesh([key]);
+        const start = { x: -5.5, y: LAND_TOP + 0.95, z: -9.5 };
+        h.body.setTranslation(start, true);
+        h.world.propagateModifiedBodyPositionsToColliders();
+        expect(solidAt(grid, ...eyeCell(h.body)), 'SETUP: the eye is not in the block').toBe(true);
+        for (let i = 0; i < hz; i++) frame(hz);
+        const said = warn.mock.calls.map((c) => String(c[0])).filter((m) => /in the rock/.test(m));
+        const r = { end: at(), said, ...reading() };
+        expect(said.length, `SETUP: the stuck-in-rock watch never moved the player ${JSON.stringify(r)}`).toBeGreaterThan(0);
+        expect(r.end.y, `the player was not stood on the column's top ${JSON.stringify(r)}`).toBeCloseTo(36 + 0.95, 1);
+        expect(said[0], `the warning does not say the player went up through the rock ${JSON.stringify(r)}`).toMatch(/column's top, through the rock/);
+      } finally {
+        grid.logical.set(key, was);
+      }
+    });
+  }
+});
+
+// Boxed in on open land by a pillar three high on each side and a block in the eye's cell, the spots the fit finds
+// clear are a diagonal cell away, past a pillar's corner (1.28 m off): a straight move there cuts through the pillar.
+// Nothing reachable through open cells fits, so the column's top is the answer, through the block alone, named in the
+// warning (game/formFit.js fitLoadedSpot reads the move to each spot past LOAD_REACH).
+describe('a block in the eye\'s cell with a pillar on each side: the player is never moved through a pillar\'s corner', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: the player boxed in is stood on the column's top through the block, not past a pillar's corner`, () => {
+      standPlayer(hz);
+      const x = -5, z = 8, key = '-1_0';
+      const was = grid.logical.get(key);
+      const b = was.slice();
+      const stone = genCell(x, LAND_TOP - 1, z);
+      b[voxelIndex(x + CHUNK_SIZE, LAND_TOP + 1, z)] = stone;
+      const pillars = [[x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]];
+      for (const [px, pz] of pillars) for (let y = LAND_TOP; y < LAND_TOP + 3; y++) b[voxelIndex(px + CHUNK_SIZE, y, pz)] = stone;
+      grid.logical.set(key, b);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        remesh([key]);
+        const start = { x: x + 0.7, y: LAND_TOP + 0.95, z: z + 0.5 };
+        h.body.setTranslation(start, true);
+        h.world.propagateModifiedBodyPositionsToColliders();
+        expect(solidAt(grid, ...eyeCell(h.body)), 'SETUP: the eye is not in the block').toBe(true);
+        for (let i = 0; i < hz; i++) frame(hz);
+        const end = h.body.translation();
+        const said = warn.mock.calls.map((c) => String(c[0])).filter((m) => /in the rock/.test(m));
+        const r = { start, end: at(), crossed: solidOnLine(start, end), said, ...reading() };
+        expect(said.length, `SETUP: the stuck-in-rock watch never moved the player ${JSON.stringify(r)}`).toBeGreaterThan(0);
+        expect(r.crossed.filter((c) => pillars.some(([px, pz]) => c.startsWith(`${px},`) && c.endsWith(`,${pz}`))), `the player was moved through a pillar ${JSON.stringify(r)}`).toEqual([]);
+        expect(r.crossed, `the player was moved through more than the block in the eye's cell ${JSON.stringify(r)}`).toEqual([`${x},${LAND_TOP + 1},${z}`]);
+        expect(said[0], `the warning does not say the player went up through the rock ${JSON.stringify(r)}`).toMatch(/column's top, through the rock/);
+        expect([r.depth <= TOL, r.eyeIn], `the player is in solid after the move ${JSON.stringify(r)}`).toEqual([true, false]);
+      } finally {
+        grid.logical.set(key, was);
+      }
+    });
+  }
+});
+
 describe('the void guard fires under the world, never in it, and it and the respawn go back to the spawn one way', () => {
   it('a player on the deepest seabed (world/oceanProfile.js DEEP_FLOOR) stands and walks there, and is not reset to the origin', () => {
     const hz = 60;

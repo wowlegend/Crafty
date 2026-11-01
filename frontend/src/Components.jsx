@@ -1072,8 +1072,7 @@ export const Player = ({ isWorldBuilt }) => {
           // can hold a spot in a wall or under the ground (the old Save button's rounded camera).
           // The collider goes with it (game/kinematicMove.js placeBody): the next frame sweeps from the fitted spot, not
           // from the held one in the wall.
-          const spot = fitLoadedSpot(world, rapier, rigidBodyRef.current, resume.place, store.getMobGroundLevel, { unindexed: GameMethods.placedCells?.unindexed() });
-          const at = { x: spot.x, y: spot.y, z: spot.z };
+          const at = fitLoadedSpot(world, rapier, rigidBodyRef.current, resume.place, store.getMobGroundLevel, { unindexed: GameMethods.placedCells?.unindexed() });
           placeBody(world, rigidBodyRef.current, at);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
           camera.position.set(at.x, at.y + EYE_HEIGHT_M, at.z);
@@ -1128,7 +1127,8 @@ export const Player = ({ isWorldBuilt }) => {
       }
       if (!standAt) standAt = stuckInRock(stuckWatchRef.current, world, rapier, body, delta, store.getMobGroundLevel, GameMethods.placedCells?.unindexed());
       if (standAt) {
-        console.warn('Player was in the rock; stood clear where they were.');
+        // The fit's last resort stands the body on its column's top through whatever rock is over it: said apart.
+        console.warn(standAt.by === 'column' ? 'Player was in the rock; stood on its column\'s top, through the rock over it.' : 'Player was in the rock; stood clear where they were.');
         placeBody(world, body, standAt);
         body.setLinvel({ x: 0, y: 0, z: 0 }, true);
         velocityY.current = 0;

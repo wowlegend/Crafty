@@ -15,7 +15,8 @@
 // STUCK_CONFIRM_SEC has been solid: a reading is of the colliders, which change between steps as chunks land and re-mesh,
 // and a body truly in the rock is still in it three readings on. The spot is the load fit's search (formFit.js
 // fitLoadedSpot, for the body's own shape): the nearest spot within a few decimetres whose cell is not solid and where the
-// capsule is clear, else the top of the columns the capsule stands across. Never the origin.
+// capsule is clear, else one within 1.4 m that a straight move through open cells reaches, else the top of the columns the
+// capsule stands across, through the rock over it (`by: 'column'`, which the Player's warning names). Never the origin.
 //
 // Cost: a frame adds its step to a counter; ten times a second a reading casts a ray up the centre's cell, one cast per
 // face above it, and in play, where that cell is clear, as many again up the lowest point's cell, then one capsule query
@@ -55,8 +56,8 @@ export function makeStuckWatch() {
 }
 
 /**
- * One Player frame in play. Returns the centre to stand the body at once its centre, its lowest point or its capsule's
- * side has read in the rock for STUCK_CONFIRM_SEC, else null.
+ * One Player frame in play. Returns the centre to stand the body at, and how the fit found it (`by`), once its centre,
+ * its lowest point or its capsule's side has read in the rock for STUCK_CONFIRM_SEC, else null.
  *   watch      makeStuckWatch()'s state, kept per player
  *   body       the player's kinematic body; its collider(0) is the shape it has now (a beast form's too)
  *   stepSec    this frame's step
@@ -80,6 +81,5 @@ export function stuckInRock(watch, world, rapier, body, stepSec, probe, unindexe
   watch.solidFor = watch.solidFor < 0 ? 0 : watch.solidFor + since;
   if (watch.solidFor < STUCK_CONFIRM_SEC - EPS) return null;
   watch.solidFor = -1;
-  const spot = fitLoadedSpot(world, rapier, body, at, probe, { unindexed, shape: { halfHeight: c.halfHeight(), radius: c.radius() } });
-  return { x: spot.x, y: spot.y, z: spot.z };
+  return fitLoadedSpot(world, rapier, body, at, probe, { unindexed, shape: { halfHeight: c.halfHeight(), radius: c.radius() } });
 }
