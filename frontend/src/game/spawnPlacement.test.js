@@ -228,8 +228,8 @@ describe('spawnSpot: the wait run out, the nearest ground that answers, and ever
   });
 });
 
-// A loaded save's column counts as in only once every chunk the load fit reads (a metre round the saved centre) has
-// answered: the probe is asked at the four corners of that square, each a column, and at the saved column itself.
+// A loaded save's column counts as in only once every chunk the load fit reads (game/formFit.js LOAD_FIT_SPAN, 1.82 m
+// round the saved centre) has answered, read chunk by chunk (world/placedCellColliders.js answered).
 // After the blind drop the corner is read again each frame; a body whose lowest point is under its ground once it answers
 // is stood on it (the Player's loop, Components.jsx; tests/gates/stuck-in-rock-gates.test.jsx drives it there).
 describe('followBlindDrop', () => {
@@ -271,7 +271,7 @@ describe('resumeColumnProbe', () => {
     const asked = [];
     const answered = (cx, cz) => { asked.push([cx, cz]); return true; };
     expect(resumeColumnProbe(() => 51, answered, { x: 15.95, y: 52, z: 0.5 })).toBe(51);
-    // 1.02 m either way of 15.95 is 14.93 and 16.97: chunks 0 and 1, across the border at 16; 0.5 gives chunks -1 and 0.
+    // 1.82 m either way of 15.95 is 14.13 and 17.77: chunks 0 and 1, across the border at 16; 0.5 gives chunks -1 and 0.
     expect(asked.sort()).toEqual([[0, -1], [0, 0], [1, -1], [1, 0]]);
   });
   it('is null while any of those chunks has not answered, whatever the saved column says, and with no registry', () => {
@@ -327,17 +327,18 @@ describe('resumeBesideEmptyColumn', () => {
   const streaming = (probe) => (x, z) => (Math.floor(x + 0.1) >= 16 ? null : probe(x, z));
   it('is null while a chunk nearer the save than the ground it found has not answered (nearer ground may be streaming in)', () => {
     // A save at (14, 8.5), every column 11 to 15 dug for z 5 to 12: in chunk 0 the nearest ground is column 10, 3.5 m off,
-    // and column 16, in chunk (1, 0), 2.5 m off. The fit's own square (x 12.98 to 15.02) and the spot's lie in chunk 0.
+    // and column 16, in chunk (1, 0), 2.5 m off. The fit's own square (x 12.18 to 15.82) and the spot's lie in chunk 0.
     const at = { x: 14, y: 20, z: 8.5 };
     const dug = [11, 12, 13, 14, 15].flatMap((x) => [5, 6, 7, 8, 9, 10, 11, 12].map((z) => [x, z]));
     expect(resumeBesideEmptyColumn(land(dug), all, at), 'SETUP: with chunk (1, 0) in, column 16 is the nearest ground').toMatchObject({ x: 16.5, z: 8.5 });
     expect(resumeBesideEmptyColumn(streaming(land(dug)), answeredBut([1, 0]), at)).toBeNull();
   });
   it('is null while a chunk the fit reads round the spot beside has not answered (the fit reads as far round it)', () => {
-    // A save at (14.5, 8.5) with (13, 8), (14, 7), (14, 8) and (14, 9) dug: the nearest ground is column 15, 1 m off, in
-    // chunk 0, and the fit's square round it reaches x 16.52, in chunk (1, 0).
-    const at = { x: 14.5, y: 20, z: 8.5 };
-    const dug = [[13, 8], [14, 7], [14, 8], [14, 9]];
+    // A save at (14, 8.5), on the line between columns 13 and 14, with those two, the four beside them in z and (12, 8)
+    // dug: the nearest ground is column 15, 1.5 m off, in chunk 0, as is the fit's square round the save (x 12.18 to
+    // 15.82), and the fit's square round the spot reaches x 17.32, in chunk (1, 0).
+    const at = { x: 14, y: 20, z: 8.5 };
+    const dug = [[12, 8], [13, 8], [14, 8], [13, 7], [14, 7], [13, 9], [14, 9]];
     expect(resumeBesideEmptyColumn(land(dug), all, at), 'SETUP: with chunk (1, 0) in, column 15 is the nearest ground').toMatchObject({ x: 15.5, z: 8.5 });
     expect(resumeBesideEmptyColumn(streaming(land(dug)), answeredBut([1, 0]), at)).toBeNull();
   });

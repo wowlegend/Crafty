@@ -33,13 +33,6 @@ const BALL_GROWTH = 1.033;
 // above the body (the eye is 0.67 m over the centre). Wider than REACH is safe there only because each spot's own cell
 // is asked whether it is solid ground (cellSolid), which the form swap's short reach stands in for.
 const LOAD_REACH = 0.6;
-/** How far sideways from a loaded save's centre the fit reads the colliders: a confirming ball's radius past its reach,
- *  the furthest any query reaches. The resume hold waits until every chunk within it has answered
- *  (game/spawnPlacement.js resumeColumnProbe); spanned by the capsule's radius alone it stopped 2.3 cm short, and a border
- *  in that band was fitted against unstreamed (tests/gates/player-placement-gates.test.jsx). */
-export const LOAD_FIT_SPAN = LOAD_REACH + BASE_CAPSULE.radius * BALL_GROWTH + MARGIN;
-const LOAD_RISE = 0.6;
-const LOAD_DROP = 1.2;
 // FURTHER OUT, ONLY ALONG OPEN CELLS. Nothing within LOAD_REACH clears the capsule when a block fills the cell over the
 // centre (a save from before the invisible-box fix can hold one in the eye's cell, and the stuck-in-rock watch stands
 // that body clear): the block is cleared 0.92 m sideways, and the column-top fallback stood the player on the top of the
@@ -50,6 +43,15 @@ const LOAD_DROP = 1.2;
 // move starts in the rock.
 const LOAD_WIDE = 1.4;
 const WIDE_STEP = 0.2;
+/** How far sideways from a loaded save's centre the fit reads the colliders: a confirming ball's radius past the wider
+ *  search's reach (LOAD_WIDE), the furthest any query reaches. The resume hold waits until every chunk within it has
+ *  answered (game/spawnPlacement.js resumeColumnProbe). Twice it stopped short of a query and a load was fitted against
+ *  a chunk not streamed back: by the balls' growth past the near search's reach (2.3 cm), and by the wider search, which
+ *  stood the capsule 0.02 m into a wall that streamed in round it (tests/gates/player-placement-gates.test.jsx;
+ *  tests/integration/form-fit-rapier.test.js holds it to the fit's furthest query). */
+export const LOAD_FIT_SPAN = LOAD_WIDE + BASE_CAPSULE.radius * BALL_GROWTH + MARGIN;
+const LOAD_RISE = 0.6;
+const LOAD_DROP = 1.2;
 const LOAD_FALLBACK_GAP = 0.05; // the drop onto the column's top when nothing near the saved spot is clear
 
 const IDENTITY = { w: 1, x: 0, y: 0, z: 0 };

@@ -73,6 +73,7 @@ const { CHUNK_SIZE, CHUNK_VOLUME, voxelIndex } = await import('../../src/world/c
 const { genCell, deepestSolid, eyeCell, solidAt, LAND_TOP, DEEP_SEABED, FIELD_CAVE } = await import('../integration/chaosPlay/harness.js');
 const { createPlacedCellColliders, createEditSeq } = await import('../../src/world/placedCellColliders.js');
 const { GameMethods } = await import('../../src/GameMethods');
+const { LOAD_FIT_SPAN } = await import('../../src/game/formFit.js');
 
 const TOL = 0.05 / 10; // the chaos gate's I1 tolerance (tests/integration/chaosPlay/suite.js says why)
 const DT = 1 / 60; // @react-three/rapier 2.2.0's fixed step
@@ -259,34 +260,42 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
     }
   });
 
-  it('a load\'s hold waits while a chunk the fit reads across a border is not back, then stands the player on the saved column\'s top', () => {
-    const hz = 60;
-    standPlayer(hz);
-    // A save in the ground 0.05 m from the border at z = 16, the chunk across it (-1_0) not streamed back yet.
-    unmountChunk('-1_0');
-    const saved = { x: -8.5, y: 21, z: 16.05 };
-    load(saved, hz, 2);
-    expect(groundProbe(saved.x, saved.z), 'SETUP: the saved column has not answered').toBeCloseTo(LAND_TOP, 3);
-    for (let i = 0; i < 20; i++) {
-      frame(hz);
-      expect(useGameStore.getState().resumeSpawn, `the hold let the player go on frame ${i} with chunk -1_0 not back ${JSON.stringify(at())}`).toEqual(saved);
-    }
-    mountChunk('-1_0');
-    let placedOn = null;
-    for (let i = 0; i < 5 && placedOn === null; i++) {
-      frame(hz);
-      if (!useGameStore.getState().resumeSpawn) placedOn = i;
-    }
-    expect(placedOn, `the hold did not let the player go once chunk -1_0 was back ${JSON.stringify(at())}`).not.toBeNull();
-    const r = playFrom(hz, placedOn, 30);
-    expect(r.worst.depth, `the capsule reached into solid after the release ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
-    expect(r.end.y, `the player does not stand on the saved column's top ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
-  });
+  // At 120 Hz the chunk comes back just before a frame that takes no world step: until that step its trimesh is not in
+  // the broad phase, so the fit's cell reads miss it (world/placedCellColliders.js answered), and a fit run on that frame
+  // could stand the capsule wholly inside its rock, which no face of it touches.
+  for (const hz of [60, 120]) {
+    it(`a load's hold waits while a chunk the fit reads across a border is not back, then stands the player on the saved column's top (${hz} Hz)`, () => {
+      standPlayer(hz);
+      // A save in the ground 0.05 m from the border at z = 16, the chunk across it (-1_0) not streamed back yet.
+      unmountChunk('-1_0');
+      const saved = { x: -8.5, y: 21, z: 16.05 };
+      load(saved, hz, 2);
+      expect(groundProbe(saved.x, saved.z), 'SETUP: the saved column has not answered').toBeCloseTo(LAND_TOP, 3);
+      for (let i = 0; i < 20; i++) {
+        frame(hz);
+        expect(useGameStore.getState().resumeSpawn, `the hold let the player go on frame ${i} with chunk -1_0 not back ${JSON.stringify(at())}`).toEqual(saved);
+      }
+      align(hz, 0);
+      expect(useGameStore.getState().resumeSpawn, `the hold let the player go with chunk -1_0 not back ${JSON.stringify(at())}`).toEqual(saved);
+      mountChunk('-1_0');
+      let placedOn = null, stepsOnLanding = null;
+      for (let i = 0; i < 5 && placedOn === null; i++) {
+        const took = frame(hz);
+        if (i === 0) stepsOnLanding = took;
+        if (!useGameStore.getState().resumeSpawn) placedOn = i;
+      }
+      expect(placedOn, `the hold did not let the player go once chunk -1_0 was back ${JSON.stringify(at())}`).not.toBeNull();
+      if (hz > 60) expect(stepsOnLanding, 'SETUP: the frame after chunk -1_0 came back took a world step').toBe(0);
+      const r = playFrom(hz, placedOn, 30);
+      expect(r.worst.depth, `the capsule reached into solid after the release ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
+      expect(r.end.y, `the player does not stand on the saved column's top ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+    });
+  }
 
   it('a load\'s hold waits for the chunk across a border 1.01 m off, inside the reach of the fit\'s confirming balls', () => {
-    // The fit reads the colliders out to its reach plus a confirming ball's radius (game/formFit.js: 0.6 m and 0.4 x 1.033
-    // + 0.01 m, 1.023 m in all), so a border 1.01 m from the saved centre is inside it; the corners must reach it too
-    // (registry REVIEW:chaos-play:corner-probe-span-short).
+    // The fit's near search reads the colliders out to its reach plus a confirming ball's radius (game/formFit.js: 0.6 m
+    // and 0.4 x 1.033 + 0.01 m, 1.023 m in all), so a border 1.01 m from the saved centre is inside it; the square the hold
+    // waits for must reach it too (registry REVIEW:chaos-play:corner-probe-span-short).
     const hz = 60;
     standPlayer(hz);
     unmountChunk('-1_0');
@@ -306,6 +315,53 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
     }
     expect(placedOn, `the hold did not let the player go once chunk -1_0 was back ${JSON.stringify(at())}`).not.toBeNull();
   });
+
+  // The fit's wider search (game/formFit.js LOAD_WIDE) tests spots out to 1.4 m and its confirming balls read 0.42 m past
+  // them. A save with a block in its eye's cell and one either side, 1.18 m from the border at z 16, is fitted towards
+  // that border, and with the chunk across (-1_0) not back the hold let it go: the capsule was stood 0.02 m into a wall
+  // there, which streamed in round it (the dynamic review of lane L13 part 2's round 2). The hold waits for that chunk
+  // too, and the player is stood clear once it is back.
+  for (const hz of [60, 120]) {
+    it(`a load's hold waits for the chunk across a border the fit's wider search reads, 1.18 m off, then stands the player clear (${hz} Hz)`, () => {
+      standPlayer(hz);
+      const stone = genCell(-9, LAND_TOP - 1, 17);
+      const k1 = '-1_1', k0 = '-1_0';
+      const was1 = grid.logical.get(k1), was0 = grid.logical.get(k0);
+      const b1 = was1.slice(), b0 = was0.slice();
+      // The eye-height blocks over the save and either side (x -10 to -8, z 17), and a wall two high across the border (z 15).
+      for (const x of [-10, -9, -8]) b1[voxelIndex(x + CHUNK_SIZE, LAND_TOP + 1, 17 - CHUNK_SIZE)] = stone;
+      for (const x of [-10, -9, -8]) for (const y of [LAND_TOP, LAND_TOP + 1]) b0[voxelIndex(x + CHUNK_SIZE, y, 15)] = stone;
+      grid.logical.set(k1, b1);
+      grid.logical.set(k0, b0);
+      try {
+        mountChunk(k1, b1);
+        mountChunk(k0, b0);
+        const saved = { x: -8.5, y: LAND_TOP + 0.95, z: 17.18 };
+        expect([groundProbe(-8.5, 17.18), groundProbe(-8.5, 16.2), groundProbe(-8.5, 15.2)], 'SETUP: the block over the save, the land beside it and the wall across the border')
+          .toEqual([LAND_TOP + 2, LAND_TOP, LAND_TOP + 2].map((v) => expect.closeTo(v, 3)));
+        unmountChunk(k0);
+        load(saved, hz, 2);
+        for (let i = 0; i < 20; i++) {
+          frame(hz);
+          expect(useGameStore.getState().resumeSpawn, `the hold let the player go on frame ${i} with chunk -1_0, which the wider search reads, not back ${JSON.stringify({ at: at(), ...reading() })}`).toEqual(saved);
+        }
+        mountChunk(k0, b0);
+        let placedOn = null;
+        for (let i = 0; i < 5 && placedOn === null; i++) {
+          frame(hz);
+          if (!useGameStore.getState().resumeSpawn) placedOn = i;
+        }
+        expect(placedOn, `the hold did not let the player go once chunk -1_0 was back ${JSON.stringify(at())}`).not.toBeNull();
+        const r = playFrom(hz, placedOn, 30);
+        expect(r.worst.depth, `the capsule reached into solid after the release ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
+        expect(r.worst.eyeIn, `the eye was in solid after the release ${JSON.stringify(r)}`).toBe(false);
+        expect(r.end.y, `the player was not stood on the land beside the blocks ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+      } finally {
+        grid.logical.set(k1, was1);
+        grid.logical.set(k0, was0);
+      }
+    });
+  }
 
   it('a load whose column never streams in is held the same time at 60, 90 and 120 Hz, longer than the origin spawn\'s wait, then gives up for the origin', () => {
     // A save far outside the loaded chunks: its column never answers, so the hold runs to its end (game/spawnPlacement.js
@@ -371,7 +427,7 @@ const SHAFTS = [
   { shaft: 'two wide, the save on its rim', cols: square(-5, 2, 2), saved: { x: -4.8, y: LAND_TOP + 0.95, z: 3 }, beside: Math.hypot(0.7, 0.5) },
   { shaft: 'three wide, the save at its middle', cols: square(-5, 2, 3), saved: { x: -3.5, y: 20, z: 3.5 }, beside: 2 },
   { shaft: 'two wide at a chunk corner (x 0, z 16), the save at its middle', cols: square(-1, 15, 2), saved: { x: 0, y: 20, z: 16 }, beside: Math.hypot(1.5, 0.5) },
-  { shaft: 'one wide under a corner of the fit\'s square, the save on the ground beside it', cols: [[-5, 2]], saved: { x: -3.5, y: LAND_TOP + 0.95, z: 3.5 }, beside: 0 },
+  { shaft: 'one wide under a corner of the fit\'s square, the save on the ground beside it', cols: [[Math.floor(-3.5 - LOAD_FIT_SPAN), Math.floor(3.5 - LOAD_FIT_SPAN)]], saved: { x: -3.5, y: LAND_TOP + 0.95, z: 3.5 }, beside: 0 },
 ];
 describe('a load whose saved column, or a column the fit reads, was dug out of the world stands the player on the nearest ground once its chunks answer', () => {
   for (const hz of [60, 120]) {
