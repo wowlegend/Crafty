@@ -57,7 +57,10 @@ builder made are in items 502, 506 and 509.
    0.2 s stands it on the nearest clear spot in its own shape: out in 0.25 s (60 Hz) and 0.283 s (120 Hz). Chaos seeds 1,
    3 and 5: recoveries equal clips, I7 0. The round-2 static review's case, a neighbour column whose chunk had not
    answered when the respawn stood a body beside it, comes into the same shape when that chunk streams in, and is read
-   by the same query.
+   by the same query. So is a block a save from before the invisible-box fix holds in the eye's cell: it no longer holds
+   the player (stood on top of it in 0.25 s and 0.283 s, `player-placement-gates`), and `place-clear-of-player.spec.js`,
+   whose last step had asserted that hold before a left click took the block, now reads the player stood clear and
+   walking out (`ac81d548`; its retries failed on that step on PR CI run 41307769999).
 505. **The resume hold's corner probes span the fit's whole reach** (`b27e90d7`): `LOAD_FIT_SPAN` is the confirming
    ball's radius past `LOAD_REACH`, 1.023 m, not the capsule's, 1.0 m. *Proof:* a save 1.01 m from a border with the
    chunk across not back was let go on the first frame before, held after.
