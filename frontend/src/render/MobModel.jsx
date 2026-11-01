@@ -16,6 +16,7 @@ import { MobToonMaterial } from './MobToonMaterial';
 import { OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { mobLook, applyMobLook } from './feedbackGrammar.js';
+import { mobTones, HOSTILE_EYE } from './mobTones.js';
 import { featureColor } from '../game/mobFeatures.js';
 import { VILLAGER_GREETINGS } from '../game/villagerGreetings.js';
 import { useT } from '../i18n/i18n.js';
@@ -47,6 +48,9 @@ const MobModel = React.memo(({ entity }) => {
     () => mobFeatures(entity.type, { bodyW, bodyH, bodyD, headW, headH, headD }),
     [entity.type, bodyW, bodyH, bodyD, headW, headH, headD],
   );
+
+  // Two more tones on parts the mob already has (render/mobTones.js): a lighter head, darker legs.
+  const tones = useMemo(() => mobTones(entity.color), [entity.color]);
 
   const qualityTier = useGameStore(state => state.qualityTier) || 'low';
   const q = TIERS[qualityTier] || TIERS.low;
@@ -253,7 +257,7 @@ const MobModel = React.memo(({ entity }) => {
         {/* Head */}
         <mesh castShadow receiveShadow position={[0, bodyH + headH / 2, bodyD / 3]}>
           <boxGeometry args={[headW, headH, headD]} />
-          <MobToonMaterial color={entity.color} />
+          <MobToonMaterial color={tones.head} />
           {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
         </mesh>
         {/* Eyes for hostile mobs */}
@@ -261,11 +265,11 @@ const MobModel = React.memo(({ entity }) => {
           <>
             <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
               <boxGeometry args={[0.15, 0.1, 0.02]} />
-              <meshBasicMaterial name="eye" color="#ff0000" />
+              <meshBasicMaterial color={HOSTILE_EYE} />
             </mesh>
             <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
               <boxGeometry args={[0.15, 0.1, 0.02]} />
-              <meshBasicMaterial name="eye" color="#ff0000" />
+              <meshBasicMaterial color={HOSTILE_EYE} />
             </mesh>
           </>
         )}
@@ -292,10 +296,10 @@ const MobModel = React.memo(({ entity }) => {
         {/* Legs */}
         {(entity.legMode ? entity.legMode !== 'spider' : entity.type !== 'spider') ? (
           <>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={tones.leg} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={tones.leg} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={tones.leg} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={tones.leg} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
           </>
         ) : (
           [...Array(8)].map((_, i) => (
@@ -303,7 +307,7 @@ const MobModel = React.memo(({ entity }) => {
               Math.cos((i / 8) * Math.PI * 2) * 0.8, 0, Math.sin((i / 8) * Math.PI * 2) * 0.8
             ]} rotation={[0, 0, Math.PI / 4]}>
               <boxGeometry args={[0.1, 0.8, 0.1]} />
-              <MobToonMaterial color={entity.color} />
+              <MobToonMaterial color={tones.leg} />
               {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
             </mesh>
           ))

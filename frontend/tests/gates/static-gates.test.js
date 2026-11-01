@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join, extname } from 'node:path';
+import { BLOOM_THRESHOLD } from '../../src/render/hdrGain.js';
 
 const SRC = resolve(process.cwd(), 'src');
 function walk(dir, exts = ['.js', '.jsx'], acc = []) {
@@ -141,10 +142,11 @@ describe('static gates', () => {
   // floor to 0.65). The floor stays >= 0.60 so an accidental near-zero threshold (which would
   // blow EVERYTHING out, losing all highlight detail) still trips the gate.
   it('W2-T1: bloom luminanceThreshold >= 0.60 (warm magic-hour glow, not blown-out)', () => {
+    // The number has one home, render/hdrGain.js BLOOM_THRESHOLD, which the eyes' gain is computed against too
+    // (W3-A PR A F3); the composer must pass that export, not a literal of its own.
     const src = readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
-    const m = src.match(/luminanceThreshold=\{\s*([0-9.]+)\s*\}/);
-    expect(m, 'Bloom luminanceThreshold prop not found').not.toBeNull();
-    expect(parseFloat(m[1])).toBeGreaterThanOrEqual(0.60);
+    expect(src, 'GameScene passes the one bloom threshold').toMatch(/luminanceThreshold=\{BLOOM_THRESHOLD\}/);
+    expect(BLOOM_THRESHOLD).toBeGreaterThanOrEqual(0.60);
 
     // AND THE PROSE THAT QUOTES IT MUST AGREE. EnhancedMagicSystem.jsx explains its core colour choice
     // by naming this threshold, and it named 1.0 while the composer had been at 0.65 — so the file's
@@ -153,7 +155,7 @@ describe('static gates', () => {
     const magic = readFileSync(resolve(SRC, 'EnhancedMagicSystem.jsx'), 'utf8');
     const quoted = magic.match(/luminanceThreshold=([0-9.]+)/);
     expect(quoted, 'the luminanceThreshold citation vanished from EnhancedMagicSystem.jsx').not.toBeNull();
-    expect(parseFloat(quoted[1]), 'the comment cites a luminanceThreshold the composer does not use').toBe(parseFloat(m[1]));
+    expect(parseFloat(quoted[1]), 'the comment cites a luminanceThreshold the composer does not use').toBe(BLOOM_THRESHOLD);
   });
 
   // S1-C-M1: the new primitives must consume tokens (no raw hex chrome) — keeps the

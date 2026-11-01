@@ -10,6 +10,7 @@ import { Physics } from '@react-three/rapier';
 import { EffectComposer, Vignette, SMAA, HueSaturation, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { TIERS, readDeviceSignals } from './render/quality';
+import { BLOOM_THRESHOLD } from './render/hdrGain.js';
 import { useWindowFocused } from './render/useWindowFocused.js';
 import { Atmosphere } from './render/Atmosphere.jsx';
 import { Ocean } from './render/Ocean.jsx';
@@ -139,7 +140,7 @@ export const PostFX = React.memo(function PostFX({ sunMesh, withGodRays }) {
           low<->med step while BloomSpikeDriver kept driving the old one (refute F8). */}
       <Bloom
         intensity={0.95}
-        luminanceThreshold={0.65}
+        luminanceThreshold={BLOOM_THRESHOLD}
         luminanceSmoothing={0.25}
       />
       <SMAA />
