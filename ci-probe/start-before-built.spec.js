@@ -38,10 +38,10 @@ import { execSync } from 'node:child_process';
 //    Floors, not peaks: a page that falls behind for one sample and catches up spikes the browser for that sample and
 //    gives it back (+275 and +328 MB, then +42, on the plated caption in run 41268462804); a leak raises the floor;
 //  - world: the spawn chunk is not built BUILD_BY_MS after the click.
-// The bound and the brake stop the sampling the moment either is passed, and on any failure the renderer is crashed first
-// through CDP, so that a runner is not run out of memory with its log. That is not a guarantee: one old-screen attempt
-// filled its runner before any verdict (run 41269336217). Thresholds and the runs they were read from: DECISIONS
-// 2026-10-31 item 378.
+// The bound and the brake stop the sampling the moment either is passed, and on any failure every Chromium process of the
+// test is killed from Node before the failure is raised, so that a runner is not run out of memory with its log (a CDP
+// Page.crash did not do it: two old-screen attempts filled their runners, one of them after its verdict was printed,
+// runs 41269336217 and 41270116196). Thresholds and the runs they were read from: DECISIONS 2026-10-31 item 378.
 //
 // WHAT IT DOES NOT CHECK: a player's real mouse (a moving mouse streams input too, at its own rate; this measures the
 // headless shell's flood); the production build (the e2e suite runs the dev server); a real GPU (a Mac with ANGLE Metal,
@@ -109,7 +109,8 @@ async function read(page, fn, ms) {
   try { return await Promise.race([page.evaluate(fn), silent]); } catch { return null; } finally { clearTimeout(timer); }
 }
 
-/** This test's Chromium processes below this worker, by RSS in MB: `browser` (the process with no --type) and `all`. */
+/** This test's Chromium processes below this worker: RSS in MB of `browser` (the process with no --type) and of `all`,
+ *  and every one's pid. */
 function chromeMB() {
   const rows = execSync('ps -A -o pid=,ppid=,rss=,command=', { encoding: 'utf8', maxBuffer: 64 << 20 }).split('\n')
     .map((l) => l.trim().match(/^(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/)).filter(Boolean)
@@ -121,7 +122,8 @@ function chromeMB() {
   walk(process.pid);
   const chrome = found.filter((r) => /chrom|headless_shell/i.test(r.cmd));
   const browser = chrome.find((r) => !/--type=/.test(r.cmd));
-  return { browser: browser ? Math.round(browser.rss / 1024) : null, all: Math.round(chrome.reduce((a, r) => a + r.rss, 0) / 1024) };
+  return { browser: browser ? Math.round(browser.rss / 1024) : null, all: Math.round(chrome.reduce((a, r) => a + r.rss, 0) / 1024),
+    pids: chrome.map((r) => r.pid) };
 }
 
 /** The browser process's floor over the window's last LATE_HALF_MS less its floor over the LATE_HALF_MS before; null when
@@ -202,15 +204,16 @@ test('a Start clicked before the world is built: the page keeps answering, the b
   console.log(line); // the denominator and every arm, every run
   const failing = (names) => names.filter((k) => !arms[k][0]).map((k) => `${k}: ${arms[k][1]}`);
   // A page that cannot drain keeps growing while Playwright waits to close it, and a runner that runs out of memory is shut
-  // down with every log (L10's runs ended so): on any failure its renderer is crashed first, off its main thread, by CDP.
-  const fail = async (message) => {
-    const cdp = await page.context().newCDPSession(page).catch(() => null);
-    if (cdp) await Promise.race([cdp.send('Page.crash').catch(() => {}), new Promise((r) => setTimeout(r, 5000))]);
+  // down with every log (L10's runs ended so). A CDP Page.crash sent here did not stop it: after the verdict the browser
+  // grew to 11.5 GB while the page went unanswered and the runner was shut down (run 41270116196). So on any failure every
+  // Chromium process of this test is killed first, from Node, and the failure is raised after.
+  const fail = (message) => {
+    for (const pid of chromeMB().pids) { try { process.kill(pid, 'SIGKILL'); } catch { /* already gone */ } }
     expect(false, message).toBe(true);
   };
   // The page's own arms first, so a stalled page fails, never skips: its last answer may predate the lock or the flood.
   const own = failing(['bound', 'brake', 'answers', 'late']);
-  if (own.length) await fail(`the page did not drain the input it was sent: ${own.join('; ')}. ${line}`);
+  if (own.length) fail(`the page did not drain the input it was sent: ${own.join('; ')}. ${line}`);
   const noFlood = !lockSeen ? 'this browser granted no pointer lock, so nothing streams the input the page must drain'
     : last.moves < FLOOD_MIN && answered / reads >= 0.9
       ? `the browser streamed ${last.moves} pointer updates under the lock (CI's headless shell streams thousands a second); nothing to drain` : null;
@@ -225,5 +228,5 @@ test('a Start clicked before the world is built: the page keeps answering, the b
   // was entered with the world unbuilt (before the lock nothing is delivered).
   expect(last.lockedAt !== null && last.heldMax > 0, `SETUP: the hold never held a chunk mesh behind the lock: ${line}`).toBe(true);
   const world = failing(['world']);
-  if (world.length) await fail(`the world did not build after the hold: ${world.join('; ')}. ${line}`);
+  if (world.length) fail(`the world did not build after the hold: ${world.join('; ')}. ${line}`);
 });
