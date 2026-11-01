@@ -303,20 +303,43 @@ function picBugs(d) {
 }
 
 // ---------------------------------------------------------------- 4. working on now
-const NOW = {
+export const NOW = {
   chest: () => rect(104, 64, 92, 52, 'wood-l e', 4) + rect(100, 40, 100, 28, 'wood-t e', 10)
     + rect(144, 40, 12, 76, 'gold-l') + rect(141, 62, 18, 16, 'gold-t e', 3)
     + sparkle(88, 34, 10) + sparkle(214, 50, 8) + sparkle(204, 18, 6),
-  shrine: () => rect(186, 38, 26, 78, 'stone-l e') + rect(180, 30, 38, 12, 'stone-t e', 3)
+  shrine: (state) => rect(186, 38, 26, 78, 'stone-l e') + rect(180, 30, 38, 12, 'stone-t e', 3)
     + '<circle class="glow" cx="199" cy="22" r="14"/><circle class="ember-t" cx="199" cy="22" r="6"/>'
     + fig(104, 116, 1.25) + fig(146, 116, 1.25)
     + `<polygon class="dragon" points="${pts([60, 52], [84, 40], [98, 46], [86, 56], [72, 60])}"/>`
     + `<polygon class="dragon-2" points="${pts([66, 50], [60, 28], [78, 44])}"/>`
-    + check(232, 30, 13),
-  stall: () => rect(86, 24, 128, 90, 'device', 8) + rect(93, 31, 114, 76, 'screen', 4)
+    + (state === 'ok' ? check(232, 30, 13) : ''),
+  // A cell's marker follows its state: a tick only once the work is done, a turning arrow while it is open (tests/scripts/
+  // command-record.test.js). The stall also shows a stuck bar while open and a full bar once fixed.
+  stall: (state) => rect(86, 24, 128, 90, 'device', 8) + rect(93, 31, 114, 76, 'screen', 4)
     + rect(118, 42, 64, 24, 'tag tag-idle', 12) + text(150, 59, 'Start', 14, 'lbl on-tag')
-    + rect(106, 80, 88, 10, 'slot-line', 5) + rect(106, 80, 34, 10, 'bar-before', 5)
-    + busy(214, 28, 13),
+    + rect(106, 80, 88, 10, 'slot-line', 5)
+    + (state === 'ok' ? rect(106, 80, 88, 10, 'bar-now', 5) + check(214, 28, 13)
+      : rect(106, 80, 34, 10, 'bar-before', 5) + busy(214, 28, 13)),
+  // A rock cutaway: a body stuck inside stone is lifted to open ground, beside a hole dug down to bedrock.
+  rock: (state) => {
+    const x0 = 90, y0 = 24, c = 20, r = 20;
+    let b = '';
+    ['grass', 'dirt', 'stone', 'stone', 'bedrock'].forEach((m, ri) => {
+      for (let ci = 0; ci < 6; ci++) {
+        const x = x0 + ci * c, y = y0 + ri * r;
+        if (ci === 4 && ri < 4) {
+          b += rect(x, y, c, r, 'hole');
+          continue;
+        }
+        b += rect(x, y, c, r, `${m}-l e`);
+        if (m === 'grass') b += rect(x, y, c, 5, 'grass-t');
+      }
+    });
+    const gx = x0 + c + 10;
+    b += fig(x0 + 4 * c + 10, y0 + 4 * r, 0.55) + fig(gx, y0 + 3 * r - 1, 0.55, true)
+      + arrow(gx, y0 + 2 * r - 6, gx, y0 + 6, 'go', 2.6) + fig(gx, y0, 0.55);
+    return b + (state === 'ok' ? check(236, 30, 13) : busy(236, 30, 13));
+  },
   slots: () => rect(118, 22, 96, 70, 'slot slot-3', 8) + rect(108, 34, 96, 70, 'slot slot-2', 8)
     + rect(98, 46, 96, 70, 'slot', 8) + rect(106, 54, 42, 30, 'sky', 4)
     + `<polygon class="hill" points="${pts([106, 84], [106, 72], [122, 64], [148, 72], [148, 84])}"/>`
@@ -324,9 +347,10 @@ const NOW = {
     + rect(106, 92, 58, 6, 'slot-line', 3),
 };
 
-function picNow(d) {
+/** PURE. The Working-on-now picture: each cell's drawing, then its state tag; a marker never shows the other state. */
+export function picNow(d) {
   const origin = [[0, 0], [300, 0], [0, 240], [300, 240]];
-  const b = d.cells.map((c, i) => `<g transform="translate(${origin[i][0]},${origin[i][1]})">` + NOW[c.pic]()
+  const b = d.cells.map((c, i) => `<g transform="translate(${origin[i][0]},${origin[i][1]})">` + NOW[c.pic](c.state)
     + rect(110, 132, 80, 30, `tag tag-${c.state}`, 15) + text(150, 153, c.tag, 17, 'lbl on-tag')
     + text(150, 196, c.lines[0], 23) + text(150, 224, c.lines[1], 23) + '</g>').join('');
   return svg('0 0 600 480', d.alt, b, 'art art-narrow');
