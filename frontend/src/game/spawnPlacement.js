@@ -90,9 +90,9 @@ export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
 // from SPAWN_FALLBACK_Y down the hole, fell out of the world, and the void guard sent it back to wait again: nine resets in
 // a minute's idle (registry REVIEW:l4:origin-corner-dug-through-respawn-loop; tests/gates/player-placement-gates.test.jsx).
 // So when the wait runs out, the column nearest the corner within FALLBACK_REACH whose ground answers (above PROBE_MIN_Y,
-// the spawn's own rule) is stood on, at its middle (a load beside a saved column with nothing in it searches the same way). A column in a chunk that has not streamed in answers nothing either,
-// so this stands no player on ground that is not there; with none answering, the blind drop goes ahead and is followed
-// (followBlindDrop).
+// the spawn's own rule) is stood on, at its middle; a load beside a saved column with nothing in it searches the same
+// way. A column in a chunk that has not streamed in answers nothing either, so this stands no player on ground that is
+// not there; with none answering, the blind drop goes ahead and is followed (followBlindDrop).
 // THE CAPSULE IS THE BODY'S AS IT IS. A beast form outlives the void guard's reset (returnToSpawn ends none), and the
 // bull's radius (0.62 m) and the golem's (0.5 m), with the controller's offset, reach past the column's 0.5 m half-width:
 // stood on that column's ground alone, the bull went 0.12 m into a column beside it one block higher
