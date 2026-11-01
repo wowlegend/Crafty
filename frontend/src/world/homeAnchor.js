@@ -20,9 +20,10 @@ const STONE = 3;                  // existing block id (no new blocks in M1 — 
 /**
  * The brazier's point light (world/Terrain.jsx HomeAnchorRender), with `height` its height above the pad's top. The
  * colour gates light the pad with these same values (tests/gates/colour-script-gates.test.js), because the fire's
- * colour on the pad, mixed with the cool night and twilight light, is what reads maroon. It is amber, not orange: an
- * orange fire's red, added to the night light's violet, lands on magenta-red by the brazier, while amber's mix passes
- * nearer grey (gate G2b).
+ * colour on the pad, mixed with the cool night and twilight light, is what reads maroon. It is amber, not orange: in the
+ * colour model (gate G2b) an orange fire's red, added to the night light's violet, lands on magenta-red by the brazier,
+ * while amber's mix stays near grey. On screen the pad by the brazier still reads maroon at midnight under amber (registry
+ * REVIEW:light:midnight-brazier-maroon).
  */
 export const HEARTH_FIRE = Object.freeze({ color: '#FFB050', intensity: 1.6, distance: 9, height: 1.6 });
 

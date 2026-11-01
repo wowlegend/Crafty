@@ -20,10 +20,10 @@ import { rgb, oklch, displayed, stoneFaceUnder, aoOccludedStone, hazed, bytes, p
  * BLIND SPOT: nothing here renders. The model is checked against the screen by the grey card (light-script.spec.js)
  * and the look by the real-GPU lookbook. The Hearth's fire is modelled as its point light on the pad (G2, G2b), not as
  * the ember's bloom. This file cannot see whether anything CALLS sampleScript: that is the sky-frame gate and the e2e.
- * G2b is green on the amber fire while the real-GPU pad by the brazier still reads maroon at midnight (the lookbook's
- * self-brazier-110 frame: 46% of the pad left of the brazier, 48.5% with the old orange; 39% under a warm-white fire,
- * 4.7% with the fire off): on screen, whatever the fire's colour, what it adds to the dark pad carries green at about a
- * quarter of the light's own green-to-red ratio and almost no blue, which this model does not reproduce (registry
+ * G2b reads this model's pad by the fire, not the screen: on the real GPU that pad reads maroon at midnight under every
+ * warm fire tried, the shipped amber included, and not with the fire off, because what the fire adds to the dark pad
+ * on screen carries far less green and blue than the light's own colour, which this model does not reproduce (the
+ * frames and their numbers: DECISIONS 2026-11-01 (W3-A PR B) item 440; the open bug: registry
  * REVIEW:light:midnight-brazier-maroon).
  */
 
@@ -278,7 +278,7 @@ describe('the ground through the day', () => {
     expect(n).toBe(2 * 121 * 8);
   });
 
-  it('G2b the pad by the fire stays near grey wherever it would display maroon: terrain stone 0.5, 1 and 2 m from the brazier, f 0.44 to 1.06', () => {
+  it('G2b in the model, the pad by the fire stays near grey wherever its hue lies in the widened maroon band: terrain stone 0.5, 1 and 2 m from the brazier, f 0.44 to 1.06', () => {
     // The real-GPU pad by the brazier reads 10 to 20 deg redder than this model (DECISIONS 2026-10-28, the landing
     // lifecycle entry, item 21 (d)), so a model hue within 20 deg of maroon's band (330 to 30) displays in it: the band here
     // is widened to 310 to 50. Inside

@@ -215,8 +215,9 @@ const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
  *           let swing (the plan's height-reference deviation). x and z are the body this frame, the point the frame's
  *           step starts from (stanceFrame builds it): the away vector and `gap` must be measured from there, not from
  *           the camera, which trails the body by about 1.2 frames.
- *   nowMs   the WORLD clock (game/worldClock.js worldNow): the calm and the stall clocks measure the fight, and a
- *           pause or a hitstop holds the fight, so neither may spend them.
+ *   nowMs   the fight's clock, in ms: the calm and the stall clocks measure the fight, and a pause or a hitstop holds
+ *           the fight, so neither may spend them. stanceFrame passes the stance's own clock (state.clockMs: each frame
+ *           the world clock's advance, at most the frame's step).
  *   dtS     the frame's seconds, for the blend: the controller's capped step (game/frameStep.js), 0 while the world
  *           is held (stanceFrame passes it so).
  * `atS` is the game time this frame's step starts at and `stepS` its length, so (playerX, playerZ) over atS is the body's
