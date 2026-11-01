@@ -14,8 +14,9 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // walks out on real W, A, S and D. Last, a block is written around the camera the way a save from before the fix brings
 // one back (the worker's edit and the store's record, as a load delivers them): the centre and the lowest point are in
 // the open cell under it, so the stuck-in-rock watch reads the capsule itself (game/stuckInRock.js) and stands the player
-// clear of it, and the player walks out. (A left click from inside such a block takes it:
-// tests/integration/place-clear-of-player-rapier.test.jsx; the player is no longer left inside one to make it.)
+// clear of it within CLEAR_FRAMES drawn frames, and the player walks out, a metre each way within WALK_FRAMES. (A left
+// click from inside such a block takes it: tests/integration/place-clear-of-player-rapier.test.jsx; the player is no
+// longer left inside one to make it.)
 //
 // THE PRESENCE BEFORE THE ABSENCE. The same four walks run on the same spot before the burst, and each must cover a metre
 // there, or the spot cannot show a trap (SETUP). The burst must aim at least one right-click whose cell lies inside the
@@ -52,6 +53,11 @@ const REFUSAL = /standing there/;
 const WALK_FRAMES = 30;
 const WALK_STOP_M = 1.5;
 const WALK_MIN_M = 1;
+// The stuck-in-rock watch stands a body clear once its readings have been in the rock for 0.3 s of play (a reading every
+// 0.1 s, confirmed over 0.2 s: game/stuckInRock.js), out at 0.25 s at 60 Hz and 0.283 s at 120 Hz on the real Player
+// (tests/gates/player-placement-gates.test.jsx, mutation-proven there). A frame's step is its time, up to 0.25 s, so 60
+// drawn frames are at least half a second of play at any rate up to 120 Hz.
+const CLEAR_FRAMES = 60;
 const KEYS = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
 
 /** In node: beach columns near Kevin's spot, nearest first and 8 m apart. Land one block above the sea with water on one
@@ -131,6 +137,27 @@ function sweepHostiles() {
     }
   }
   return swept;
+}
+
+/** In the page: drawn frames until the capsule no longer reaches into the cell `x_y_z` with the world running, at most
+ *  `maxFrames`: the count, or null. */
+function framesUntilClear({ cell, maxFrames }) {
+  const [x, y, z] = cell.split('_').map(Number);
+  return new Promise((resolve) => {
+    let n = 0;
+    const tick = () => {
+      n += 1;
+      const s = window.useGameStore.getState();
+      const rb = s.playerRigidBodyRef?.current;
+      const t = rb.translation(), c = rb.collider(0), hh = c.halfHeight();
+      const dx = Math.max(x - t.x, 0, t.x - (x + 1)), dz = Math.max(z - t.z, 0, t.z - (z + 1));
+      const dy = Math.max(y - (t.y + hh), 0, (t.y - hh) - (y + 1));
+      if (Math.hypot(dx, dy, dz) >= c.radius() && performance.now() >= s.hitstopUntil) resolve(n);
+      else if (n >= maxFrames) resolve(null);
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }
 
 /** In the page: what holds the player. Placed blocks within 3 m (and whether each lies inside the capsule), the build
@@ -403,15 +430,14 @@ test.describe('placing beside the player at the shore', () => {
       return Object.values(box.eyeRays).every((d) => d !== null && d < 0.7);
     }, { message: `SETUP: the block written around the camera never closed in its collider (${JSON.stringify(box)})`, timeout: 30000 }).toBe(true);
     expect(box.inBody, `SETUP: the block written around the camera is not inside the body (${JSON.stringify(box)})`).toContain(boxed.cell);
-    // Released, the stuck-in-rock watch confirms the capsule in the block over 0.2 s of steps and stands it clear (on top of
-    // it, the highest column the capsule stands across: tests/gates/player-placement-gates.test.jsx).
+    // Released, the stuck-in-rock watch stands the capsule clear of the block within CLEAR_FRAMES: beside it, the nearest
+    // open spot a straight move through open cells reaches, or on the column's top where none is (game/formFit.js).
     await page.evaluate(() => window.__e2eWorldHold.release());
-    let clear = null;
-    await expect.poll(async () => {
-      clear = await page.evaluate(readHold);
-      return clear.inBody.length === 0 && !clear.gates.frozen;
-    }, { message: `the block written around the camera still holds the player (${JSON.stringify(clear)})`, timeout: 30000 }).toBe(true);
-    console.log(`[place-clear] stood clear of the block ${boxed.cell}: ${JSON.stringify(clear)}`);
+    const clearOn = await page.evaluate(framesUntilClear, { cell: boxed.cell, maxFrames: CLEAR_FRAMES });
+    const clear = await page.evaluate(readHold);
+    console.log(`[place-clear] stood clear of the block ${boxed.cell} on frame ${clearOn} of ${CLEAR_FRAMES}: ${JSON.stringify(clear)}`);
+    expect(clearOn, `the block written around the camera still held the player ${CLEAR_FRAMES} frames after the release (${JSON.stringify(clear)})`).not.toBeNull();
+    expect(clear.inBody, `a placed block is still inside the body once it was stood clear (${JSON.stringify(clear)})`).toEqual([]);
     const freed = { x: clear.body[0], y: clear.body[1], z: clear.body[2] };
     for (const code of Object.keys(KEYS)) {
       const m = await walk(page, code, freed);
