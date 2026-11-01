@@ -182,7 +182,9 @@ named in each commit's trailer, with an identity mutant beside each batch that s
    :93, another assertion of the same spec, on `REVIEW:e2e-flakes:feedback-grammar-windup-near-mob`, the row PR #81
    landed for that case (the row this lane had opened for it is closed as its duplicate),
    music-bus :74, input-live :72, and light-pool :25, whose presence line went red first this time; and from run
-   41322243911, quest-text :54 (`REVIEW:e2e-flakes:quest-text-no-frame-while-held`). **Left open:**
+   41322243911, quest-text :54 (`REVIEW:e2e-flakes:quest-text-no-frame-while-held`); and from run 41324898727 on the
+   merge (`4f7b50df`, green), place-clear's baseline walk again (`REVIEW:e2e-flakes:place-clear-baseline-walk-23m`: KeyA
+   ended 21 m off, before any click; the retry passed, the old-save step included) and light-pool :25. **Left open:**
    `REVIEW:l4:gate-reach-round1` (item 506), so the lane row stays open; new rows in the backlog: the golem in a pit
    (item 517) and the risen floor (item 514).
 
