@@ -52,9 +52,9 @@ describe('#52 S2 capture-state modals carry role=dialog (zero-pixel a11y)', () =
     expect(src).toMatch(/<Modal[\s\S]{0,200}label=\{t\('ui\.inventory'\)\}/);
   });
 
-  it('AchievementsPanel (QuestSystem) is a <Modal> keeping the achievements-panel testId', () => {
-    const src = read('QuestSystem.jsx');
-    expect(src).toMatch(/import \{[^}]*\bModal\b[^}]*\} from '\.\/ui\/primitives\/index\.js'/);
+  it('AchievementsPanel (ui/AchievementsPanel.jsx) is a <Modal> keeping the achievements-panel testId', () => {
+    const src = read('ui/AchievementsPanel.jsx');
+    expect(src).toMatch(/import \{[^}]*\bModal\b[^}]*\} from '\.\/primitives\/index\.js'/);
     expect(src).toMatch(/<Modal[\s\S]{0,140}testId="achievements-panel"/);
     expect(src).toMatch(/<Modal[\s\S]{0,200}label="Achievements"/);
   });

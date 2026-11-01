@@ -8,7 +8,8 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { MenuSystem } from '../../src/MenuSystem.jsx';
 import { DamageOverlay, DeathScreen, VictoryOverlay } from '../../src/GameSystems.jsx';
 import { SimpleXPGainVisual, SimpleLevelUpEffect } from '../../src/SimpleExperienceSystem.jsx';
-import { QuestTracker, NotificationStack, AchievementsPanel, ChestIndicator, QUEST_LIST } from '../../src/QuestSystem.jsx';
+import { QuestTracker, NotificationStack, ChestIndicator, QUEST_LIST } from '../../src/QuestSystem.jsx';
+import { AchievementsPanel } from '../../src/ui/AchievementsPanel.jsx';
 import { WorldManager } from '../../src/WorldManager.jsx';
 import { TradingInterface } from '../../src/ui/TradingInterface.jsx';
 import { ForgePanel } from '../../src/ui/panels/ForgePanel.jsx';
@@ -81,7 +82,7 @@ const ROWS = [
     ui: () => <QuestTracker quests={QUESTS} />, after: () => fireEvent.click(screen.getByTestId('quest-tracker-line')) },
   { file: 'QuestSystem.jsx', name: 'NotificationStack', marker: () => screen.getByTestId('notification'),
     ui: () => <NotificationStack notifications={[{ id: 1, type: 'info', text: 'hello' }]} /> },
-  { file: 'QuestSystem.jsx', name: 'AchievementsPanel', marker: () => screen.getByTestId('achievements-panel'),
+  { file: 'ui/AchievementsPanel.jsx', name: 'AchievementsPanel', marker: () => screen.getByTestId('achievements-panel'),
     ui: () => <AchievementsPanel achievements={[]} unlockedAchievements={new Set()} stats={{}} onClose={NOOP} /> },
   { file: 'QuestSystem.jsx', name: 'ChestIndicator (a chest in reach)', marker: () => screen.getByText('Treasure', { exact: false }),
     ui: () => {
@@ -155,13 +156,13 @@ describe('every module that renders an animated element mounts under the strict 
     expect(row.marker(), `${row.file} ${row.name} mounted without its marker: SETUP, the mount proves nothing`).toBeTruthy();
   });
 
-  it('the table names twelve modules and eighteen components, each mounted above', () => {
+  it('the table names thirteen modules and eighteen components, each mounted above', () => {
     const files = new Set(ROWS.map((r) => r.file));
     expect(ROWS.length, 'a row fell out of this table, or one was added here without this count').toBe(18);
-    expect([...files].sort(), 'this table\'s modules differ from the twelve listed here: a row was removed, or a module was added to the table without this list (a module that is in src and not in the table is not seen by this case)').toEqual([
+    expect([...files].sort(), 'this table\'s modules differ from the thirteen listed here: a row was removed, or a module was added to the table without this list (a module that is in src and not in the table is not seen by this case)').toEqual([
       'GameSystems.jsx', 'MenuSystem.jsx', 'QuestSystem.jsx', 'SimpleExperienceSystem.jsx', 'WorldManager.jsx',
-      'ui/ChestInventoryPanel.jsx', 'ui/DamageDirection.jsx', 'ui/GameHud.jsx', 'ui/LowHealthVignette.jsx',
-      'ui/SpellUpgradePanel.jsx', 'ui/TradingInterface.jsx', 'ui/panels/ForgePanel.jsx',
+      'ui/AchievementsPanel.jsx', 'ui/ChestInventoryPanel.jsx', 'ui/DamageDirection.jsx', 'ui/GameHud.jsx',
+      'ui/LowHealthVignette.jsx', 'ui/SpellUpgradePanel.jsx', 'ui/TradingInterface.jsx', 'ui/panels/ForgePanel.jsx',
     ]);
   });
 });

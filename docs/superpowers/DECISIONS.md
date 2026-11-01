@@ -248,6 +248,26 @@ ceiling.
    against 652,500 B, which was not raised. PR C's index units have 3,816 B against their 4.7 KB of shares; item 480's
    next room stands for the first unit that would cross.
 
+**Phase 2a: the room, U1, L1 and N4** (items 495 to 499, then 520 onward: lane L13 part 2 holds 500 to 519).
+
+495. **The next room: the feats panel and the controls panel leave the boot chunk; the controls card and hint stay.**
+   Item 480's named room, taken before any unit of this phase adds index bytes, because PR #82 (lane L13 part 2) leaves
+   about 157 B under the ceiling once it lands. `AchievementsPanel` moved out of `QuestSystem.jsx` into
+   `ui/AchievementsPanel.jsx` byte for byte; `ui/CombatInstructions.jsx` split, the controls panel H opens and its list
+   going to `ui/ControlsPanel.jsx`. The first-run card and the hint it folds to stayed: they are at rest in the HUD from
+   a first session's first frames, where a lazy load would show them late, and the panel was most of the module. Both
+   panels ride the lazy panel chunk through `lazyPanels.js`'s factory, each inside its own keyed `<Suspense>` under its
+   `AnimatePresence` in `MenuSystem.jsx`; neither is on the iOS `enterPlay` cold start. Measured: 648,684 to 644,426 B
+   (-4,258 B; moved back one at a time, the feats panel weighs about 2.6 KB and the controls panel about 1.7 KB), against
+   652,500 B, which was not raised. Gated: two `bundle-budget.mjs` markers (each testid absent from the boot chunk and
+   in exactly one lazy chunk), red on the base and red again with each panel moved back; `lazy-room-panels-gates`
+   drives MenuSystem's lazy mounts to the real panels through the chunk's import (P1 to P4 red, an identity mutant
+   survived). A lazy panel the chunk does not export unmounts the whole tree ("Element type is invalid" passes
+   `PanelBoundary`, as C0's boss-bar mutant R3 did), so P3 and P4 are red without saying which export went. The gates
+   that read the moved code follow it: `lazy-motion-strict-gates` names
+   thirteen modules (a `motion` mutant in the new file red), `modal-static-gates` reads `ui/AchievementsPanel.jsx` (two
+   mutants red), and `controls-panel-gates` and `taught-keys-gates` import the panel from its new file.
+
 ---
 
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor

@@ -13,3 +13,5 @@ export { QuestLog } from '../QuestLog';
 export { ChestInventoryPanel } from '../ChestInventoryPanel';
 export { BossHealthBar } from '../BossHealthBar';
 export { FrameStats } from '../../render/FrameStats.jsx';
+export { AchievementsPanel } from '../AchievementsPanel.jsx';
+export { ControlsPanel } from '../ControlsPanel.jsx';

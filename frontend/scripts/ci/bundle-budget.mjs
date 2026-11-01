@@ -189,10 +189,13 @@ for (const marker of LOOKBOOK_SEAM_MARKERS) {
 // from the boot chunk proves no static import pulled the module back; PRESENT in exactly one other chunk proves it still
 // ships. The debug overlay is DEV-only (App.jsx imports it under import.meta.env.DEV), so its marker, a context name
 // only its module-load probe asks for, must be in NO chunk; the on-demand markers' presence half is the control that the
-// quoted matcher can see a literal at all.
+// quoted matcher can see a literal at all. The achievements panel (the Journal's feats tab) and the controls panel (H)
+// followed for PR C's next index units (DECISIONS 2026-11-01 (W3-A PR C) item 495); the controls card and hint stay.
 const ON_DEMAND_MARKERS = [
   { module: 'ui/BossHealthBar.jsx', marker: 'boss-health-bar' },
   { module: 'render/FrameStats.jsx', marker: 'frame-stats' },
+  { module: 'ui/AchievementsPanel.jsx', marker: 'achievements-panel' },
+  { module: 'ui/ControlsPanel.jsx', marker: 'controls-panel' },
 ];
 const DEV_ONLY_MARKERS = [{ module: 'ui/DebugOverlay.jsx', marker: 'experimental-webgl' }];
 let onDemandSeen = 0;

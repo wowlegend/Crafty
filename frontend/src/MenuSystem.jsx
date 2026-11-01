@@ -15,11 +15,11 @@ import {
   QuestLog,
   SpellUpgradePanel,
   ChestInventoryPanel,
+  AchievementsPanel,
+  ControlsPanel,
 } from './ui/panels/lazyPanels.js';
 import { Icon, Button } from './ui/primitives/index.js';
-import { AchievementsPanel } from './QuestSystem';
 import { PanelTabs } from './ui/PanelTabs.jsx';
-import { ControlsPanel } from './ui/CombatInstructions.jsx';
 import { panelWrites, applyPanelWrites } from './ui/panelGroups.js';
 import { shouldShowTitleMenu, shouldShowResumeOverlay, isAnyPanelOpen } from './ui/panelState.js';
 import { isCaptureMode } from './devtest/captureMode.js';
@@ -112,26 +112,29 @@ export function MenuSystem({
       <PanelTabs group="journal" flags={tabFlags} onSelect={selectTab} />
       <AnimatePresence>
         {gameState.showControls && (
-          <ControlsPanel
-            key="ControlsPanel"
-            onClose={() => {
-              gameState.setShowControls(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="ControlsPanel" fallback={null}>
+            <ControlsPanel
+              onClose={() => {
+                gameState.setShowControls(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
       <AnimatePresence>
         {showAchievements && (
-          <AchievementsPanel
-            achievements={questSystem.achievements}
-            unlockedAchievements={questSystem.unlockedAchievements}
-            stats={questSystem.stats}
-            onClose={() => {
-              setShowAchievements(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="AchievementsPanel" fallback={null}>
+            <AchievementsPanel
+              achievements={questSystem.achievements}
+              unlockedAchievements={questSystem.unlockedAchievements}
+              stats={questSystem.stats}
+              onClose={() => {
+                setShowAchievements(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
  
