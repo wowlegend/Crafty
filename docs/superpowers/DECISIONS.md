@@ -19,6 +19,94 @@
 
 ---
 
+## 2026-11-01 (lane L13 part 2) — [LOOP] the stuck-in-solid remainder's rows: a save in a dug column, the world's floor, a capsule in rock sideways, the waits to the frame, and the gate holes beside them
+
+Lane L13 part 2 (`fix/l13-stuck-in-solid`, main `84a04099` merged at `d865f25a`) took the fourteen rows part 1 left in
+`LANE:L13-stuck-in-solid-remainder`, player harm first. Each bug row's gate went red before its fix at 60 and 120 Hz
+where time matters; each instrument row's mutant was run through `scripts/dev/mutate.sh` in a throwaway copy and named in
+its commit. The chaos-play suite was run on seeds 1 to 8, all five files, at `65d383e3` (items 508, 510). Rulings the
+builder made are in items 502, 506 and 509.
+
+500. **A save in a column dug out of the world stands beside it once its chunks answer** (`24516c7e`). Every column
+   inside the square the load fit's corners span lies in a chunk a corner lies in, so once the four corners answer, a
+   saved column that answers nothing has nothing in it; `resumeBesideEmptyColumn` (`game/spawnPlacement.js`) gives the
+   middle of the nearest column there that answers, once the corners round it answer too, and the load fit stands the
+   base capsule there. *Proof:* a save at y 20 in a shaft dug through the world was held 9.967 s at 60 Hz and 9.983 s at
+   120 Hz, then sent to the origin; after, let go within half a second on the land beside the shaft
+   (`player-placement-gates`). A chunk that has not answered still holds, and the hold still gives up after 10 s.
+501. **The cells at y 0 stay solid under every cave** (`9605e7d5`): the carve starts at y 1, as the cave automaton
+   already did. *Proof:* `world-floor-gates` runs the real worker on the 6 x 6 chunks round the spawn and reads its
+   meshes: 2070 of 9216 columns had no floor face at y 0 before, 0 after, and 1410 cave floors at y 1 show the caves still
+   reach the bottom.
+502. **The rim wedge does not reproduce, and the chaos escape test jumps only where the game jumps** (`b9000f9a`). The
+   escape test (I3's reading) armed its jump on `computedGrounded()`, which counts a wall; it reads
+   `game/grounding.js` `supportedGround` now, the rule item 390 gave the game. The row offered a decision that mining out
+   is the intended exit; I3's own doctrine calls a wedge the controller cannot walk or jump out of a defect, so that
+   route would contradict the gate, and the measurement route was taken: the sighting's spot and six round it, in a
+   1 x 1 pit dug one and two deep under the tunnel's two-high ceiling, as read (0.06 m into the rim) and settled, at 60
+   and 120 Hz, 56 placements, all walk or jump out (a seeded case in `chaos-play-instruments`, red with the escape
+   test's jump never armed). Which change removed the wedge is not measured.
+503. **The placement numbering's lifetime is gated in the mounted world** (`df4f5f5e`). `verb-ledger-gates` mounts
+   MinecraftWorld again over the same worker, asks for the chunk's mesh, places before the worker answers, and delivers
+   only the mesh made before the placement: its stand-in holds, red with `createEditSeq()` made per mount. With 6389ff27
+   both halves of `REVIEW:fix-invisible-box:cut-argument-ungated` are gated.
+504. **A capsule reaching sideways into rock is stood clear** (`008baf08`). Measured first on the real Player: put 0.1 m
+   into a column beside it with its centre and lowest point clear, idle, it stayed in for the whole second at 60 and 120
+   Hz, inside one chunk and across a chunk border; the controller has no depenetration. When both cells read clear the
+   stuck watch (`game/stuckInRock.js`) asks whether the capsule, shrunk 1 cm, meets a terrain trimesh, and confirmed over
+   0.2 s stands it on the nearest clear spot in its own shape: out in 0.25 s (60 Hz) and 0.283 s (120 Hz). Chaos seeds 1,
+   3 and 5: recoveries equal clips, I7 0. The round-2 static review's case, a neighbour column whose chunk had not
+   answered when the respawn stood a body beside it, comes into the same shape when that chunk streams in, and is read
+   by the same query.
+505. **The resume hold's corner probes span the fit's whole reach** (`b27e90d7`): `LOAD_FIT_SPAN` is the confirming
+   ball's radius past `LOAD_REACH`, 1.023 m, not the capsule's, 1.0 m. *Proof:* a save 1.01 m from a border with the
+   chunk across not back was let go on the first frame before, held after.
+506. **The spawn's wait and the resume hold end on the frame their step reaches the bound** (`35d4b2b5`). 360 steps of
+   1/60 s sum to 5.99999 in floating point, so the 6 s fallback came on the 361st frame at 60 Hz; both waits now compare
+   against their bound less 1e-9 (the resume hold's 10 s was a frame late at 90, 165 and 240 Hz, computed). The frame
+   gates kill the Player handing either decision no step (lane L4's mutant and item 396's resume hold a frame late).
+   **Left open in `REVIEW:l4:gate-reach-round1`:** killing `SPAWN_PROBE_MAX_SEC` 3.3 and `RESUME_PROBE_MAX_SEC` 6.5
+   needs the time the corner's chunk is built on the slowest device after the top tier asks for it (3.15 s); the
+   worker's speed there is measured nowhere (here the real worker builds a chunk in about 22 ms in Node), and an answer
+   time the builder picked would pin the constant to that pick. The row's I6 half is answered by the harness's own I6
+   note since lane L13 round 1: at the line no floor lies under the feet, so no property separate from the line exists
+   for I6 to read, and the line is pinned by `spawnPlacement.test.js` (every shape on both floors) and the Player gates.
+507. **Two cut holes pinned** (`63ba76db`, `22af8e3a`): a capsule starting inside a collider made since the last step
+   jumps out of it with its whole move (red with `stopAtPenetration` true), and two chunks first-mounted in one commit
+   in one no-step window both land where their bodies are (red when `landed()` propagates only on the window's first
+   landing; the one-chunk case alone lets that mutant survive).
+508. **The own-shell exit mines only the player's blocks that bound the capsule** (`65d383e3`): within one cell of the
+   cells it fills, from the feet's cell up, never a floor of their own. A pocket of generated stone on a placed floor read
+   as an own shell before (red first) and is held now; with its walls the player's own it still opens. Seeds 1 to 8, all
+   five chaos files, at this commit: every session holds I1 to I8 at 0, deepest 0.000 m.
+509. **The roar's refund is gated on the real Player, not in an e2e** (`e24f7fa5`). The row asked for an e2e; a local e2e
+   is not run in an SSD-light lane, and its red-first would need a CI run on a mutated tree. `roar-refund-gates` mounts
+   the real Player on real Rapier with the real placed-cell registry, holds the roar's real intent on a full bar, places
+   four cells over the head on the commit frame and reads the bar back after the refused swap; red with the Player
+   handing the refusal no price or never recording the spend.
+510. **Field-origin's refused-swap and own-shell floors come from the reach of seeds 1 to 8** (`a53ac9b3`), as the row's
+   acceptance allows. At `65d383e3` the file's sixteen sessions reach, by seed:
+
+   | Seed | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+   |---|---|---|---|---|---|---|---|---|
+   | swapsRefused (was floored 2) | 5 | 6 | 1 | 3 | 6 | 5 | 3 | 7 |
+   | ownShellOut (was floored 1) | 3 | 1 | 3 | 2 | 0 | 6 | 2 | 2 |
+
+   The file floors them at 1 and 0. The own-shell exit stays floored at 1 in shore-cliff (3 to 9 by seed) and
+   cave-overhang (4 to 8), so CI reaches it on every seed. All other common floors were met on all eight seeds.
+511. **The Rapier panic after a wipe is reproduced, and 0.21.0 does not panic** (harness only). With the harness's
+   sentinel collider removed, in fresh processes: rapier3d-compat 0.19.2 panics in `world.step` ("unreachable", from
+   `islands` under the contact-pair filter) on seed 3 in every chaos file run (field-origin, loads, shore-cliff,
+   cave-overhang) and on seed 1, the seed CI plays, in field-origin; 0.19.3 panics on seeds 3 and 1 alike; 0.21.0
+   (both packed from the registry, resolved by a vitest alias in throwaway copies) runs both seeds with no panic, every
+   session clean (seed 3's one red there is item 510's swapsRefused floor). The sentinel stays; whether the game takes 0.21.0 is a dependency decision beside @react-three/rapier
+   2.2's exact pin of 0.19.2, opened as a backlog row.
+512. **moveKinematic's unswept lift is gone** (`b393d08f`): no caller passed one since item 151. Its cases were the only
+   ones that swept a pending y; a fall drifting along z over frames that take no step now pins the y and z of the
+   pending move.
+513. **What the lane leaves open:** `REVIEW:l4:gate-reach-round1` (the 3.3 s and 6.5 s mutants, item 506), so the lane row
+   stays open. New rows: the Rapier upgrade decision (item 511).
+
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
 
 The 2026-11-01 W3-A task script's "PR B" (it lives on branch `feat/w3a-first-night` until that lane lands), branch
