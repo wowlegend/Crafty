@@ -74,6 +74,7 @@ MUTANTS = {
     'nolock': ('src/MenuSystem.jsx', '    requestGameLock(useGameStore.getState());\n    if (isTouchDevice())', '    if (isTouchDevice())',
                'M-nolock: Start asks for no pointer lock, so nothing floods (INCONCLUSIVE, which CI must fail)', ''),
     'slowleak2': ('src/App.jsx', BUILT, SLOWLEAK, 'M-slowleak again, a second sample', ''),
+    'slowleak3': ('src/App.jsx', BUILT, SLOWLEAK, 'M-slowleak again, a third sample', ''),
     'e0b': ('src/App.jsx', 'A still caption at the foot of the screen', 'A still caption, at the foot of the screen', 'E0 identity again, a second sample', '--identity'),
     'e0': ('src/App.jsx', 'A still caption at the foot of the screen', 'A still caption, at the foot of the screen', 'E0 identity (a comment edit in App.jsx)', '--identity'),
 }

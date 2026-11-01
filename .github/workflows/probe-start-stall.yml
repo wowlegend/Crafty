@@ -1,9 +1,9 @@
 name: probe start-stall
 
-# THROWAWAY PROBE WORKFLOW (lane start-stall, fix round 3). It runs on this lane's own branch and is removed by the lane's
+# THROWAWAY PROBE WORKFLOW (lane start-stall, fix round 3, second probe). It runs on this lane's own branch and is removed by the lane's
 # next commit; it never reaches main with a live trigger. It proves the reworked tests/e2e/start-before-built.spec.js
 # (carried in ci-probe/ and copied into place on the runner) on the runner: the shipped outlined caption 8 times, and the mutants
-# the late arm's answered-only floors must keep red or green (a slow leak twice, an identity edit twice) beside the rest once
+# the late arm's answered-only floors must keep red or green (a slow leak three times, an identity edit twice) beside the rest once
 # each, through scripts/dev/mutate-e2e.sh, which applies it, runs the spec and restores it (nothing mutated is committed).
 # mutate-e2e.sh is patched on the runner to stream the spec's output as it runs (tee), so every 2 s sample reaches the log
 # even when a runner is shut down; the memory line lists the four largest processes.
@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: [outline-a, outline-b, e1, silence, slowleak, slowleak2, nobuild, nolock, e0, e0b]
+        case: [outline-a, outline-b, e1, silence, slowleak, slowleak2, slowleak3, nobuild, nolock, e0, e0b]
     steps:
       - uses: actions/checkout@v7
 
