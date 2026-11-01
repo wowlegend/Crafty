@@ -1,5 +1,5 @@
 // BossHealthBar.jsx — the boss HUD health bar (extracted from AdvancedGameFeatures S3-M4 p4).
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { Panel, StatBar, Icon } from './primitives/index.js';
 import { useT } from '../i18n/i18n.js';
 import { bossNameKey } from '../game/bossTier.js';
@@ -16,8 +16,16 @@ const clampLines = (lines) => ({ display: '-webkit-box', WebkitBoxOrient: 'verti
 // ui/hudLayout.js compactBoss) keeps the name and the bar and drops the phase line and the numbers. `call`: where the
 // encounter column holds the notices (ui/hudLayout.js toastsInEncounter), the one it shows takes the name's place in the
 // bar's own line beside the dragon's icon, clamped to `callLines` (ui/hudLayout.js bossCallLines), for its life.
-export const BossHealthBar = React.memo(function BossHealthBarRender({ bossActive, bossHealth, bossMaxHealth, bossPhase, bossTier = 0, width = 450, compact = false, call = null, callLines = 1 }) {
+// `onDrawn(true)` once the bar is on screen and `onDrawn(false)` when it leaves: the column hands it the line only then,
+// since the bar is lazy and a notice handed to a bar still loading, or one whose chunk failed, would show nowhere.
+export const BossHealthBar = React.memo(function BossHealthBarRender({ bossActive, bossHealth, bossMaxHealth, bossPhase, bossTier = 0, width = 450, compact = false, call = null, callLines = 1, onDrawn = null }) {
     const t = useT();
+    // Before paint, so the column moves its toast into the bar in the same frame the bar first shows.
+    useLayoutEffect(() => {
+        if (!bossActive || !onDrawn) return undefined;
+        onDrawn(true);
+        return () => onDrawn(false);
+    }, [bossActive, onDrawn]);
     if (!bossActive) return null;
 
     const hpPercent = (bossHealth / bossMaxHealth) * 100;
@@ -31,7 +39,7 @@ export const BossHealthBar = React.memo(function BossHealthBarRender({ bossActiv
                     <span className="flex min-w-0 items-center gap-1.5">
                         <Icon name="dragon" size={18} className="flex-none text-danger" />
                         {call ? (
-                            <span data-testid="boss-call" data-notification-key={call.key || ''} role={tone ? 'alert' : 'status'}
+                            <span data-testid="boss-call" data-notification-key={call.key || ''} data-notification-id={call.id} role={tone ? 'alert' : 'status'}
                                 className={`min-w-0 text-xs font-bold ${tone || 'text-text'}`} style={clampLines(callLines)}>
                                 {notificationText(call, t)}
                             </span>

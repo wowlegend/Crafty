@@ -5,7 +5,7 @@ import { nearestLandmark } from './world/shrines.js';
 import { blightHeartSite } from './world/blightHeart.js';
 import { dayPhase } from './game/dayPhase.js';
 import { useT } from './i18n/i18n.js';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
 import { ControlsCardUntilSeen } from './ui/CombatInstructions';
@@ -289,8 +289,11 @@ export const Encounter = ({ bossSystem, notifications }) => {
   const mode = useHudMode();
   const column = toastsInEncounter(mode);
   const line = column ? lineNotification(notifications) : null;
-  const inBar = column && bossSystem.bossActive;
   // The bar is lazy (ui/panels/lazyPanels.js): mounted only in a fight, in its own boundary, so the HUD never waits on it.
+  // It holds the line only once it is drawn (ui/BossHealthBar.jsx onDrawn); while its chunk loads, or after it failed,
+  // the line stands as the one toast, so no notice is handed to a bar that is not on screen.
+  const [barDrawn, setBarDrawn] = useState(false);
+  const inBar = column && bossSystem.bossActive && barDrawn;
   const boss = bossSystem.bossActive && (
     <React.Suspense fallback={null}><BossHealthBar
       bossActive={bossSystem.bossActive}
@@ -302,6 +305,7 @@ export const Encounter = ({ bossSystem, notifications }) => {
       compact={compactBoss(mode)}
       call={inBar ? line : null}
       callLines={bossCallLines(mode)}
+      onDrawn={setBarDrawn}
     /></React.Suspense>
   );
   const toasts = column && !inBar
