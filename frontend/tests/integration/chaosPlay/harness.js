@@ -611,12 +611,18 @@ function walkOut(sb, k, jump, t0) {
   sb.w.removeCharacterController(kcc);
   return out;
 }
-/** The player's own blocks near the body: cells the store's worldBlocks holds as placed (a nonzero block) and the world
- *  still holds solid, within OWN_REACH on each axis. */
-const OWN_REACH = 4;
+/** The player's own blocks that bound the capsule: cells the store's worldBlocks holds as placed (a nonzero block) and the
+ *  world still holds solid, within one cell of the cells the capsule fills, from the cell its feet are in up. Mined, a
+ *  shell the player built round themselves opens beside or above them. A floor of their own under the feet is not mined:
+ *  mining it drops the body out of whatever holds it, so a wedge of generated ground on a placed floor read as an own
+ *  shell, and within 4 m on every axis any own block nearby could open a wedge it does not bound (registry
+ *  REVIEW:chaos-play:own-block-escape-hides-wedge). */
 function ownCells(S, t0) {
   const out = [];
-  const near = ({ x, y, z }) => Math.abs(x + 0.5 - t0.x) <= OWN_REACH && Math.abs(y + 0.5 - t0.y) <= OWN_REACH && Math.abs(z + 0.5 - t0.z) <= OWN_REACH;
+  const c = S.p.body.collider(0), r = c.radius(), hh = c.halfHeight();
+  const x0 = Math.floor(t0.x - r) - 1, x1 = Math.floor(t0.x + r) + 1, z0 = Math.floor(t0.z - r) - 1, z1 = Math.floor(t0.z + r) + 1;
+  const y0 = Math.floor(t0.y - hh - r), y1 = Math.floor(t0.y + hh + r) + 1;
+  const near = ({ x, y, z }) => x >= x0 && x <= x1 && z >= z0 && z <= z1 && y >= y0 && y <= y1;
   for (const [k, v] of useGameStore.getState().worldBlocks) {
     if (!v) continue;
     const [x, y, z] = k.split('_').map(Number);

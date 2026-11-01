@@ -128,6 +128,35 @@ describe('the chaos-play instruments see what they report on', () => {
     expect(escape(S), 'a block of the player\'s own that opens nothing read as their way out').toEqual({ free: false, by: null });
   });
 
+  it('a pocket of generated ground on a floor the player placed is held: mining their own floor is not a way out of the pocket', () => {
+    const S = session();
+    const t = S.p.body.translation();
+    S.p.body.setTranslation({ x: Math.floor(t.x) + 0.5, y: t.y, z: Math.floor(t.z) + 0.5 }, true);
+    for (let i = 0; i < 10; i++) tick(S, {});
+    const at = S.p.body.translation();
+    const [x, z] = [Math.floor(at.x), Math.floor(at.z)];
+    // The floor under the body and round it is the player's (recorded as placed), over a shaft dug under it: mining it
+    // drops the body a metre and more. The walls and the cell over the head are generated stone, as in the pocket above.
+    const own = new Map();
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      setCell(S, x + dx, LAND_TOP - 2, z + dz, AIR);
+      setCell(S, x + dx, LAND_TOP - 3, z + dz, AIR);
+      own.set(`${x + dx}_${LAND_TOP - 1}_${z + dz}`, STONE);
+      if (dx || dz) for (const y of [LAND_TOP, LAND_TOP + 1]) setCell(S, x + dx, y, z + dz, STONE);
+    }
+    setCell(S, x, LAND_TOP + 2, z, STONE);
+    useGameStore.setState({ worldBlocks: own });
+    for (let i = 0; i < 10; i++) tick(S, {});
+    expect(deepestSolid(S).depth, 'SETUP: the pocket was built into the capsule').toBe(0);
+    expect(escape(S), 'a pocket of generated ground on the player\'s own floor read as a shell they built').toEqual({ free: false, by: null });
+    // The control: the same pocket with its walls the player's too is a shell they built, and mining it lets them out.
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      if (dx || dz) for (const y of [LAND_TOP, LAND_TOP + 1]) own.set(`${x + dx}_${y}_${z + dz}`, STONE);
+    }
+    useGameStore.setState({ worldBlocks: new Map(own) });
+    expect(escape(S), 'SETUP: the pocket with its walls the player\'s own does not open by mining them').toEqual({ free: true, by: 'own' });
+  });
+
   // REVIEW:chaos-play:rim-wedge: a chaos cave session (120 Hz, lag 0, seed 1, frame 360) once read the body at
   // (-4.55, 30.61, -6.32), sunk into the rim of a 1 x 1 pit it had dug under the tunnel's two-high ceiling, and neither
   // walk nor jump moved it. The pit is dug here, one and two deep, and the body stood at that spot and round it, as the
