@@ -69,6 +69,113 @@ Branch `feat/w3a-feedback-grammar`. Each call below was checked against the code
 
 ---
 
+## 2026-10-31 (lane L13) — [LOOP] the stuck-in-solid remainder: a wall is not ground, rays see what was just placed, a dug spawn corner does not loop, a sunk capsule is stood clear, the resume hold is time
+
+Lane L13 (`fix/l13-stuck-in-solid`, from `eff58e9a`) took the rows the audit lanes left in the class Kevin's invisible box
+started, player harm first. Each bug row's gate went red before its fix. The per-frame rows' gates (the wall climb, the
+resume hold, the respawn loop, the capsule sunk with its centre in the air) drive the real Player on real Rapier at 60 and
+120 Hz; the build ray is a per-click query, gated on its module with a fixed camera and, since round 2, in the mounted
+world without the Player (item 398). Items 397 to 402 are the second review round.
+
+390. **A wall is not ground; no wall-jump is kept.** The controller's `computedGrounded()` (rapier3d-compat 0.19.2) counts
+   any contact whose normal points up by more than 1e-3, and a capsule within its offset of a trimesh wall gets such
+   contacts on some frames: each re-armed the jump and set the fall to the glue's speed. `game/grounding.js`
+   `supportedGround` keeps the controller's ground only where a walkable face bears the capsule: a contact of the last
+   sweep with `normal1.y` at least cos 45 (the climb angle, one constant with `setMaxSlopeClimbAngle`), or, on a
+   grounded frame whose sweep met no floor (the snap: 4 of 240 grounded frames on a flat walk at 60 Hz, 13 of 480 at
+   120, measured), a capsule cast straight down within twice the offset that meets one. It removes grounds and never
+   adds one; the jump, the coyote time, the jump buffer and the glue all read it, so the row's question (keep a
+   wall-jump, or require an upward contact) is decided for the upward contact. A brink borne only by an edge more than
+   45 degrees from up is not ground (the player drops off it; within 45 it is). *Proof:* `player-wall-ground-gates`
+   at `eff58e9a`: Space held into a six-high face rose 2.95 / 2.98 m against a 2.35 / 2.30 m jump, the one-column
+   shaft was climbed out, a second's fall 0.03 m off a shaft's middle covered 7.4 m of open air's 15.7; green after.
+   `grounding.test.js` pins the cast (flat walk, shaft, brink). Commit `45cdd30f`. The chaos gate does not see this
+   rule (item 401).
+391. **The build ray sees a cell placed since the last step.** `castBuildRay` moved verbatim from Terrain.jsx to
+   `world/buildRay.js`, where a unit drives it with no terrain worker, and its `castRayNearest` takes the nearer of the
+   world's hit and each `placedCells.unindexed()` collider's own ray hit; the target outline and the chaos harness use
+   it. Not changed: the mob floor probe. *Proof:* `build-ray-unindexed-gates` (two clicks between one pair of frames; a
+   trimesh made since the step), red on the old query. Commit `7be92e39`. Terrain.jsx's own two call sites: item 398.
+392. **The resume hold is 10 s of time** (`RESUME_PROBE_MAX_SEC`), counted by the frame's step as the origin spawn's is:
+   600 frames had been 5 s at 120 Hz, under the origin spawn's 6. *Proof:* the real Player held 9.967 s at 60 Hz and
+   4.983 s at 120 Hz before, within two 60 Hz frames of each other after. Commit `c6f78430`.
+393. **When the spawn's wait runs out it stands on the nearest ground that answers before it drops blind**
+   (`spawnSpot`: the column nearest the corner within 8 m whose ground answers above `PROBE_MIN_Y`). A column in a chunk
+   that has not streamed in answers nothing, so no player is stood on ground that is not there. *Proof:* with the
+   corner's four columns dug out of the world, a minute idle reset the player 9 times before and once after, at 60 and
+   120 Hz. Commit `38ec3ebc`.
+394. **The stuck-in-rock watch reads the capsule's lowest point when its centre reads clear**, 0.02 m above it (a standing
+   capsule keeps it 0.05 m over its ground). Measured first, because the row was found by reading: off the corner the
+   controller frees a body sunk inside one chunk's face and one 0.4 m deep across a border; across the border of chunks
+   0_1 and 1_1 with the centre 0.05 m over the face it stayed 0.4 m deep for 2 s at 60 and 120 Hz. The chaos gate's I7
+   stays 0 (and goes red when the point is read 0.1 m lower). Commit `b64b8349`.
+395. **Instrument holes closed:** I1's tolerance is pinned by a 0.04 m case (`745483fe`); the placement gate's
+   terminal-speed SETUP reads each frame's move from `nextTranslation()` and fails under 45 m/s (`990df4d9`);
+   `mutate.sh` takes `--testTimeout=<ms>` (`fa86baf8`, proven by hand on a 25 s fixture: exit 3 without, RED with);
+   the Player's sweep is cut at a cell placed between a stepped and an unstepped frame at 120 Hz, and deleting the
+   `unindexed()` argument is red (`6389ff27`).
+396. **What the lane leaves open, as registry rows in `LANE:L13-stuck-in-solid-remainder`:** the load hold over a dug
+   column, the rim wedge, caves opening the world's floor, the per-mount edit numbering (cut-argument's second half),
+   the spawn-wait gate reach (3.3 s and no-delta mutants, I6), the cut's `stopAtPenetration`, two first mounts in one
+   window, the corner probes' span, the own-block escape rule, the Rapier panic after a wipe, the roar refund's e2e, and
+   moveKinematic's unused lift. None was reached in this lane; the lane row stays open while they do. Mutants this
+   lane's gates do not kill, each named in its commit: a resume hold one frame late, a stuck reading at another height
+   inside the sunk part, a cut that stops at the collider instead of the offset short of it.
+397. **Round 2: the respawn's fallback stands the body's own capsule clear of every column it reaches** (static review
+   F1). `spawnSpot` read only the top of the column it stood the body over, and a beast form outlives the void guard's
+   reset (`returnToSpawn` ends none): the bull's radius (0.62 m) and the golem's (0.5 m), with the controller's 0.05 m
+   offset, reach past a column's 0.5 m half-width. It now stands the body as high as the highest column its capsule
+   reaches there, as the load fit's column fallback reads them; a column that answers nothing adds nothing, and the base
+   capsule (reach 0.45 m) stands where it did. The controller's offset is one constant, `CONTROLLER_OFFSET`
+   (`game/kinematicMove.js`). *Proof:* the reviewer's probe in a throwaway copy of `082ea2ed` read the bull 0.12 m into a
+   column a block higher and the base capsule 0.1 m clear of it; the real Player in the bull form, the corner dug out and
+   that column beside the nearest one, was stood 0.12 m into it at 60 and 120 Hz with the form still on when the wait ran
+   out (`player-placement-gates`), green after with one reset. `spawnPlacement.test.js` holds every shape beside a higher
+   column on each side, the column's middle and the probe floor, so round 1's surviving mutants S5 and S7 die now.
+   Commit `514bb445`.
+398. **Terrain.jsx's wiring of the ray that sees a just-placed cell is gated in the mounted world** (static F2, dynamic
+   mutant B6). `verb-ledger-gates` already mounts the real MinecraftWorld with its worker stood in for, so the reason
+   item 391 first gave, and the row's note repeated, that vitest cannot import Terrain.jsx, was false (both corrected). A
+   row there places a block and, before any world step, reads the world's own query on the ground (the presence check)
+   and the click's ray and the outline on the new cell; either call site handing `undefined`, or a query that takes an
+   unindexed hit only when the world's own misses, is red. Commit `091a6f65`.
+399. **The grounding rule's "never adds a ground" is pinned, and the cost stories say what they cost** (dynamic G1,
+   static F5). A frame the controller calls airborne stays airborne whatever its sweep met and the cast finds: a stand-in
+   controller, since the claim is the function's; deleting the guard is red. rapier3d-compat 0.19.2's `computedCollision`
+   builds a CharacterCollision unless handed one and six vectors for each collision it returns, so the scan hands it one
+   object and the six vectors stay. `stuckInRock` scans two cells a reading in play, not one. Commit `6616818d`.
+400. **Below 60 fps the resume hold is shorter in wall-clock time than it was, and that is kept** (static F8). The hold
+   counts each frame's step, capped at 0.25 s (`game/frameStep.js`), so it is 10 s at every rate from 4 fps up: at 30 fps
+   the 600 frames had been 20 s, at 4 fps 150 s; under 4 fps the cap makes it longer. That 10 s covers a slow worker
+   streaming a far save's column is not measured; it is in `REVIEW:l4:gate-reach-round1`, beside the 6.5 s hold that
+   passes every spec (dynamic R4).
+401. **What the round-1 gates do not see, recorded where it is read.** The chaos gate does not see the grounding rule:
+   with its harness back on `computedGrounded()` it stays green (dynamic H1); the rule's gates are
+   `player-wall-ground-gates` and `grounding.test.js`, and `.claude/rules/physics.md` names them. The centre-clear
+   closure (item 394) covers the vertical sink it measured; a capsule reaching sideways into the rock with its centre and
+   lowest point clear is the open row `REVIEW:l13:sideways-reach-in-rock-unread`. The grounding rejects the rim contact
+   steeper than 45 degrees that `REVIEW:chaos-play:rim-wedge` names, so that row's jump path is gone by design.
+402. **The chaos gate on seeds 1 to 8 at `6616818d`**, run locally (CI plays seed 1; `CHAOS_SEED=<n>` plays another), the
+   five chaos files on each seed:
+
+   | Seed | Sessions (56) red | Walk-held readings | Deepest in solid | Denominator floors |
+   |---|---|---|---|---|
+   | 1 | 0 | 14 | 0.000 m | all met |
+   | 2 | 0 | 14 | 0.000 m | all met |
+   | 3 | 0 | 19 | 0.000 m | field-origin swapsRefused 1, floor 2 (SETUP) |
+   | 4 | 0 | 16 | 0.000 m | all met |
+   | 5 | 0 | 15 | 0.000 m | field-origin ownShellOut 0, floor 1 (SETUP) |
+   | 6 | 0 | 26 | 0.000 m | all met |
+   | 7 | 0 | 12 | 0.000 m | all met |
+   | 8 | 0 | 16 | 0.000 m | all met |
+
+   Every one of the 448 sessions holds I1 to I8 at 0. The two floor misses are this lane's: the round-1 dynamic review
+   read the same two at `082ea2ed`, and at `eff58e9a` (with the head's new and changed gate files) seeds 2, 3 and 5
+   passed every test. Which change moved the driver is not measured; the open row is
+   `REVIEW:l13:chaos-floors-seeds-3-5`.
+
+---
+
 ## 2026-10-31 (lane start-stall) — [LOOP] a Start clicked before the world is built: the stall named, the world-building screen a still caption, and the touch-tap flake's cause
 
 Registry `REVIEW:l10:music-e2e-title-hang` (MED): on CI's software renderer a title Start clicked before the spawn chunk

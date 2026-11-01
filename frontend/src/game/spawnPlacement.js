@@ -3,7 +3,7 @@
 // handed the Rapier world, the body and the camera. No React or Rapier import.
 import { LOAD_FIT_SPAN } from './formFit.js';
 import { BASE_CAPSULE } from './beasts.js';
-import { placeBody } from './kinematicMove.js';
+import { placeBody, CONTROLLER_OFFSET } from './kinematicMove.js';
 import { resetStance } from './stanceState.js';
 
 export const SPAWN_FREEZE_Y = 120;      // hold in the sky until the world builds / on void-fall
@@ -81,6 +81,68 @@ export function resolveSpawnGround(blockGroundY, physicsY, waitedSec, probeAvail
 
 export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
 
+// THE FALLBACK STANDS ON GROUND THAT ANSWERS BEFORE IT DROPS BLIND. A corner whose four columns the player dug out of the
+// world answers nothing, as a corner whose chunks have not streamed in does, so the wait ran out, the body dropped blind
+// from SPAWN_FALLBACK_Y down the hole, fell out of the world, and the void guard sent it back to wait again: nine resets in
+// a minute's idle (registry REVIEW:l4:origin-corner-dug-through-respawn-loop; tests/gates/player-placement-gates.test.jsx).
+// So when the wait runs out, the column nearest the corner within FALLBACK_REACH whose ground answers (above PROBE_MIN_Y,
+// the spawn's own rule) is stood on, at its middle. A column in a chunk that has not streamed in answers nothing either,
+// so this stands no player on ground that is not there; with none answering, the blind drop goes ahead and is followed
+// (followBlindDrop).
+// THE CAPSULE IS THE BODY'S AS IT IS. A beast form outlives the void guard's reset (returnToSpawn ends none), and the
+// bull's radius (0.62 m) and the golem's (0.5 m), with the controller's offset, reach past the column's 0.5 m half-width:
+// stood on that column's ground alone, the bull went 0.12 m into a column beside it one block higher
+// (tests/gates/player-placement-gates.test.jsx). So the ground is the highest of the columns the capsule reaches, the
+// way the load fit's column fallback reads them (game/formFit.js fitLoadedSpot); one that answers nothing adds nothing.
+// Cost: up to (2 x FALLBACK_REACH)^2 probes, and the up to nine the capsule reaches, once, on the frame the wait runs out.
+const FALLBACK_REACH = 8;
+
+/** The middle of the column nearest the spawn corner within FALLBACK_REACH whose ground answers, and its ground; or null. */
+function nearestAnsweringColumn(probe) {
+  let best = null;
+  for (let x = -FALLBACK_REACH; x < FALLBACK_REACH; x++) {
+    for (let z = -FALLBACK_REACH; z < FALLBACK_REACH; z++) {
+      const d = Math.hypot(x + 0.5, z + 0.5);
+      if (d > FALLBACK_REACH || (best && d >= best.d)) continue;
+      const y = probe(x, z);
+      if (y == null || Number.isNaN(y) || y <= PROBE_MIN_Y) continue;
+      best = { x: x + 0.5, z: z + 0.5, y, d };
+    }
+  }
+  return best;
+}
+
+/** The highest ground that answers under a capsule of `shape` centred over (x, z), from `ground`, the column's own: every
+ *  column its radius and the controller's offset reach. */
+function groundUnder(probe, x, z, ground, shape) {
+  const reach = shape.radius + CONTROLLER_OFFSET;
+  let top = ground;
+  for (let cx = Math.floor(x - reach); cx <= Math.floor(x + reach); cx++) {
+    for (let cz = Math.floor(z - reach); cz <= Math.floor(z + reach); cz++) {
+      const y = probe(cx, cz);
+      if (Number.isFinite(y)) top = Math.max(top, y);
+    }
+  }
+  return top;
+}
+
+/**
+ * Where the spawn stands the body (Components.jsx's spawn branch): over the corner on resolveSpawnGround's ground, or, once
+ * its wait has run out (`blind`), on the nearest column whose ground answers, as high as the highest column the body's
+ * capsule reaches there. Returns { x, y, z, blind }: the centre to place the body at, and whether the drop is blind (the
+ * caller follows it, followBlindDrop).
+ *   spawn  resolveSpawnGround's answer for a frame that spawns (not a retry)
+ *   probe  the ground probe (Terrain.jsx getMobGroundLevel), or null when there is none
+ *   shape  the body's capsule as it is now ({ halfHeight, radius }: a beast form's, or the base one)
+ */
+export function spawnSpot(spawn, probe, shape = BASE_CAPSULE) {
+  if (spawn.blind && probe) {
+    const near = nearestAnsweringColumn(probe);
+    if (near) return { x: near.x, y: spawnTargetY(groundUnder(probe, near.x, near.z, near.y, shape)), z: near.z, blind: false };
+  }
+  return { x: 0, y: spawnTargetY(spawn.groundY), z: 0, blind: !!spawn.blind };
+}
+
 // THE BLIND DROP IS FOLLOWED. The fallback drops the body from SPAWN_FALLBACK_Y over a corner whose ground has not
 // answered, and a chunk whose trimesh lands round the falling body leaves it in the rock: at the corner the capsule
 // straddles the closed edges of four chunks, the only faces there, and they stop it inside them
@@ -123,9 +185,11 @@ export function spawnCornerGround(probe) {
 }
 
 // A RESUMED save (the context-loss reload) spawns the player where they stood, not on the origin column (review
-// 2026-10-27, steady-cool HIGH 2). Its frames wait longer than the origin probe's: the column may be chunks away, and
-// streaming has to reach it after the camera moves there. A save that never loads falls back to the origin spawn.
-export const RESUME_PROBE_MAX_FAILS = 600;
+// 2026-10-27, steady-cool HIGH 2). It waits longer than the origin probe: the column may be chunks away, and streaming has
+// to reach it after the camera moves there. A save that never loads falls back to the origin spawn. The wait is time, as
+// the origin spawn's is: counted as 600 frames it was 10 s at 60 Hz and 5 s at 120 Hz, under the 6 s the origin spawn
+// waits for its own column (tests/gates/player-placement-gates.test.jsx holds it at both rates).
+export const RESUME_PROBE_MAX_SEC = 10;
 
 /** The ground probe at a loaded save's column (Terrain.jsx getMobGroundLevel, which casts at x + 0.1, z + 0.1), or null
  *  until the columns at the four corners of the square the load fit reads (game/formFit.js LOAD_FIT_SPAN round the
@@ -146,14 +210,15 @@ export function resumeColumnProbe(probe, r) {
 // as proof the column's colliders exist, never as the height (the player may have stood under a roof). Any answer is that
 // proof: the probe hits only a collider, and over the deep ocean the seabed lies at 6 to 10 (world/oceanProfile.js),
 // under the origin spawn's PROBE_MIN_Y, where a save made swimming was held 600 frames and then reset to the origin.
-// probeFails: the CURRENT fail count. Returns { place, hold }: hold = keep the body there and wait (the caller counts the
-// frame); place = the saved centre, which the caller fits the base capsule near (game/formFit.js fitLoadedSpot);
-// neither = give up and use the origin spawn.
-export function resolveResumeSpawn(resume, physicsY, probeFails) {
+// waitedSec: the seconds already held (before this frame); stepSec: this frame's step. Returns { place, hold }: hold = keep
+// the body there and wait (the caller adds stepSec to its wait); place = the saved centre, which the caller fits the base
+// capsule near (game/formFit.js fitLoadedSpot); neither = give up and use the origin spawn, on the frame whose step
+// reaches RESUME_PROBE_MAX_SEC.
+export function resolveResumeSpawn(resume, physicsY, waitedSec, stepSec = 0) {
   const usable = !!resume && [resume.x, resume.y, resume.z].every(Number.isFinite) && !isVoidFall(resume.y);
   if (!usable) return { place: null, hold: false };
   const loaded = Number.isFinite(physicsY);
   if (loaded) return { place: { x: resume.x, y: resume.y, z: resume.z }, hold: false };
-  if (probeFails + 1 < RESUME_PROBE_MAX_FAILS) return { place: null, hold: true };
+  if (waitedSec + stepSec < RESUME_PROBE_MAX_SEC) return { place: null, hold: true };
   return { place: null, hold: false };
 }

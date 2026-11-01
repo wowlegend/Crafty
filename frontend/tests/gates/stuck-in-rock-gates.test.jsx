@@ -303,6 +303,48 @@ describe('a body left in the rock is stood clear where it is, in the real world 
     });
   }
 
+  // Off the spawn corner, where no blind drop's follow reads the ground: a chunk lands round the body with its top face
+  // across the capsule (the centre 0.05 or 0.4 m over the face, in the air, the lowest point 0.85 or 0.5 m under it).
+  const OFF_CORNER = [
+    { name: 'inside chunk 1_1', x: 20.5, z: 20.5, land: ['1_1'] },
+    { name: 'across the border of chunks 0_1 and 1_1', x: 16, z: null, land: ['0_1', '1_1'] },
+  ];
+  /** The first row along the border x = 16 (z 18 to 29) where the columns either side stand level. */
+  const levelBorderZ = () => {
+    for (let z = 18; z < 30; z++) if (groundProbe(15, z) !== null && groundProbe(15, z) === groundProbe(16, z)) return z + 0.5;
+    return null;
+  };
+  for (const hz of [60, 120]) for (let place of OFF_CORNER) for (const over of [0.05, 0.4]) {
+    it(`a chunk landing across the capsule off the spawn corner (${place.name}), its centre ${over} m over the top face and its lowest point under it, leaves the player standing on its top (${hz} Hz)`, () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      standPlayer(hz);
+      const pz = place.z ?? levelBorderZ();
+      expect(pz, 'SETUP: no row along the border stands level').not.toBeNull();
+      place = { ...place, z: pz };
+      const [x, z] = [Math.floor(place.x - 0.5), Math.floor(place.z)];
+      const top = groundProbe(x, z);
+      expect(groundProbe(Math.floor(place.x), z), 'SETUP: the columns the capsule stands across differ in height').toBeCloseTo(top, 3);
+      expect(top, 'SETUP: the column off the corner has no ground').toBeGreaterThan(15);
+      expect(runsIn(h.world, x, z).some(([a, b]) => a <= top - 2 && b >= top - 0.01), 'SETUP: the column is not rock to 2 m under its top').toBe(true);
+      for (const key of place.land) unmountChunk(key);
+      const start = { x: place.x, y: top + over, z: place.z };
+      putBody(start);
+      for (const key of place.land) mountChunk(key);
+      h.world.step(); // the step that puts the new trimeshes in the broad phase, which this test's own rays read
+      expect(centreInRock(start), `SETUP: the centre is in the rock, so this is the centre's case ${JSON.stringify(start)}`).toBe(false);
+      expect(depthInRock(), 'SETUP: the capsule does not reach into the rock').toBeGreaterThan(0.3);
+      const ys = [];
+      for (let i = 0; i < 2 * hz; i++) { frame(hz); ys.push(h.body.translation().y); }
+      const end = at();
+      const row = { top, start, end, depth: depthInRock(), voids: warned(warn, VOID), drift: +(Math.max(...ys.slice(-hz / 2)) - Math.min(...ys.slice(-hz / 2))).toFixed(3) };
+      expect(row.depth, `the capsule was left in the rock ${JSON.stringify(row)}`).toBeLessThanOrEqual(TOL);
+      expect(end.y, `the player does not stand on the column's top ${JSON.stringify(row)}`).toBeCloseTo(top + 0.95, 1);
+      expect(Math.hypot(end.x - start.x, end.z - start.z), `the player was moved away from where the chunk landed round them ${JSON.stringify(row)}`).toBeLessThan(1);
+      expect(row.voids, `the void guard reset the player ${JSON.stringify(row)}`).toBe(0);
+      expect(row.drift, `the player is not standing ${JSON.stringify(row)}`).toBeLessThan(0.01);
+    });
+  }
+
   it('a reading of the centre in solid that clears within 0.15 s moves no one; held a second, the player is stood clear', () => {
     const hz = 60;
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

@@ -64,7 +64,7 @@ vi.mock('../../src/world/ElementZoneSystem.jsx', () => ({ ElementZoneSystem: () 
 const { Player } = await import('../../src/Components.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore.jsx');
 const { buildSaveData } = await import('../../src/game/saveSchema.js');
-const { BASE_CAPSULE } = await import('../../src/game/beasts.js');
+const { BASE_CAPSULE, BEAST_FORMS } = await import('../../src/game/beasts.js');
 const { spawnTargetY, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } = await import('../../src/game/spawnPlacement.js');
 const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
 const { setIntent, setActive, resetInput } = await import('../../src/input/inputState.js');
@@ -211,13 +211,16 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
       align(hz, phase);
       const p = h.body.translation();
       h.body.setTranslation({ x: p.x, y: 200, z: p.z }, true);
+      // The fall's speed: the frame's own move, read from the target each frame's move is added to (nextTranslation), not from
+      // translation(), which at 120 Hz moves only on the frames that step, two frames' fall at a time.
       let fall = 0;
       for (let i = 0; i < 200; i++) {
-        const y0 = h.body.translation().y;
+        const y0 = h.body.nextTranslation().y;
         frame(hz);
-        fall = Math.max(fall, (y0 - h.body.translation().y) * hz);
+        fall = Math.max(fall, (y0 - h.body.nextTranslation().y) * hz);
       }
-      expect(fall, 'SETUP: the fall never reached terminal speed').toBeGreaterThan(49);
+      expect(fall, 'SETUP: the fall never reached terminal speed').toBeGreaterThan(45);
+      expect(fall, 'SETUP: the fall read faster than terminal speed: the reading is not the speed').toBeLessThan(50.5);
       expect(h.body.translation().y, 'SETUP: the fall reached the ground').toBeGreaterThan(LAND_TOP + 20);
       // Through the world: the body under it, as a fall at that speed where no ground has streamed in leaves it.
       const q = h.body.translation();
@@ -263,6 +266,27 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
     expect(r.worst.depth, `the capsule reached into solid after the release ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
     expect(r.end.y, `the player does not stand on the saved column's top ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
   });
+
+  it('a load whose column never streams in is held the same time at 60 and 120 Hz, longer than the origin spawn\'s wait, then gives up for the origin', () => {
+    // A save far outside the loaded chunks: its column never answers, so the hold runs to its end (game/spawnPlacement.js
+    // resolveResumeSpawn). The wait is time, so a 120 Hz display holds as long as a 60 Hz one.
+    const held = {};
+    for (const hz of [60, 120]) {
+      cleanup();
+      standPlayer(hz);
+      const saved = { x: 200.5, y: 40, z: 200.5 };
+      load(saved, hz, 2);
+      expect(groundProbe(saved.x, saved.z), 'SETUP: the saved column answers').toBeNull();
+      let frames = 0;
+      while (useGameStore.getState().resumeSpawn && frames < 60 * hz) { frame(hz); frames++; }
+      expect(useGameStore.getState().resumeSpawn, `SETUP: the hold never gave up at ${hz} Hz`).toBeNull();
+      held[hz] = +(frames / hz).toFixed(3);
+      for (let i = 0; i < 2 * hz && !(h.body.translation().y < LAND_TOP + 2); i++) frame(hz);
+      expect(at(), `the player was not sent to the origin spawn at ${hz} Hz once the hold gave up`).toMatchObject({ x: 0, z: 0 });
+    }
+    expect(Math.abs(held[60] - held[120]), `the hold's length depends on the frame rate ${JSON.stringify(held)}`).toBeLessThanOrEqual(2 / 60);
+    expect(held[120], `the hold at 120 Hz is no longer than the origin spawn's wait (${SPAWN_PROBE_MAX_SEC} s) ${JSON.stringify(held)}`).toBeGreaterThan(SPAWN_PROBE_MAX_SEC);
+  });
 });
 
 /** Whether the void guard said it fired (Components.jsx warns once a reset). */
@@ -275,6 +299,93 @@ const spot = (p) => ({ x: r4(p.x), y: r4(p.y), z: r4(p.z) });
 function placement() {
   return { body: spot(h.body.translation()), collider: spot(h.body.collider(0).translation()), eye: h.camera.position.toArray().map(r4) };
 }
+
+/** The player dug the spawn corner's four columns (x and z -1 and 0) out of the world: their chunks re-meshed, as a
+ *  React commit re-mounts them. */
+function digSpawnCorner() {
+  for (const key of ['-1_-1', '0_-1', '-1_0', '0_0']) {
+    const [cx, cz] = key.split('_').map(Number);
+    const b = grid.logical.get(key).slice();
+    for (const [x, z] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+      if (Math.floor(x / CHUNK_SIZE) !== cx || Math.floor(z / CHUNK_SIZE) !== cz) continue;
+      for (let y = 0; y < 40; y++) b[voxelIndex(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE)] = 0;
+    }
+    h.world.removeRigidBody(chunks.get(key).body);
+    const body = h.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE));
+    const m = generateMesh(cx, cz, b, undefined);
+    chunks.set(key, { body, collider: h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body) });
+  }
+}
+
+describe('the respawn over a spawn corner dug out of the world stands on the nearest ground, and does not loop', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: with the corner's four columns dug through y 0, a minute idle resets the player at most once`, () => {
+      standPlayer(hz);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      digSpawnCorner();
+      for (const [x, z] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+        expect(groundProbe(x, z), `SETUP: the corner column (${x}, ${z}) still answers after the dig`).toBeNull();
+      }
+      for (let i = 0; i < 60 * hz; i++) frame(hz);
+      const end = at();
+      const r = { resets: voidWarnings(warn), end };
+      expect(r.resets, `SETUP: the dig did not drop the player out of the world ${JSON.stringify(r)}`).toBeGreaterThan(0);
+      expect(r.resets, `the respawn over the dug corner looped ${JSON.stringify(r)}`).toBeLessThanOrEqual(1);
+      expect(end.y, `the player does not stand on the land after the minute ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+      expect(Math.hypot(end.x, end.z), `the player stands far from the spawn corner ${JSON.stringify(r)}`).toBeLessThan(3);
+    });
+  }
+});
+
+/** Column (x, z) one cell higher than the land: the cell at LAND_TOP is ground in the voxels deepestSolid reads, and
+ *  digSpawnCorner, which meshes from those voxels, builds it into the chunk's trimesh. Returns the undo for the voxels. */
+function raiseColumn(x, z) {
+  const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE), key = `${cx}_${cz}`;
+  const was = grid.logical.get(key);
+  const b = was.slice();
+  b[voxelIndex(x - cx * CHUNK_SIZE, LAND_TOP, z - cz * CHUNK_SIZE)] = genCell(x, LAND_TOP - 1, z);
+  grid.logical.set(key, b);
+  return () => grid.logical.set(key, was);
+}
+
+// The respawn's wait runs out over the dug corner while the bull form is on (a form outlives the void guard's reset), and
+// the column nearest the corner stands beside one a block higher. The bull's radius, 0.62 m, reaches 0.12 m past the
+// column it stands over into that one (game/spawnPlacement.js spawnSpot reads every column the body's capsule reaches).
+describe('the respawn over the dug corner stands the body\'s own capsule clear of every column it reaches', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: in the bull form, beside a column a block higher, the respawn does not stand the capsule in it`, () => {
+      const bull = BEAST_FORMS.ice;
+      standPlayer(hz);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      act(() => { useGameStore.setState({ beastFormActive: true, activeBeastForm: 'ice' }); });
+      for (let i = 0; i < 4; i++) frame(hz);
+      expect(h.body.collider(0).radius(), 'SETUP: the bull form did not swap in').toBeCloseTo(bull.radius, 6);
+      const undo = raiseColumn(-3, -1);
+      try {
+        digSpawnCorner();
+        expect(groundProbe(-3, -1), 'SETUP: the raised column does not stand a block over the land').toBeCloseTo(LAND_TOP + 1, 4);
+        let placed = null, worst = { depth: 0, cell: null };
+        for (let i = 0; i < 12 * hz && !(placed && i > placed.frame + hz); i++) {
+          frame(hz);
+          if (!placed && voidWarnings(warn) > 0 && h.body.translation().y < SPAWN_FREEZE_Y - 1) {
+            placed = { frame: i, at: at(), radius: +h.body.collider(0).radius().toFixed(2) };
+          }
+          if (placed) {
+            const d = deepestSolid(grid, h.body);
+            if (d.depth > worst.depth) worst = { depth: +d.depth.toFixed(3), cell: d.cell, at: at() };
+          }
+        }
+        const r = { placed, worst, resets: voidWarnings(warn), end: at() };
+        expect(placed, `SETUP: the respawn never stood the player down ${JSON.stringify(r)}`).not.toBeNull();
+        expect(placed.radius, `SETUP: the bull form had ended when the wait ran out ${JSON.stringify(r)}`).toBe(bull.radius);
+        expect(worst.depth, `the respawn stood the bull's capsule in a column it reaches ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
+        expect(r.resets, `the respawn beside the dug corner looped ${JSON.stringify(r)}`).toBe(1);
+      } finally {
+        undo();
+      }
+    });
+  }
+});
 
 describe('the void guard fires under the world, never in it, and it and the respawn go back to the spawn one way', () => {
   it('a player on the deepest seabed (world/oceanProfile.js DEEP_FLOOR) stands and walks there, and is not reset to the origin', () => {

@@ -128,19 +128,20 @@ describe('the chaos-play instruments see what they report on', () => {
     expect(escape(S), 'a block of the player\'s own that opens nothing read as their way out').toEqual({ free: false, by: null });
   });
 
-  it('I1 counts a capsule a tenth of a metre into a wall (between TOL and the shallowest trap the gate exists for)', () => {
+  it('I1 counts a capsule 0.04 m into a wall (between TOL and the shallowest trap the gate exists for, 0.05 m)', () => {
     const S = session();
     const t = S.p.body.translation();
     const [x, z] = [Math.floor(t.x), Math.floor(t.z)];
     S.p.body.setTranslation({ x: x + 0.5, y: t.y, z: z + 0.5 }, true);
     for (let i = 0; i < 5; i++) tick(S, {});
-    // A wall face 0.1 m from the capsule's side, then the body 0.2 m into it: 0.1 m deep.
+    // A wall face 0.1 m from the capsule's side, then the body 0.14 m into it: 0.04 m deep, under the 0.05 m the traps start
+    // at, so a tolerance loosened to anything over 0.04 stops counting it.
     for (const y of [LAND_TOP, LAND_TOP + 1]) setCell(S, x + 1, y, z, STONE);
     const at = S.p.body.translation();
-    S.p.body.setTranslation({ x: at.x + 0.2, y: at.y, z: at.z }, true);
+    S.p.body.setTranslation({ x: at.x + 0.14, y: at.y, z: at.z }, true);
     const d = deepestSolid(S).depth;
-    expect(d, 'SETUP: the capsule is not between 6 mm and 0.3 m into the wall').toBeGreaterThan(0.006);
-    expect(d, 'SETUP: the capsule is not between 6 mm and 0.3 m into the wall').toBeLessThan(0.3);
+    expect(d, 'SETUP: the capsule is not between 6 mm and 0.05 m into the wall').toBeGreaterThan(0.006);
+    expect(d, 'SETUP: the capsule is not between 6 mm and 0.05 m into the wall').toBeLessThanOrEqual(0.05);
     tick(S, {});
     expect(S.counts.I1, `I1 did not count a capsule ${d.toFixed(3)} m into a wall`).toBeGreaterThan(0);
   });
