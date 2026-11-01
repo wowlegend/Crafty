@@ -40,10 +40,40 @@ const readCanvasRatios = (page) =>
       .map((c) => `${c.width}x${c.height}/${c.clientWidth}x${c.clientHeight}`),
   );
 
+// A TOUCH CONTEXT GRANTS NO POINTER LOCK THAT NO GESTURE ASKED FOR (DECISIONS 2026-10-31 item 377). Pointer Lock 2.0
+// refuses a request made without transient activation unless the document released a lock itself with exitPointerLock()
+// (requestPointerLock, step 3), and the app's world-ready auto-lock (App.jsx, 100 ms after the spawn chunk) has none.
+// Playwright runs every page.evaluate as a user gesture (frame-cap.spec.js says how that was found), so an auto-lock that
+// fired inside the activation a read had just opened was granted on CI, and under the lock a tap's pointerdown carries
+// clientX/clientY 0,0: Playwright's hit-target check reads the canvas there and blocks every retry of the tap
+// (panels.spec.js:83, pause-freezes-world.spec.js:217; run 41261223279). Here a request goes through only inside a trusted
+// input event, or once the page has released a lock itself, as the spec allows. On Element.prototype, where the browser
+// defines it, so a spec that deletes the API (death-pointer-lock.spec.js, the iPad) deletes this with it.
+const lockOnTrustedGestureOnly = () => {
+  const real = Element.prototype.requestPointerLock;
+  if (typeof real !== 'function') return;
+  const GESTURES = new Set(['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'keydown', 'keyup', 'touchend']);
+  let released = false;
+  const exit = Document.prototype.exitPointerLock;
+  if (typeof exit === 'function') {
+    Document.prototype.exitPointerLock = function exitPointerLock(...args) {
+      if (document.pointerLockElement) released = true;
+      return exit.apply(this, args);
+    };
+  }
+  Element.prototype.requestPointerLock = function requestPointerLock(...args) {
+    const ev = window.event;
+    if (released || document.pointerLockElement === this || (ev && ev.isTrusted && GESTURES.has(ev.type))) return real.apply(this, args);
+    setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
+    return Promise.reject(new DOMException('pointer lock refused (e2e touch context: no gesture asked for it)', 'NotAllowedError'));
+  };
+};
+
 export const test = base.extend({
   e2eDprCap: [E2E_DPR_CAP, { option: true }],
-  page: async ({ page, e2eDprCap }, use, testInfo) => {
+  page: async ({ page, e2eDprCap, hasTouch }, use, testInfo) => {
     if (e2eDprCap != null) await page.addInitScript((cap) => { window.__craftyE2eDprCap = cap; }, e2eDprCap);
+    if (hasTouch) await page.addInitScript(lockOnTrustedGestureOnly);
     // What the game's isolated reactors and effects throw while this test runs (src/game/isolatedEffects.js), collected
     // here in Node by listening only: console events and requests keep coming across every reload of the page, and this
     // tracker is this test's alone. Nothing here calls into the page, because a call is a user gesture there
