@@ -3,7 +3,7 @@
  "frames": {
   "before": "caption-before.jpg (debfdfc2, soft text shadows)",
   "after": "caption-after.jpg (the ink outline of ui/onWorldText.js)",
-  "plate": "caption-plate.jpg (the solid plate of 30fef172, superseded: it drained the CI flood worse)",
+  "plate": "caption-plate.jpg (the solid plate of 30fef172, superseded by the ink outline; the CI runs did not separate the two, DECISIONS 2026-10-31 item 380)",
   "crops": "caption-before-crop.jpg, caption-after-crop.jpg (the caption at full resolution)"
  },
  "measured": {

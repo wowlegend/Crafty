@@ -302,8 +302,8 @@ function GameApp({ experienceSystem }) {
           update the lock sends it, and on a software compositor a layer covering the live canvas left it unable to, most
           of all a translucent, blurred, animated one (DECISIONS 2026-10-31 items 370-371; tests/e2e/start-before-built.spec.js).
           The unbuilt world behind it is bright fog, where soft-shadowed text read 1.03:1, so the caption takes the ink outline
-          of type drawn on the world (ui/onWorldText.js). Not a plate: a small solid plate under it left the page draining
-          the flood worse on CI (DECISIONS 2026-10-31 item 380). */}
+          of type drawn on the world (ui/onWorldText.js). Not a plate: a small solid plate was tried first, and the CI runs did
+          not show that it cost the drain (DECISIONS 2026-10-31 item 380); the outline adds no element over the canvas. */}
       {!isWorldBuilt && (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-50 flex flex-col items-center">
           <h2 className="text-3xl font-bold text-text mb-2 font-mono tracking-widest" style={ON_WORLD_TEXT}>{t('world.generating')}</h2>

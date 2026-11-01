@@ -51,7 +51,7 @@ server, one browser at a time from 21:00Z, on ports 4291 and 4292.
 371. **The fix: the world-building screen is a still caption at the foot of the screen** (`src/App.jsx`, `ac6409ed`). Its
    two lines of text, unchanged, sit there with no background, no blur, no spinner, no pulse and no pointer events, and
    nothing covers the canvas. Its text shadow did not make it legible over the unbuilt world's bright fog (1.03:1 for the
-   subtitle, measured on the frame), so it now sits on a small solid plate (item 380). Under the title it is covered, as
+   subtitle, measured on the frame), so it now takes the ink outline of type drawn on the world (item 380). Under the title it is covered, as
    before; a Start clicked before the world is built now shows the world streaming in behind the caption instead of a black
    screen, a look change to the loading moment, shot on the real GPU of item 372 (the before and after pair is item 380's).
    A first fix, `7179f88f`, kept the full-screen layer opaque and still. An earlier form of
@@ -181,28 +181,34 @@ server, one browser at a time from 21:00Z, on ports 4291 and 4292.
      from the click, or to the end. Judged in time, not in reads: with `page.waitForTimeout` pacing the samples, each
      missed sample took 12 s while a mutant held the page's main thread and a 45 s silence read as 3 missed reads (run
      41268462804); Node's own timer paces them now;
-   - **late:** the browser's floor (its lowest sample) over the window's last 15 s more than 50 MB above its floor over
-     the 15 s before. Floors, not peaks: a page that falls behind for one sample spikes the browser and gives it back
-     (+275 and +328 MB, then +42, run 41268462804), which a max-minus-first measure failed 6 of 9 plated attempts on;
-     a leak raises the floor;
+   - **late:** the browser's floor (its lowest sample, over the reads the page answered) over the window's last 15 s
+     more than 50 MB above its floor over the 30 s before. Floors, not peaks: a page that falls behind for one sample
+     spikes the browser and gives it back (+275 and +328 MB, then +42, run 41268462804), which a max-minus-first measure
+     failed 6 of 9 plated attempts on; a leak raises the floor. Over answered reads only, and not judged when a span
+     holds none, because a missed read finds the browser at a spike (item 383);
    - **world:** the spawn chunk not built 135 s after the click (the hold ends 45 s after the lock).
    A browser that grants no lock, or streams no flood, is INCONCLUSIVE: a printed skip on a workstation, a failure on CI
    (`process.env.CI`), so the gate cannot go dark there if CI's Chromium stops flooding. The flood is counted from the
    game's own `pointermove` events (each carries the raw updates coalesced into it), not from a `pointerrawupdate`
    listener the shipped page lacks (static finding 5). That listener is not free: added back on the runner, the outlined
-   caption's page failed 4 of 4 attempts (silent 35 to 66 s, the floor +63 to +99 MB, once the bound at +745 MB),
+   caption's page failed 4 of 4 attempts on the answers arm (silent 35 to 66 s; once also the bound, at +745 MB),
    against 0 of 8 without it (run 41269336217), so item 374's spec, and the probes behind items 370 and 371, loaded
-   the page they measured (item 382).
+   the page they measured (item 382). That run also printed the late arm failing three of the four at +63, +99 and
+   +79 MB; those floors were missed-read spikes (none of the four had an answered read in the window's last half,
+   item 383), so the verdict rests on the answers arm.
    The hold now delivers its held meshes in order ahead of any later one, as its comment said (static finding 9).
    The thresholds against what the outlined caption showed in 27 green attempts on nine runners (runs 41269336217 to
    41270557952): the browser +132 to +364 MB (600), the longest silence 4.9 to 23.7 s (30), the floor's rise -24 to +39
-   MB (50), the world built 50 to 68 s after the click (135). The silence and floor bounds have the least room.
+   MB (50), the world built 50 to 68 s after the click (135). The silence and floor bounds have the least room. (The floor
+   range is the arm as `3ec4218f` had it; item 383's arm reads -17 to +39 MB over 40 outlined attempts.)
    On any failure the spec now kills every Chromium process of the test from Node before raising it. Item 374's spec
    crashed the renderer through CDP instead, and that did not hold: in run 41269336217 one old-screen attempt filled its
    runner and the runner was shut down with nothing printed, and in run 41270116196 the bound failed at +895 MB, the
-   page then went unanswered, and the browser grew to 11.5 GB while Playwright waited to close it, until that runner was
-   shut down too. Proof of the committed spec on the runner through `scripts/dev/mutate-e2e.sh` (run 41270557952, the
-   spec byte-identical; nothing mutated committed), each arm red by a mutant that reds it alone: the old screen RED 3 of
+   page then went unanswered, and the largest chrome-headless process on the runner grew to 11.5 GB while Playwright
+   waited to close it, until that runner was shut down too (the log's process list names no role, so that process is not
+   shown to be the browser rather than the renderer). Proof of the spec as `3ec4218f` committed it, on the runner through
+   `scripts/dev/mutate-e2e.sh` (run 41270557952, the spec byte-identical; nothing mutated committed; its late arm read
+   every sample until item 383), each arm red by a mutant that reds it alone: the old screen RED 3 of
    3 on the bound (+672, +657, +609 MB, each runner keeping its memory and its log); a page that releases the lock 20 s
    after it and blocks its main thread 60 s RED on answers alone (60.2 s silent); 16 MB/s of blobs from 60 s after the
    lock RED on late alone (the floor +84 MB, the bound +364 MB passed); a spawn chunk that never marks the world built
@@ -264,7 +270,64 @@ server, one browser at a time from 21:00Z, on ports 4291 and 4292.
    378 shows loads the page, so the caption's 88 to 545 MB and its residual stall of about 1 in 20 describe the page
    under that listener, not the shipped page; the old screen still fails without it (item 378).
    `REVIEW:start-stall:caption-page-still-stalls` stays open on its acceptance with that recorded. One commit message of
-   this round overstates: `d8b50695`'s, on what the plate cost (item 380 says how).
+   this round overstates: `d8b50695`'s, on what the plate cost (item 380 says how). The next round's corrections are item
+   383's.
+
+383. **Fix round 3: the late arm reads answered reads only, the blur ban reads every stylesheet, and the records are
+   corrected** (`tests/e2e/start-before-built.spec.js` `f5c8b67c`, `tests/gates/static-gates.test.js` `c9199dfd`; PR #76's
+   round-2 reviews: the dynamic review's F1 to F5 and the static review's findings 3 and 4). This round changes tests and
+   records only; `src/App.jsx` changes a comment.
+   - **F1, the late arm no longer calls a missed read a leak.** It took each half's floor over every sample, and a read that
+     misses finds the browser at a spike (13 to 358 MB above the attempt's answered floor in 76 missed samples of the green
+     outlined attempts, runs 41269336217 to 41271264457). So a span whose samples all missed read a spike as its floor:
+     plate-a attempt 3 of run 41268462804 failed at +210 MB on one missed sample, and the head's own green run
+     (41271264457) had one answered read of three in its last half. Both floors are now taken over the reads the page
+     answered. *The first form did not hold.* It compared the last 15 s with the 15 s before and read "not reached" when a
+     half held no answered read. On the runner (run 41274837477) the slow-leak mutant was RED once (+108 MB) and then
+     SURVIVED: the leaking page missed four reads in a row (63 to 81 s), so its reference half held none, the arm read "not
+     reached", and the answers arm saw 27.1 s of silence against its 30. The arm of `f025bc5b` reads -52 MB on that run as
+     well: the missed reads' spikes hid the leak, which only answered reads see. So the reference is the 30 s before the last
+     15 s (45 to 75 s), where the same run holds answered reads and reads +147 MB. A span with no answered read is "not
+     reached" and not failed, because a page silent that long is the answers arm's; a span with no browser reading at all
+     (ps found none) still fails the arm. What this leaves: a leak that also silences the page for the whole last 15 s, and
+     for under 30 s, passes both arms; and the arm reads only the window's last 45 s, when the world is usually built (50
+     to 68 s), so a leak confined to the unbuilt phase is held by the bound and the brake alone (static finding 1, not
+     changed here).
+     *Proof, on the runner* through `scripts/dev/mutate-e2e.sh` (run 41275275384 at `7e43b22c`, whose probe copy of the spec
+     is byte-identical to the committed one; nothing mutated committed): the slow-leak mutant RED on late alone 3 of 3 (+145,
+     +124, +85 MB; the bound +219, +342, +240 MB passed; answers and the world passed); the old screen RED on the bound
+     (+623 MB); the page that releases the lock and blocks its main thread 60 s RED on answers alone (63.2 s silent; late
+     not reached); a spawn chunk that never marks the world built RED on the world alone; Start with no lock RED as
+     INCONCLUSIVE on CI; the identity edit SURVIVED twice (late +6 and -11 MB); the outlined caption passed 8 of 8 (late -7
+     to +18 MB, the bound +108 to +398 MB, the longest silence 9.3 to 16.9 s, the world built 46 to 61 s after the click).
+     *Rescore of the logs* (102 attempts from runs 41268462804 to 41275275384, to the 0.1 s the logs print, so a sample
+     printed at 75.0 s may belong to either span; the spec's own function over the logs gives the same numbers, and the
+     runs' printed values are the ones cited above): plate-a attempt 3 (+210 MB FAIL) is not reached; the raw-listener
+     attempts 2 to 4 (+63, +99, +79 MB FAIL) are not reached, where the answers arm fails all four; the first form's missed
+     slow-leak sample reads +147 MB FAIL; no other attempt changes its verdict, every slow-leak attempt that failed before
+     still fails, and the 51 judged attempts of pages that are not mutants read -17 to +39 MB against the bound of 50 (the
+     40 outlined attempts the same). The surviving margin is the one item 378 names: the floor bound has the least room.
+   - **F4, the blur ban reads every stylesheet under `src/`** (`c9199dfd`). It read the JS and JSX files and `App.css`, so
+     `backdrop-filter` in `index.css` passed (8 of 8), while item 379 and the gate's comment say a blur on the screen reds
+     it. Its walk now covers every `.css` file and asserts it found at least the three there are. Proof
+     (`scripts/dev/mutate.sh`, 8 tests): the blur in `index.css` SURVIVED the gate as it stood and is RED on this one;
+     `-webkit-backdrop-filter` in `theme/fonts.css` RED; the old `App.css` and Tailwind-on-`App.jsx` checks RED; a walk that
+     enumerates nothing RED; an appended comment SURVIVED.
+   - **F5, noted.** The spec's flood counter calls `getCoalescedEvents()` on each `pointermove`, which nothing in `src`
+     calls, at about 70,000 raw updates a second by its own count. Its cost is not measured; the risk it carries is a false
+     red, never a false green. The spec's comment says so.
+   - **Records corrected.** F2: item 378 and the spec said the browser grew to 11.5 GB, but the log lists only the largest
+     chrome-headless process (the browser process read 1,010 MB at the verdict), so the 11.5 GB process is not shown to be
+     the browser. F3: item 378's "floor +63 to +99 MB" for the raw-listener run were missed-read spikes (none of the four
+     attempts had an answered read in its last half); that run's verdict rests on the answers arm, which failed all four.
+     Static finding 3: item 371 still said the caption sits on a plate, and `App.jsx`'s comment and `contrast.json` still
+     said the plate drained the flood worse, which item 380 withdraws; all three now say what item 380 says. Static finding
+     4: `REVIEW:start-stall:caption-page-still-stalls` was a `flake` that was not player-visible, while its note says whether
+     a player can meet the flood is not measured; it is now an `instrument` (a real mouse and a real GPU against the flood,
+     not yet run), area `input`, player-visible, as the registry's other unmeasured-exposure rows are.
+   - **Not changed here:** static finding 2 (the flood check asks whether the lock and 100 updates were ever seen, not for
+     the whole unbuilt phase), 5 (the answers arm judges the longest silence, not the answered fraction) and 8 (the
+     counter's work, F5 above), and the touch buttons that stay live during the build, which have no registry row yet.
 
 ---
 
