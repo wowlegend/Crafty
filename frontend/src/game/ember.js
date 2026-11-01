@@ -112,8 +112,12 @@ export function emberMarks(unlockedTalents) {
   return out.sort((a, b) => a.cost - b.cost);
 }
 
-/** The dusk warning (ui/DuskWarning.jsx): once the roar is unlocked it adds that a full bar wakes the beast, on its key. */
-export function duskNotice(unlockedTalents) {
+/**
+ * The dusk warning (ui/DuskWarning.jsx): once the roar is unlocked it adds that a full bar wakes the beast, on its key
+ * where there is a keyboard. On touch the roar is a sector of the Aspect ring, so the line names no key there.
+ */
+export function duskNotice(unlockedTalents, touch = false) {
   const roar = KEY_MAP.find((r) => r.verb === 'roar');
-  return unlockedTalents?.[roar.talent] > 0 ? { key: 'notice.dusk.roar', vars: { key: roar.key } } : { key: 'notice.dusk' };
+  if (!(unlockedTalents?.[roar.talent] > 0)) return { key: 'notice.dusk' };
+  return { key: 'notice.dusk.roar', vars: { how: touch ? '' : { key: 'notice.keyHint', vars: { key: roar.key } } } };
 }

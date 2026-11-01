@@ -3,6 +3,7 @@ import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { isDuskApproaching } from '../game/dayPhase';
 import { duskNotice } from '../game/ember.js';
+import { isTouchUIMode } from '../input/touchDevice';
 
 /**
  * DuskWarning — the actionable "night is coming" pre-warning that completes the siege loop:
@@ -29,7 +30,7 @@ export default function DuskWarning() {
       if (isDuskApproaching(s.gameTime, s.isDay)) {
         if (armed.current) {
           armed.current = false;
-          const n = duskNotice(s.unlockedTalents);
+          const n = duskNotice(s.unlockedTalents, isTouchUIMode());
           if (n.vars) s.addNotification?.(n.key, 'warn', { vars: n.vars });
           else s.addNotification?.(n.key, 'warn');
         }

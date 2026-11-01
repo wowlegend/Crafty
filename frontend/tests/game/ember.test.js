@@ -204,10 +204,12 @@ describe('the readiness the bar and the dusk warning show', () => {
     expect(emberMarks({ [talentOf('grab')]: 0 }), 'a talent at rank 0 is not unlocked').toEqual([]);
   });
 
-  it('duskNotice: the roar\'s line on its key once the roar is unlocked, else the plain warning', () => {
+  it('duskNotice: the roar\'s line once the roar is unlocked, on its key with a keyboard and on none on touch, else the plain warning', () => {
     const roarKey = KEY_MAP.find((r) => r.verb === 'roar').key;
     expect(duskNotice({})).toEqual({ key: 'notice.dusk' });
     expect(duskNotice({ [talentOf('grab')]: 1, [talentOf('snare')]: 1 })).toEqual({ key: 'notice.dusk' });
-    expect(duskNotice({ [talentOf('roar')]: 1 })).toEqual({ key: 'notice.dusk.roar', vars: { key: roarKey } });
+    expect(duskNotice({ [talentOf('roar')]: 1 }))
+      .toEqual({ key: 'notice.dusk.roar', vars: { how: { key: 'notice.keyHint', vars: { key: roarKey } } } });
+    expect(duskNotice({ [talentOf('roar')]: 1 }, true)).toEqual({ key: 'notice.dusk.roar', vars: { how: '' } });
   });
 });
