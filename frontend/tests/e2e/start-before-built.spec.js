@@ -21,6 +21,9 @@ import { execSync } from 'node:child_process';
 //    entered and stays with the world unbuilt on any machine (on CI the build otherwise outran or trailed the click);
 //  - the flood is counted and must be there: each trusted pointermove adds the raw updates coalesced into it. The game
 //    already listens for pointermove (R3F's canvas events), so the count adds no kind of listener the shipped page lacks.
+//    It does call getCoalescedEvents() on each one, which nothing in src does: work the shipped page does not do, at about
+//    70,000 raw updates a second by this spec's own count, and its cost is not measured. If it loads the page, the risk
+//    is a false red (a stall the shipped page would not have), never a false green (PR #76's dynamic review, F5).
 //    A pointerrawupdate listener did, and it is not free: with one added, the outlined caption's page failed 4 of 4
 //    attempts, against 0 of 8 without it (run 41269336217). A browser that grants no
 //    lock, or streams no flood, leaves the page nothing to drain: INCONCLUSIVE, a printed skip on a workstation and a
@@ -33,10 +36,21 @@ import { execSync } from 'node:child_process';
 //    the answer after it (or to the end of the sampling, or from the click): the page stopped answering for a sustained
 //    span (the old screen's stalled page answered 1 of 7 to 9). It is judged in time, not in reads: the samples are paced
 //    by Node's clock, but a read that does not answer costs its full bound, so a count would stretch with the bound;
-//  - late: the browser process's floor (its lowest sample) over the window's last LATE_HALF_MS rises more than
-//    LATE_FLOOR_RISE_MB over its floor in the LATE_HALF_MS before, so a slow leak that stays under the bound still fails.
+//  - late: the browser process's floor (its lowest sample) over the window's last LATE_LAST_MS rises more than
+//    LATE_FLOOR_RISE_MB over its floor in the LATE_REF_MS before, so a slow leak that stays under the bound still fails.
 //    Floors, not peaks: a page that falls behind for one sample and catches up spikes the browser for that sample and
-//    gives it back (+275 and +328 MB, then +42, on the plated caption in run 41268462804); a leak raises the floor;
+//    gives it back (+275 and +328 MB, then +42, on the plated caption in run 41268462804); a leak raises the floor.
+//    Over answered samples only: a read that misses finds the browser at such a spike (13 to 358 MB above the attempt's
+//    answered floor in the 76 missed samples of the green outlined attempts), so a span whose samples all missed would read
+//    a spike as its floor and call it a leak (a false red: plate-a attempt 3 of that run, +210 MB). The reference is the
+//    30 s before the last 15, not the 15 before: a leaking page also misses reads, and the first form of this arm (15 s
+//    against 15 s) found no answered sample in its reference when the slow-leak mutant stalled the page, read "not reached"
+//    and let the mutant through (run 41274837477, the second sample). With no answered sample in the last LATE_LAST_MS the
+//    arm is "not reached", not failed: a page silent that long is the answers arm's, which fails it past MAX_SILENT_MS, so a
+//    leak that also silences the page for those 15 s and no longer than 30 s passes both. A span with no browser reading at
+//    all (ps found none) fails it, as a blind instrument. The arm reads the window's last 45 s, when the world is usually
+//    built (50 to 68 s after the click on CI), so a leak confined to the unbuilt phase is held only by the bound and the
+//    brake (PR #76's static review, finding 1);
 //  - world: the spawn chunk is not built BUILD_BY_MS after the click.
 // The bound and the brake stop the sampling the moment either is passed, and on any failure every Chromium process of the
 // test is killed from Node before the failure is raised, so that a runner is not run out of memory with its log (a CDP
@@ -56,7 +70,8 @@ const SAMPLE_GAP_MS = 2000;
 const BROWSER_GROWTH_MB = 600;
 const ALL_BRAKE_MB = 4000;
 const MAX_SILENT_MS = 30000;
-const LATE_HALF_MS = 15000;
+const LATE_LAST_MS = 15000;
+const LATE_REF_MS = 30000;
 const LATE_FLOOR_RISE_MB = 50;
 const FLOOD_MIN = 100;
 
@@ -126,16 +141,21 @@ function chromeMB() {
     pids: chrome.map((r) => r.pid) };
 }
 
-/** The browser process's floor over the window's last LATE_HALF_MS less its floor over the LATE_HALF_MS before; null when
- *  either half holds no sample (the sampling stopped first). */
+/** The browser process's floor over the window's last LATE_LAST_MS less its floor over the LATE_REF_MS before, each floor over
+ *  the samples the page ANSWERED. A read that misses finds the browser at a spike (the page falls behind and catches up), so
+ *  a span whose samples all missed would read a spike as its floor and call it a leak (plate-a attempt 3, run 41268462804:
+ *  one sample, missed, +210 MB). `rise` is null when either span holds no answered sample: a page that silent is the answers
+ *  arm's to judge, and nothing here can be. `seen` counts a span's samples that have a browser reading at all, so a span the
+ *  instrument could not read is told from a span the page did not answer. */
 function lateFloorRise(samples) {
-  const floor = (from, to) => {
-    const xs = samples.filter((x) => x.t >= from && x.t <= to && x.browser != null).map((x) => x.browser);
-    return xs.length ? Math.min(...xs) : null;
+  const span = (from, to, closed) => {
+    const seen = samples.filter((x) => x.t >= from && (closed ? x.t <= to : x.t < to) && x.browser != null);
+    const answered = seen.filter((x) => x.answered).map((x) => x.browser);
+    return { seen: seen.length, answered: answered.length, floor: answered.length ? Math.min(...answered) : null };
   };
-  const a = floor(WINDOW_MS - 2 * LATE_HALF_MS, WINDOW_MS - LATE_HALF_MS);
-  const b = floor(WINDOW_MS - LATE_HALF_MS, WINDOW_MS);
-  return a === null || b === null ? null : b - a;
+  const ref = span(WINDOW_MS - LATE_LAST_MS - LATE_REF_MS, WINDOW_MS - LATE_LAST_MS, false);
+  const last = span(WINDOW_MS - LATE_LAST_MS, WINDOW_MS, true);
+  return { ref, last, rise: ref.floor === null || last.floor === null ? null : last.floor - ref.floor };
 }
 
 test('a Start clicked before the world is built: the page keeps answering, the browser stays bounded and the world builds under the pointer-lock flood', async ({ page }) => {
@@ -188,14 +208,20 @@ test('a Start clicked before the world is built: the page keeps answering, the b
   }
   longestSilentMs = Math.max(longestSilentMs, Date.now() - t0 - lastAnswerAt); // a page silent to the end
   const late = lateFloorRise(samples);
+  const lateBlind = late.ref.seen === 0 || late.last.seen === 0; // no browser reading in a span: the instrument, not the page
+  const lateSpans = `${late.ref.answered} of ${late.ref.seen} samples answered in the ${LATE_REF_MS / 1000} s before, ${late.last.answered} of ${late.last.seen} in the last ${LATE_LAST_MS / 1000} s`;
+  const lateWhy = late.rise !== null
+    ? `browser floor ${late.rise >= 0 ? '+' : ''}${late.rise} MB over the window's last ${LATE_LAST_MS / 1000} s against the ${LATE_REF_MS / 1000} s before `
+      + `(at most +${LATE_FLOOR_RISE_MB}; ${lateSpans})`
+    : `not reached (${stopped ? `sampling stopped by the ${stopped}`
+      : lateBlind ? `no browser reading in a span of the window: ${lateSpans}`
+        : `no answered sample in a span of the window, which the answers arm judges as silence: ${lateSpans}`})`;
   const arms = {
     bound: [peak - before <= BROWSER_GROWTH_MB, `browser +${peak - before} MB (at most ${BROWSER_GROWTH_MB})`],
     brake: [allPeak - start0.all <= ALL_BRAKE_MB, `all Chromium +${allPeak - start0.all} MB (at most ${ALL_BRAKE_MB})`],
     answers: [longestSilentMs <= MAX_SILENT_MS, `${answered}/${reads} reads answered, longest silence ${(longestSilentMs / 1000).toFixed(1)} s `
       + `(at most ${MAX_SILENT_MS / 1000}), ${longestMissed} missed in a row`],
-    late: [stopped !== null || (late !== null && late <= LATE_FLOOR_RISE_MB),
-      late === null ? `not reached (sampling ${stopped ? `stopped by the ${stopped}` : 'ended first'})`
-        : `browser floor ${late >= 0 ? '+' : ''}${late} MB over the window's last ${LATE_HALF_MS / 1000} s against the ${LATE_HALF_MS / 1000} s before (at most +${LATE_FLOOR_RISE_MB})`],
+    late: [stopped !== null || (!lateBlind && (late.rise === null || late.rise <= LATE_FLOOR_RISE_MB)), lateWhy],
     world: [builtAt !== null || stopped !== null, builtAt !== null ? `built ${Math.round(builtAt / 1000)} s after the click`
       : stopped !== null ? `not judged (sampling stopped by the ${stopped})` : `not built ${Math.round((Date.now() - t0) / 1000)} s after the click (by ${BUILD_BY_MS / 1000} s)`],
   };
@@ -204,9 +230,10 @@ test('a Start clicked before the world is built: the page keeps answering, the b
   console.log(line); // the denominator and every arm, every run
   const failing = (names) => names.filter((k) => !arms[k][0]).map((k) => `${k}: ${arms[k][1]}`);
   // A page that cannot drain keeps growing while Playwright waits to close it, and a runner that runs out of memory is shut
-  // down with every log (L10's runs ended so). A CDP Page.crash sent here did not stop it: after the verdict the browser
-  // grew to 11.5 GB while the page went unanswered and the runner was shut down (run 41270116196). So on any failure every
-  // Chromium process of this test is killed first, from Node, and the failure is raised after.
+  // down with every log (L10's runs ended so). A CDP Page.crash sent here did not stop it: after the verdict the largest
+  // chrome-headless process on the runner grew to 11.5 GB while the page went unanswered, and the runner was shut down (run
+  // 41270116196; the log's process list names no role, so that process is not shown to be the browser rather than the
+  // renderer). So on any failure every Chromium process of this test is killed first, from Node, and the failure is raised after.
   const fail = (message) => {
     for (const pid of chromeMB().pids) { try { process.kill(pid, 'SIGKILL'); } catch { /* already gone */ } }
     expect(false, message).toBe(true);
