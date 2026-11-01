@@ -480,6 +480,30 @@ export function installLookbookSeam(win, {
       });
       return { mobs, spells };
     },
+    /** The night as the store holds it, for the First Night probe (scripts/visual/first-night.mjs): the clock, the
+     *  vitals, the ember bar, and the night's own fields, each null while the store holds none (they arrive with W3-A
+     *  U1). Night fields come back as copies, so writing the answer cannot reach the store. Read-only. */
+    night: () => {
+      const s = store.getState();
+      // structuredClone keeps a Set or Map a night field may hold; the seam runs only in the probes' current browsers.
+      const copy = (v) => (v === undefined || v === null ? null : structuredClone(v));
+      return {
+        gameTime: s.gameTime,
+        cycle: cycleOf(s.gameTime),
+        isDay: s.isDay,
+        nightCount: s.nightCount,
+        alive: s.isAlive,
+        health: s.playerHealth,
+        maxHealth: s.maxHealth,
+        ember: s.ember,
+        hearthLit: copy(s.hearthLit),
+        hearthFlame: copy(s.hearthFlame),
+        siege: copy(s.siege),
+        dawnRush: copy(s.dawnRush),
+        lastNightfall: copy(s.lastNightfall),
+        lastHurtAt: copy(s.lastHurtAt),
+      };
+    },
     /** What the probe records per shot. */
     info: () => {
       const s = store.getState();

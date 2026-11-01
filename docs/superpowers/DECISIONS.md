@@ -62,6 +62,55 @@ branch `feat/w3a-first-night`. The rest of PR C (U1 onward) is the next phase. I
    The task script's second check, a no-seed mutant turning `day-night-cycle.spec.js` red, can only bite once D2 makes
    a fresh profile start cold, so D2 runs it.
 
+482. **U0: the eight beats are written red first, and a beat waiting for its feature is skipped in CI unless opted
+   in.** `tests/e2e/first-night.spec.js` holds the task script's eight beats, (a) kindle to (h) lend, each its own test
+   of 120 s or less, each driving its verb with real input (G, R, a left click, a hotbar click, the Respawn button)
+   and reading a presence before the beat. The repo had no mark for a red-first instrument waiting on its feature:
+   `@local-only` is the only tag, and CI greps it out because a run there cannot measure it (DECISIONS 2026-08-02 ①), a
+   different reason. Playwright's `test.fail()` was rejected: it passes on any failure, so a broken boot or a dead
+   reader would read as the beat's red. So the spec carries its own: an `AWAITS` table names, for each beat, the units
+   that build it and the red it shows until then. A listed beat is skipped by default, so CI stays green; with
+   `FIRST_NIGHT_AWAITING=1` it runs and must fail with exactly that red (a `RED (x): ...` line matching its reason).
+   Any other failure (a SETUP or PRESENCE line, a timeout, a red for another reason) fails that run, and so does a
+   listed beat that passes. A unit that lands a beat's feature deletes its entry in the same commit, and the beat
+   then gates every CI sha; a unit that moves a beat's red without finishing it rewrites the reason. The table: (a) D2,
+   (b) N5 and U3, (c) B1, (d) V2, (e) N6a and D3, (f) L2 and N8, (g) L2, L3 and N2, (h) R1. Run on this branch's head
+   with the opt-in, locally (Chromium, the Playwright-managed dev server on 4179), every beat showed its recorded red, 8
+   of 8 in 3.7 minutes, each under 50 s: (a) the brazier lit at Start, intensity 1.6; (b) no siege at the crossing,
+   the store holding none, after one numbered siege notice; (c) the camera back at the eye 1.36 s into a 14 s form,
+   after a reveal that did pull it back; (d) no regeneration, 0.0 HP/s from 4.1 s to 7.0 s of calm, after a hit that
+   did land; (e) and (h) no siege, so no captain and no wave 3; (f) and (g) no lantern slot on the hotbar, which shows
+   its other slots. The readers a later unit must satisfy are named in the spec's header (the store's `hearthLit`,
+   `siege` with `bearings`, `wave`, `night` and `captainId`, `lanterns`; the compass pip of kind `siege`; the hotbar's
+   lantern slot; the keys `notice.hearthLends` and the dawn payoff's; a DEV hook `ambientAttempts`), and a unit that
+   builds one under another name changes the reader in the commit that lands it. The table's own teeth, each red:
+   a wrong recorded reason under the opt-in; a beat turned on before its feature in a default run; a reader aimed at
+   the wrong point (a PRESENCE line, not the beat's red); and a beat that passes while listed. The horn is counted by the numbered
+   siege notice that fires on the same crossing; S1's sound log can replace that.
+
+483. **The seam's read-only `night()`.** `render/lookbookSeam.js` (the lazy seam chunk: index 0) gains `night()`: the
+   clock, the vitals, the ember bar, and the night's own fields (`hearthLit`, `hearthFlame`, `siege`, `dawnRush`,
+   `lastNightfall`, `lastHurtAt`), each null while the store holds none, as copies. Red first in
+   `lookbook-seam.spec.js` (case 5, red on the seam without it) and in `lookbook-seam-gates` (four mutants red).
+
+484. **`scripts/visual/first-night.mjs` plays the night, and `_firstNight.mjs` decides it.** The probe serves the
+   production build (or `--url`), opens the title as a fresh profile with `?lookbook=1`, clicks Start and plays in
+   real time on real keys and buttons: to the brazier and G, then the nearest hostile, aimed by mouse moves computed
+   from the seam's mob list against the game's own look maths, and R on a full bar. The lock is stood in, as the
+   lookbook's `--hold` does, and the cursor's way back to the centre is the one move the stood-in lock hides from the
+   look. It writes the beat log, the pressure numbers (lowest health, hits taken, seconds engaged, the flame's low),
+   the whole run as `clip.webm`, the captain-kill frame as `hero.jpg`, a frame every 30 s and a contact sheet, under
+   `docs/superpowers/masterpiece-2026-10/evidence/first-night/` beside the eye-level frames by default. The verdict is
+   pure (`firstNightVerdict`: kindle by 1:00, one horn at 4:00 plus or minus 3 s, the beast held 13.5 s or more, dawn
+   by 8:05; lowest health 30-85 %, 60 s or more engaged, the flame dipped and held, a build with no flame a miss) and
+   gated in `first-night-verdict-gates` (eight mutants red). Its port is 4219. Two 75 s smoke runs on this branch's
+   production build (`index-CFt9jvxN.js`, ANGLE Metal on the M3 Max) exited 1 as they must on a build with no night
+   yet: no kindle (G pressed 1.8 m from the brazier, `hearthLit` null), no horn, beast or dawn (cut short), no flame. They
+   also showed the bot's first draft at work: in the first run it stood at the cold brazier pressing G for 90 s and
+   died five times to the day's hostiles, so a hostile within 6 m now ends the kindle walk and a death counts as zero
+   health; the second run killed a spider, lowest health 61 %, 8 s engaged. Those numbers are a bot's on a build with
+   no siege, a smoke, not J1's verdict.
+
 ## 2026-11-01 (ultrareview chunks 4-6) — [LOOP] the three parts of the game no review had read are reviewed: what the cloud delivered, what a local replica found beside it, and the rows filed
 
 Registry row AUDIT:critic:coverage-gaps/ultra asked for the deep review of the ui, render and audio-and-scene areas, the

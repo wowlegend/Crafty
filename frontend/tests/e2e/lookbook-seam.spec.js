@@ -215,3 +215,40 @@ test('lookbook seam: absent without the parameter; pose pins the live camera, se
   expect(after, `the readout did not count the loss: ${after}`).toContain('GL context losses 1');
   await page.keyboard.press('F3');
 });
+
+// 5. night() (the W3-A task script's U0; DECISIONS 2026-11-01 (W3-A PR C) item 483): the First Night probe's one read of
+// the night, from the live store in the production build. Each field it carries is the store's own, or null while the
+// store holds no such field (the night's fields arrive with W3-A U1). Read-only: reading it writes nothing.
+test('lookbook seam: night() reads the night from the live store and writes nothing', async ({ page }) => {
+  await page.goto('/?lookbook=1');
+  try {
+    await page.waitForFunction(() => typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.(), null, { timeout: 30000 });
+  } catch (e) {
+    throw new Error(`SETUP: the dev app never came up with ?lookbook=1 — ${e.message}`);
+  }
+  expect(await page.evaluate(() => typeof window.__craftyLookbook?.setCycle), 'SETUP: the seam is missing with ?lookbook=1').toBe('function');
+  expect(await page.evaluate(() => typeof window.__craftyLookbook.night), 'the seam has no night()').toBe('function');
+  const read = (cycle) => page.evaluate((c) => {
+    window.__craftyLookbook.setCycle(c);
+    const s = window.useGameStore.getState();
+    const before = JSON.stringify(Object.keys(s).filter((k) => typeof s[k] !== 'function').map((k) => [k, s[k]]), (key, v) => (v instanceof Set ? [...v] : v));
+    const n = window.__craftyLookbook.night();
+    const after = window.useGameStore.getState();
+    const same = before === JSON.stringify(Object.keys(after).filter((k) => typeof after[k] !== 'function').map((k) => [k, after[k]]), (key, v) => (v instanceof Set ? [...v] : v));
+    const own = (k) => (after[k] === undefined ? null : after[k]);
+    return {
+      n, same,
+      want: {
+        gameTime: after.gameTime, isDay: after.isDay, nightCount: after.nightCount, alive: after.isAlive, health: after.playerHealth,
+        maxHealth: after.maxHealth, ember: after.ember, hearthLit: own('hearthLit'), hearthFlame: own('hearthFlame'), siege: own('siege'),
+        dawnRush: own('dawnRush'), lastNightfall: own('lastNightfall'), lastHurtAt: own('lastHurtAt'),
+      },
+    };
+  }, cycle);
+  for (const cycle of [0.75, 0.3]) {
+    const { n, same, want } = await read(cycle);
+    expect(n, `night() at cycle ${cycle} disagrees with the store: ${JSON.stringify({ n, want })}`).toMatchObject(want);
+    expect(n.isDay, `presence: night() at cycle ${cycle} reads ${n.isDay ? 'day' : 'night'}`).toBe(cycle === 0.3);
+    expect(same, `reading night() at cycle ${cycle} changed the store`).toBe(true);
+  }
+});

@@ -129,7 +129,8 @@ export const PROBE_PORTS = Object.freeze({
   'pov-probe.mjs': 4215,
   'touch-probe.mjs': 4216,
   'run-scenarios.mjs': 4217,
-  'media.mjs': 4218
+  'media.mjs': 4218,
+  'first-night.mjs': 4219
 });
 
 /** Resolve THIS probe's port from its own `import.meta.url`. Throws if the file is unregistered. */

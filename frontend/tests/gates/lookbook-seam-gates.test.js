@@ -141,7 +141,7 @@ describe('the gate: ?lookbook=1 exactly, and nothing installed without it', () =
     expect(closed.__craftyLookbook).toBeUndefined();
     const open = fakeWin('?lookbook=1');
     expect(installLookbookSeam(open, deps())).toBe(true);
-    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stage', 'stand', 'unstage', 'frame'].sort());
+    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'night', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stage', 'stand', 'unstage', 'frame'].sort());
     // Installing changes nothing by itself: no pose is set until a script asks.
     expect(lookbookPose()).toBeNull();
     expect(lookbookPinned()).toBe(false);
@@ -376,6 +376,42 @@ describe('play() and info()', () => {
       pose: { position: [13, 81, 13], lookAt: [0, 51, 0], fov: 75 },
     });
     expect(info.cycle).toBeCloseTo(0.55, 2);
+  });
+});
+
+// night() (the W3-A task script's U0; DECISIONS 2026-11-01 (W3-A PR C) item 483): the First Night probe's read of the
+// night. Added with it, each observed RED (scripts/dev/mutate.sh), an identity mutant SURVIVED:
+//   N1 night() reads gameTime from the cycle -> "reads the store's own fields"
+//   N2 a night field read as the store's value without a copy -> "copies"
+//   N3 plausible-wrong: a missing night field read as undefined, not null -> "null while the store holds none"
+//   N4 night() writes the store as it reads (a gameTime nudge through setState) -> "writes nothing"
+describe('night(): the night as the store holds it, read-only', () => {
+  it('reads the store\'s own fields; a night field the store holds none of is null; the answer is a copy; it writes nothing', () => {
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, deps());
+    useGameStore.setState({ gameTime: 700, isDay: false, nightCount: 1, isAlive: true, playerHealth: 64, maxHealth: 120, ember: 40,
+      siege: undefined, hearthLit: undefined });
+    const writes = [];
+    const off = useGameStore.subscribe((s, prev) => { for (const k of Object.keys(s)) if (s[k] !== prev[k]) writes.push(k); });
+    const n = w.__craftyLookbook.night();
+    off();
+    expect(n).toMatchObject({ gameTime: 700, isDay: false, nightCount: 1, alive: true, health: 64, maxHealth: 120, ember: 40 });
+    expect(n.cycle).toBeCloseTo(cycleFraction(700), 6);
+    for (const k of ['hearthLit', 'hearthFlame', 'siege', 'dawnRush', 'lastNightfall', 'lastHurtAt']) {
+      expect(n[k], `${k}: null while the store holds none`).toBeNull();
+    }
+    expect(writes, 'reading night() wrote the store').toEqual([]);
+
+    // A night field the store does hold comes back as its value, in a copy: writing the answer leaves the store alone.
+    const siege = { night: 1, bearings: [1.2], wave: 2, captainId: 7 };
+    useGameStore.setState({ siege, hearthLit: false, lastNightfall: { night: 1, gameTime: 600 } });
+    const held = w.__craftyLookbook.night();
+    expect(held).toMatchObject({ siege, hearthLit: false, lastNightfall: { night: 1, gameTime: 600 } });
+    held.siege.bearings.push(3);
+    held.lastNightfall.night = 9;
+    expect(useGameStore.getState().siege.bearings, 'night() handed back the live siege').toEqual([1.2]);
+    expect(useGameStore.getState().lastNightfall.night, 'night() handed back the live lastNightfall').toBe(1);
+    useGameStore.setState({ siege: undefined, hearthLit: undefined, lastNightfall: undefined });
   });
 });
 
