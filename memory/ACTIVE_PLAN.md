@@ -37,7 +37,7 @@ Lane task tables live in their PRs and plans. T6 and T22 (done), and T11 and T14
 - **W3-A, the First Night** (`LANE:W3-A`, branch `feat/w3a-first-night`, task script
   `docs/superpowers/plans/2026-11-01-w3a-first-night-tasks.md`): PR C stopped after phase 2a. Next units in order: N5,
   then N6a, V2, U3, B1, R1 and J1. N5 carries the beat (b) wave-identity fix and the two sector notes (a flagged sector
-  that finds no land; a widened sector beside the land wave), all in its "Owed with N5" block.
+  that finds no land; a widened sector beside the land wave), all in its "Owed with N5" and "Also owed with N5" blocks.
 - **L13, the stuck-in-solid remainder** (`LANE:L13-stuck-in-solid-remainder`): part 2 landed; one row is open,
   `REVIEW:l4:gate-reach-round1`, on two halves no gate pins from above: a spawn wait of 3.3 s and a resume hold of
   6.5 s still pass every spec.
@@ -47,6 +47,6 @@ Lane task tables live in their PRs and plans. T6 and T22 (done), and T11 and T14
   landing. With that, the wrap-up is complete.
 
 **Next:** land the review tool's chunk 5 and 6 findings when they come. When Kevin ends the pause: run
-`npm run orient`, then resume W3-A at N5 (its brief first). Each lane brief names a lane-private scratch directory for every file
-it writes and then reads (AB episode 1224), and a lane reports leftover processes read-only; the sweep is the command
-session's (DECISIONS 2026-11-01 item 536).
+`npm run orient`, then resume W3-A at N5 (its brief first). Each lane brief names a lane-private scratch directory
+for every file it writes and then reads (AB episode 1224), and a lane reports leftover processes read-only; the sweep
+is the command session's (DECISIONS 2026-11-01 item 536).
