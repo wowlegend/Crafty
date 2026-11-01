@@ -76,7 +76,10 @@ function iceRamp(t) {
 // (+ a tiny seeded jitter), merged into ONE geometry with a baked desaturated-cyan vertexColor ramp by
 // local-Y. Sharp + angular + taller-than-wide ("cold/dangerous" shape language) -- the deliberate
 // opposite of the round additive glow-ball. Merged manually (toNonIndexed + position concat) to avoid a
-// BufferGeometryUtils import. Flat-shaded (non-indexed -> per-face normals) for crisp crystal facets.
+// BufferGeometryUtils import. Flat-shaded (every face owns its three vertices -> per-face normals) for crisp crystal
+// facets. It carries an identity index all the same: drei's <Outlines> builds its hull with toCreasedNormals, which
+// copies an indexed geometry but rewrites a non-indexed one's normals in place and disposes it on unmount, and every
+// ice projectile shares this one geometry.
 export function buildIceShards() {
   const SHARDS = [
     { t: [0.00, 0.05, 0.00], r: [0.18, 0.0, 0.12], s: [0.42, 1.55, 0.42] },  // tall central spike
@@ -114,6 +117,7 @@ export function buildIceShards() {
     colors[i * 3 + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setIndex(Array.from({ length: pc.count }, (_, i) => i));
   geo.computeVertexNormals();
   return geo;
 }
