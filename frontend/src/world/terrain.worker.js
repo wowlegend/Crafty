@@ -463,7 +463,10 @@ function generateChunkData(cx, cz) {
           const caveNoise = noise3D(worldX * 0.04, y * 0.08, worldZ * 0.04);
           const caveThreshold = y < 20 ? 0.3 : 0.45;
 
-          if (y < surfaceY - 4 && caveNoise > caveThreshold) {
+          // THE CELLS AT y 0 ARE THE WORLD'S FLOOR: nothing lies under them. Carved, a cave floor opened onto the void in
+          // about a fifth of the columns round the spawn (registry REVIEW:l4:caves-open-the-world-floor), and a player
+          // walking a cave fell out of the world (tests/gates/world-floor-gates.test.js).
+          if (y > 0 && y < surfaceY - 4 && caveNoise > caveThreshold) {
             blocks[index] = 0; // Cave hollow
           } else {
             if (y === surfaceY) {
