@@ -34,6 +34,7 @@ export const STRINGS = {
     'notice.dragonLoadFailed': 'The dragon could not be loaded. Trying again...',
     'notice.dragonLoadGaveUp': 'The dragon could not be loaded. Reload the page, especially if Crafty was just updated, or leave the lair and come back to try again. Its health is kept.',
     'notice.dusk': 'Dusk approaches. Night falls soon: ready your defenses!',
+    'notice.dusk.roar': 'Dusk approaches. Night falls soon: ready your defenses! A full ember bar wakes the beast ({key}).',
     // The siege notice by night tier (game/dayNight.js siegeWarning), the dawn notice (world/dawnSurvival.js), the
     // dragon's calls (world/bossSystem.js) and an Aspect's first unlock (game/aspectHints.js): every one is a toast in the
     // notification stack (ui/notifications.js). {boss} and {item} are themselves keys, translated when shown.
@@ -345,6 +346,7 @@ export const STRINGS = {
     'notice.dragonLoadFailed': '巨龙加载失败，正在重试……',
     'notice.dragonLoadGaveUp': '巨龙加载失败。请刷新页面（尤其是游戏刚刚更新的时候），或者离开巢穴再回来重试。它的生命值会保留。',
     'notice.dusk': '黄昏将至，夜幕即将降临，快做好防御！',
+    'notice.dusk.roar': '黄昏将至，夜幕即将降临，快做好防御！余烬攒满，即可唤醒野兽（{key}）。',
     'notice.siege.first': '第 {n} 夜：第一次围攻开始了，坚守到黎明！',
     'notice.siege.harder': '第 {n} 夜：怪物攻势更猛了，坚守到黎明！',
     'notice.siege.intensifies': '第 {n} 夜：围攻愈演愈烈，坚守到黎明！',

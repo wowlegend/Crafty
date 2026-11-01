@@ -11,11 +11,13 @@ import { ON_WORLD_TEXT } from '../onWorldText.js';
 //
 // `slim`: the HUD at rest (DECISIONS 2026-10-29 item 99). A 14 px row: a 10 px track with no offset shadow, and the label
 // and value beside it on the world in ink-outlined type (ui/onWorldText.js), since a track that thin holds no text.
+// `marks` (slim only): notches on the track, each { at: 0..1 of the track, lit, cost }, drawn 2 px wide centred on `at`;
+// a lit one bright, an unlit one dim (ui/EmberBar.jsx marks the Aspect verbs' prices).
 const FILL = { health: 'bg-danger', mana: 'bg-info', xp: 'bg-accent', ember: 'bg-ember' };
 const ICON_COLOR = { health: 'text-danger', mana: 'text-info', xp: 'text-accent', ember: 'text-ember' };
 
 export const StatBar = forwardRef(function StatBar(
-  { kind = 'health', value = 0, max = 100, showValue = false, label, icon, slim = false, className, ...props }, ref) {
+  { kind = 'health', value = 0, max = 100, showValue = false, label, icon, slim = false, marks, className, ...props }, ref) {
   const pct = Math.max(0, Math.min(1, max > 0 ? value / max : 0)) * 100;
   const shown = Math.round(Math.max(0, Math.min(value, max)));
   const fill = <div data-fill className={cn('h-full', FILL[kind] || 'bg-accent', !isCaptureMode() && 'transition-[width] duration-300 ease-out')} style={{ width: `${pct}%` }} />;
@@ -23,7 +25,13 @@ export const StatBar = forwardRef(function StatBar(
     return (
       <div ref={ref} className={cn('inline-flex items-center gap-1.5 h-3.5', className)} {...props}>
         {icon && <Icon name={icon} size={14} className={cn('flex-none', ICON_COLOR[kind] || 'text-accent')} />}
-        <div className="relative h-2.5 flex-1 bg-track rounded-sm border border-ink overflow-hidden">{fill}</div>
+        <div className="relative h-2.5 flex-1 bg-track rounded-sm border border-ink overflow-hidden">
+          {fill}
+          {marks?.map((m) => (
+            <span key={m.cost} data-testid={`${kind}-mark`} data-cost={m.cost} data-lit={m.lit}
+              className={cn('absolute inset-y-0 w-0.5', m.lit ? 'bg-text' : 'bg-text/40')} style={{ left: `calc(${m.at * 100}% - 1px)` }} />
+          ))}
+        </div>
         {(showValue || label) && (
           <span className="flex-none text-[11px] leading-none font-bold text-text whitespace-nowrap" style={ON_WORLD_TEXT}>
             {label && <span className="mr-1">{label}</span>}

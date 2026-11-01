@@ -7,6 +7,7 @@
  */
 import { bankForKill } from './mobBank.js';
 import { isPlainObject } from './saveSchema.js';
+import { KEY_MAP } from './keyMap.js';
 
 export const EMBER_MAX = 100;
 
@@ -93,4 +94,26 @@ export function emberFromSave(progression) {
   if (!isPlainObject(progression)) return 0;
   if (Object.prototype.hasOwnProperty.call(progression, 'ember')) return clampEmber(progression.ember);
   return migrateBanks(progression);
+}
+
+const PRICE = { grab: GRAB_COST, imbue: IMBUE_COST, snare: SNARE_COST, roar: ROAR_COST };
+
+/**
+ * The price marks the bar draws (ui/EmberBar.jsx): one per Aspect verb unlocked, in ascending price. Which talent
+ * unlocks a verb is KEY_MAP's (its verb rows); the fuse rides the snare's key and talent.
+ */
+export function emberMarks(unlockedTalents) {
+  const out = [];
+  for (const r of KEY_MAP) {
+    if (!r.verb || !(unlockedTalents?.[r.talent] > 0)) continue;
+    out.push({ verb: r.verb, cost: PRICE[r.verb] });
+    if (r.verb === 'snare') out.push({ verb: 'fuse', cost: FUSE_COST });
+  }
+  return out.sort((a, b) => a.cost - b.cost);
+}
+
+/** The dusk warning (ui/DuskWarning.jsx): once the roar is unlocked it adds that a full bar wakes the beast, on its key. */
+export function duskNotice(unlockedTalents) {
+  const roar = KEY_MAP.find((r) => r.verb === 'roar');
+  return unlockedTalents?.[roar.talent] > 0 ? { key: 'notice.dusk.roar', vars: { key: roar.key } } : { key: 'notice.dusk' };
 }
