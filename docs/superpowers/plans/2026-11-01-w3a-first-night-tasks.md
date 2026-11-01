@@ -83,7 +83,49 @@ First-minute D11, pulled forward. `tests/e2e/_fixtures.js` seeds a returning pro
 
 `SiegeDirectorSystem` (night chunk) ticks at 1 Hz on the world clock and places waves through today's published `store.spawnMob(x, z, type)` with its own drain (3 per second at most, never above `siegeParams` `maxMobs`), so it runs before N2. The worker's non-aggro branch asks `idleGoal` (march, hunt, rout, camp); `routUntil > now` overrides aggro. The horn and the numbered notice fire on `nightfall`, never on the `isDay` edge (`DayNightAudio.jsx:21`, `survivalSystem.js:18-26`). Ambient spawning is off from the horn until the last wave is placed. Red first: a march gate through the `self` shim of `tests/gates/mob-charge-loop-gates.test.js`, then e2e (b). **Files:** `src/night/SiegeDirectorSystem.jsx`, `workers/ai.worker.js`, `game/mobStateSync.js`, `systems/AIWorkerSystem.jsx`, `ui/DayNightAudio.jsx`, `world/survivalSystem.js`. **Look:** a night clip of wave 1 cresting at its bearing; the torchline (one instanced emissive draw) is judged there, or cut. **Index:** 0.1 KB.
 
-**Owed with N5: beat (b) counts only the wave the director placed** (W3-A PR C round 2, static review finding 1, PLAUSIBLE). The sector check (`tests/e2e/first-night.spec.js:436-438`) takes every hostile new since its baseline, anywhere in the world, and asks that 75 % of them sit within 30 degrees of the bearing. The ambient spawner refills up to 3 a second until the horn (`SpawnerSystem.jsx:119`, `:136-139`), and 70 % of day picks are hostile, so one ambient hostile beside night 1's wave of 2 reads 2 of 3, and a correct N5 fails. N5 makes the beat count wave members only, by wave identity (the ids the director placed, carried in `siege`) or within the siege's radius of the Hearth, and rewrites (b)'s recorded red to match; it never changes the game to fit the check (no ambient stop before the horn). The reviewer's repro, unrun (`zz-sector-noise.spec.js`, the new hostiles at the crossing over three runs: 4 or more in any run confirms it, 0 in all three refutes it), is the static review in the scratchpad's `w3a-pr-c/round2-results.json`; N5 runs it before the change.
+**Owed with N5: beat (b) counts only the wave the director placed** (W3-A PR C round 2, static review finding 1, PLAUSIBLE). The sector check (`tests/e2e/first-night.spec.js:436-438`) takes every hostile new since its baseline, anywhere in the world, and asks that 75 % of them sit within 30 degrees of the bearing. The ambient spawner refills up to 3 a second until the horn (`SpawnerSystem.jsx:119`, `:136-139`), and 70 % of day picks are hostile, so one ambient hostile beside night 1's wave of 2 reads 2 of 3, and a correct N5 fails. N5 makes the beat count wave members only, by wave identity (the ids the director placed, carried in `siege`) or within the siege's radius of the Hearth, and rewrites (b)'s recorded red to match; it never changes the game to fit the check (no ambient stop before the horn). The reviewer's repro, unrun (`zz-sector-noise.spec.js`, the new hostiles at the crossing over three runs: 4 or more in any run confirms it, 0 in all three refutes it), is copied whole below from the static review (the session scratchpad's `w3a-pr-c/round2-results.json`, which will be cleared); N5 runs it before the change.
+
+**Beat (b)'s repro, copied whole** (the static review's "Repro for repro-verifier-kz (finding 1)"):
+
+Use a `cp -c -R` copy of the worktree with `frontend/node_modules` symlinked, under the local-browser rules (1-minute load under 28, UTC hour not 18-20). Write `frontend/tests/e2e/zz-sector-noise.spec.js` through `<<'PROBE_END'` with this content:
+```js
+import { test } from './_fixtures.js';
+import { bootDev, startPlayActive } from './_boot.js';
+import { HALF_CYCLE_UNITS } from '../../src/game/dayNight.js';
+
+test('sector noise before the horn', async ({ page }) => {
+  test.setTimeout(150000);
+  await bootDev(page);
+  await startPlayActive(page);
+  await page.waitForFunction(() => window.__craftyTest && window.__craftyTest.call('readMobs') && window.__threeCamera
+    && window.GameMethods && window.GameMethods.damageMob, null, { timeout: 60000 });
+  const before = await page.evaluate(() => window.__craftyTest.call('readMobs').filter((m) => m.health > 0).length);
+  const cleared = await page.evaluate(() => {
+    const cam = window.__threeCamera;
+    let n = 0;
+    for (const m of window.__craftyTest.call('readMobs')) {
+      if (m.passive || !(m.health > 0) || Math.hypot(m.x - cam.position.x, m.z - cam.position.z) > 60) continue;
+      window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
+      n += 1;
+    }
+    return n;
+  });
+  const seen = await page.evaluate(() => window.__craftyTest.call('readMobs').map((m) => m.id));
+  await startPlayActive(page);
+  await page.evaluate((t) => window.useGameStore.getState().setGameTime(t), HALF_CYCLE_UNITS - 10);
+  await page.waitForFunction(() => window.useGameStore.getState().isDay === false, null, { timeout: 20000 });
+  const fresh = await page.evaluate((s) => window.__craftyTest.call('readMobs')
+    .filter((m) => !m.passive && m.health > 0 && !s.includes(m.id))
+    .map((m) => ({ id: m.id, type: m.type, r: Math.round(Math.hypot(m.x, m.z)), deg: Math.round((Math.atan2(m.x, -m.z) * 180) / Math.PI) })), seen);
+  console.log('SECTOR_NOISE ' + JSON.stringify({ liveBefore: before, cleared, newHostilesAtCrossing: fresh.length, fresh }));
+});
+```
+From `frontend/` in the copy, run: `npx playwright test tests/e2e/zz-sector-noise.spec.js --workers=1 --repeat-each=3 --reporter=line`. It binds 4179; report the port and clean up afterwards.
+
+**How to read it:**
+- `newHostilesAtCrossing` of 4 or more in any run: finding 1 is CONFIRMED, even after the horn clearance's 3 retirements.
+- 1 to 3: it depends on which mobs the clearance retires; still likely.
+- 0 in all 3 runs: finding 1 is refuted.
 
 **Also owed with N5** (phase 2a round 2, items 530, 531 and 533):
 - **The widened sector, logged.** A sector whose `fallback` is set is searched at its `halfAngle` (PI/3) from the first try, and every member placed from it carries `fallback: true` in the placement record N5 keeps in `siege`. N2's spawn log (`logSpawn`, `source: 'siege'`) writes that flag when N2 lands, and U6's e2e reads the fallback ratio from it. This is the plan's "waves come from land, or from a widened sector, logged" (encounters-siege plan, Review Focus 2); the pure director only marks the sector.
