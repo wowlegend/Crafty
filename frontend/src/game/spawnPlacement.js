@@ -123,9 +123,11 @@ export function spawnCornerGround(probe) {
 }
 
 // A RESUMED save (the context-loss reload) spawns the player where they stood, not on the origin column (review
-// 2026-10-27, steady-cool HIGH 2). Its frames wait longer than the origin probe's: the column may be chunks away, and
-// streaming has to reach it after the camera moves there. A save that never loads falls back to the origin spawn.
-export const RESUME_PROBE_MAX_FAILS = 600;
+// 2026-10-27, steady-cool HIGH 2). It waits longer than the origin probe: the column may be chunks away, and streaming has
+// to reach it after the camera moves there. A save that never loads falls back to the origin spawn. The wait is time, as
+// the origin spawn's is: counted as 600 frames it was 10 s at 60 Hz and 5 s at 120 Hz, under the 6 s the origin spawn
+// waits for its own column (tests/gates/player-placement-gates.test.jsx holds it at both rates).
+export const RESUME_PROBE_MAX_SEC = 10;
 
 /** The ground probe at a loaded save's column (Terrain.jsx getMobGroundLevel, which casts at x + 0.1, z + 0.1), or null
  *  until the columns at the four corners of the square the load fit reads (game/formFit.js LOAD_FIT_SPAN round the
@@ -146,14 +148,15 @@ export function resumeColumnProbe(probe, r) {
 // as proof the column's colliders exist, never as the height (the player may have stood under a roof). Any answer is that
 // proof: the probe hits only a collider, and over the deep ocean the seabed lies at 6 to 10 (world/oceanProfile.js),
 // under the origin spawn's PROBE_MIN_Y, where a save made swimming was held 600 frames and then reset to the origin.
-// probeFails: the CURRENT fail count. Returns { place, hold }: hold = keep the body there and wait (the caller counts the
-// frame); place = the saved centre, which the caller fits the base capsule near (game/formFit.js fitLoadedSpot);
-// neither = give up and use the origin spawn.
-export function resolveResumeSpawn(resume, physicsY, probeFails) {
+// waitedSec: the seconds already held (before this frame); stepSec: this frame's step. Returns { place, hold }: hold = keep
+// the body there and wait (the caller adds stepSec to its wait); place = the saved centre, which the caller fits the base
+// capsule near (game/formFit.js fitLoadedSpot); neither = give up and use the origin spawn, on the frame whose step
+// reaches RESUME_PROBE_MAX_SEC.
+export function resolveResumeSpawn(resume, physicsY, waitedSec, stepSec = 0) {
   const usable = !!resume && [resume.x, resume.y, resume.z].every(Number.isFinite) && !isVoidFall(resume.y);
   if (!usable) return { place: null, hold: false };
   const loaded = Number.isFinite(physicsY);
   if (loaded) return { place: { x: resume.x, y: resume.y, z: resume.z }, hold: false };
-  if (probeFails + 1 < RESUME_PROBE_MAX_FAILS) return { place: null, hold: true };
+  if (waitedSec + stepSec < RESUME_PROBE_MAX_SEC) return { place: null, hold: true };
   return { place: null, hold: false };
 }

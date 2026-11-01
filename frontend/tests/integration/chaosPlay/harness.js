@@ -253,16 +253,16 @@ function spawnBranch(S) {
   if (store.resumeSpawn) {
     const r = store.resumeSpawn;
     const probeY = store.worldReloading ? null : resumeColumnProbe((x, z) => groundProbe(S, x, z), r);
-    const resume = resolveResumeSpawn(r, probeY, S.resumeFails);
+    const resume = resolveResumeSpawn(r, probeY, S.resumeWait, 1 / S.hz);
     if (resume.hold) {
-      S.resumeFails += 1;
+      S.resumeWait += 1 / S.hz;
       S.p.body.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
       S.stats.loadHoldFrames++;
       S.held = true;
       return;
     }
     useGameStore.setState({ resumeSpawn: null });
-    S.resumeFails = 0;
+    S.resumeWait = 0;
     if (resume.place) {
       const spot = fitLoadedSpot(S.world, RAPIER, S.p.body, resume.place, (x, z) => groundProbe(S, x, z), { unindexed: S.cells.unindexed() });
       const at = { x: spot.x, y: spot.y, z: spot.z };
@@ -945,7 +945,7 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
   useGameStore.setState({ worldBlocks: new Map(), chests: new Map() });
   const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
   const S = {
-    world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, resumeFails: 0,
+    world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, resumeWait: 0,
     spawn: { placed: { current: true }, probeWait: { current: 0 } }, camera: { position: new THREE.Vector3() },
     gen: new Map(base().chunks), logical: copyChunks(base().chunks), recs: new Map(), reload: null,
     worker: { seq: 0, lastDue: 0, queue: [] }, standIns: [], recent: [], form: { pending: null, last: null },

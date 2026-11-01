@@ -263,6 +263,27 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
     expect(r.worst.depth, `the capsule reached into solid after the release ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
     expect(r.end.y, `the player does not stand on the saved column's top ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
   });
+
+  it('a load whose column never streams in is held the same time at 60 and 120 Hz, longer than the origin spawn\'s wait, then gives up for the origin', () => {
+    // A save far outside the loaded chunks: its column never answers, so the hold runs to its end (game/spawnPlacement.js
+    // resolveResumeSpawn). The wait is time, so a 120 Hz display holds as long as a 60 Hz one.
+    const held = {};
+    for (const hz of [60, 120]) {
+      cleanup();
+      standPlayer(hz);
+      const saved = { x: 200.5, y: 40, z: 200.5 };
+      load(saved, hz, 2);
+      expect(groundProbe(saved.x, saved.z), 'SETUP: the saved column answers').toBeNull();
+      let frames = 0;
+      while (useGameStore.getState().resumeSpawn && frames < 60 * hz) { frame(hz); frames++; }
+      expect(useGameStore.getState().resumeSpawn, `SETUP: the hold never gave up at ${hz} Hz`).toBeNull();
+      held[hz] = +(frames / hz).toFixed(3);
+      for (let i = 0; i < 2 * hz && !(h.body.translation().y < LAND_TOP + 2); i++) frame(hz);
+      expect(at(), `the player was not sent to the origin spawn at ${hz} Hz once the hold gave up`).toMatchObject({ x: 0, z: 0 });
+    }
+    expect(Math.abs(held[60] - held[120]), `the hold's length depends on the frame rate ${JSON.stringify(held)}`).toBeLessThanOrEqual(2 / 60);
+    expect(held[120], `the hold at 120 Hz is no longer than the origin spawn's wait (${SPAWN_PROBE_MAX_SEC} s) ${JSON.stringify(held)}`).toBeGreaterThan(SPAWN_PROBE_MAX_SEC);
+  });
 });
 
 /** Whether the void guard said it fired (Components.jsx warns once a reset). */

@@ -122,7 +122,7 @@ export const Player = ({ isWorldBuilt }) => {
   const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
   const prevImbueRef = useRef(false);
   const spawnProbeWaitRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait, in seconds (game/spawnPlacement.js)
-  const resumeProbeFailsRef = useRef(0); // the resumed save's own bounded wait (game/spawnPlacement.js resolveResumeSpawn)
+  const resumeWaitRef = useRef(0); // seconds the resumed save has been held (game/spawnPlacement.js resolveResumeSpawn)
   const blindFollowRef = useRef({ left: 0 }); // the spawn's blind drop, followed (game/spawnPlacement.js followBlindDrop)
   const stuckWatchRef = useRef(makeStuckWatch()); // the stuck-in-rock recovery's readings (game/stuckInRock.js)
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
@@ -1043,16 +1043,16 @@ export const Player = ({ isWorldBuilt }) => {
       if (store.resumeSpawn) {
         const r = store.resumeSpawn;
         const probeY = store.getMobGroundLevel && !store.worldReloading ? resumeColumnProbe(store.getMobGroundLevel, r) : null;
-        const resume = resolveResumeSpawn(r, probeY, resumeProbeFailsRef.current);
+        const resume = resolveResumeSpawn(r, probeY, resumeWaitRef.current, delta);
         if (resume.hold) {
-          resumeProbeFailsRef.current += 1;
+          resumeWaitRef.current += delta;
           rigidBodyRef.current.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
           camera.position.set(r.x, r.y + EYE_HEIGHT_M, r.z);
           return;
         }
         useGameStore.setState({ resumeSpawn: null }); // one-shot: placed, or given up for the origin spawn below
-        resumeProbeFailsRef.current = 0;
+        resumeWaitRef.current = 0;
         if (resume.place) {
           // Where the base capsule stands clear nearest the saved centre (game/formFit.js fitLoadedSpot): a save on disk
           // can hold a spot in a wall or under the ground (the old Save button's rounded camera).
