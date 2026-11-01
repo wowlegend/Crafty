@@ -1,5 +1,5 @@
 import { test, expect } from './_fixtures.js';
-import { bootDev, startPlay } from './_boot.js';
+import { bootDev, startPlay, startPlayActive } from './_boot.js';
 
 // NO E2E EVER PLACED A BLOCK — in a voxel BUILDING game whose core loop is "build by day, survive by
 // night". That gap is why the Building Tools panel could sit inert, advertised on four entry surfaces,
@@ -166,5 +166,109 @@ test.describe('block placement', () => {
     expect(result.stoneBack, 'the taken blocks were not paid back as themselves').toBe(27);
     expect({ ground: result.ground, recorded: result.groundRecorded }, 'the Delete Tool took generated ground').toEqual({ ground: 0, recorded: false });
     expect(result.again, 'the worker still holds a block where the Delete Tool took the cube').toBe(27);
+  });
+});
+
+// HOLD Q TO PLACE WHERE THE CLICK WOULD OPEN A CHEST (registry QUEUE:Q26/b; input/verbRouter.js). A right click on a chest
+// interacts with it, and one with a mob in the aim cone casts; held Q makes the same click a placement on the face the
+// build ray hit. A real key through the controller's window listener and a real right click through the game's mouse pair
+// (input/compatMouse.js), as input-live.spec.js drives them: headless Chromium holds no pointer lock, so the page stands
+// one in before the app loads. A capture listener turns the camera down at the ground and marks the cell the build ray
+// meets as a chest (a store write: the chest's identity is the `chests` map, world/buildRay.js); a bubble listener after
+// the game's own records what the press became. The control first: the same aimed click without Q interacts.
+test.describe('hold Q with a right click', () => {
+  test('places a block on a chest the click would open, through a real key and a real click', async ({ page }) => {
+    test.setTimeout(240000);
+    await page.addInitScript(() => {
+      let locked = null;
+      Object.defineProperty(Document.prototype, 'pointerLockElement', { configurable: true, get: () => locked });
+      Document.prototype.exitPointerLock = function exitPointerLock() {
+        if (!locked) return;
+        locked = null;
+        document.dispatchEvent(new Event('pointerlockchange'));
+      };
+      window.__lockStandIn = { lock: () => { locked = document.body; document.dispatchEvent(new Event('pointerlockchange')); } };
+    });
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.waitForFunction(() => window.GameMethods?.castBuildRay && window.__threeCamera, null, { timeout: 60000 })
+      .catch((e) => { throw new Error(`SETUP: the build ray and camera never came up — ${e.message}`); });
+    await page.evaluate(() => {
+      window.__lockStandIn.lock();
+      const s = window.useGameStore.getState();
+      s.setSelectedBlock('stone');
+      s.addToInventory('stone', 20);
+    });
+
+    /** In the page: arm the next mousedown. The capture listener aims at the ground, marks the hit cell a chest and
+     *  records the cell a placement on that face fills; the bubble listener records the press's verb. */
+    const arm = () => page.evaluate(() => {
+      const call = (n) => window.__craftyTest.call(n);
+      const cam = window.__threeCamera;
+      const rec = {};
+      window.__e2eClick = rec;
+      let before = null;
+      window.addEventListener('mousedown', () => {
+        before = call('readCompatMouse') ?? null;
+        // Down at the pad about 3 m ahead: a cell on the ground there is clear of the player's capsule.
+        cam.rotation.order = 'YXZ'; cam.rotation.x = -0.5; cam.updateMatrixWorld();
+        const hit = window.GameMethods.castBuildRay();
+        if (!hit || !hit.normal) return;
+        const s = window.useGameStore.getState();
+        const chests = new Map(s.chests);
+        chests.set(hit.targetCoords, { inventory: { stone: 1 }, name: 'Wooden Chest' });
+        window.useGameStore.setState({ chests });
+        rec.chest = hit.targetCoords;
+        rec.cell = `${hit.targetedX + Math.round(hit.normal.x)}_${hit.targetedY + Math.round(hit.normal.y)}_${hit.targetedZ + Math.round(hit.normal.z)}`;
+        rec.cellBefore = s.worldBlocks.get(rec.cell) ?? null;
+        rec.chestTargeted = !!window.GameMethods.castBuildRay()?.chestTargeted;
+      }, { capture: true, once: true });
+      window.addEventListener('mousedown', () => {
+        const after = call('readCompatMouse');
+        rec.pressed = !!(before && after && after.presses.mouse > before.presses.mouse);
+        rec.verb = after?.verbs?.mouse ?? null;
+      }, { once: true });
+    });
+    const read = () => page.evaluate(() => {
+      const rec = window.__e2eClick, s = window.useGameStore.getState();
+      return { ...rec, cellAfter: rec.cell ? (s.worldBlocks.get(rec.cell) ?? null) : null, chestOpen: !!s.showChestInterface,
+        active: window.__craftyTest.call('readIntents').active };
+    });
+    const closeChest = () => page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      s.setShowChestInterface(false);
+      s.setActiveChestCoords(null);
+    });
+
+    // PRESENCE: without Q the aimed right click on the chest is the chest's.
+    await arm();
+    await page.mouse.click(640, 400, { button: 'right' });
+    const control = await read();
+    console.log(`[force-place] control: ${JSON.stringify(control)}`);
+    expect(control.chestTargeted, `SETUP: the aimed build ray did not land on the staged chest (${JSON.stringify(control)})`).toBe(true);
+    expect({ pressed: control.pressed, verb: control.verb },
+      `SETUP: the control right click on a chest was not an interact, so the instrument cannot see the router (${JSON.stringify(control)})`)
+      .toEqual({ pressed: true, verb: 'interact' });
+    expect(control.chestOpen, `SETUP: the control's interact did not open the chest (${JSON.stringify(control)})`).toBe(true);
+    await closeChest();
+    await page.evaluate(() => window.__lockStandIn.lock());
+    await expect.poll(() => page.evaluate(() => window.__craftyTest.call('readIntents').active), { timeout: 10000 }).toBe(true)
+      .catch(() => { throw new Error('SETUP: the input gate did not come back after the control click'); });
+
+    // The subject: Q held across the same aimed right click.
+    await arm();
+    await page.keyboard.down('KeyQ');
+    await page.mouse.click(640, 400, { button: 'right' });
+    await page.keyboard.up('KeyQ');
+    let forced = await read();
+    await expect.poll(async () => { forced = await read(); return forced.cellAfter; }, { timeout: 10000 }).not.toBeNull()
+      .catch(() => {});
+    console.log(`[force-place] with Q held: ${JSON.stringify(forced)}`);
+    expect(forced.chestTargeted, `SETUP: the aimed build ray did not land on the staged chest (${JSON.stringify(forced)})`).toBe(true);
+    expect({ pressed: forced.pressed, verb: forced.verb }, `held Q did not turn the right click on a chest into a placement (${JSON.stringify(forced)})`)
+      .toEqual({ pressed: true, verb: 'place' });
+    expect(forced.chestOpen, `the click held on Q opened the chest as well (${JSON.stringify(forced)})`).toBe(false);
+    expect(forced.cellBefore ?? 0, `SETUP: the cell on the chest's face was not air (${JSON.stringify(forced)})`).toBe(0);
+    expect(forced.cellAfter ?? 0, `the placement did not fill the cell on the chest's face (${JSON.stringify(forced)})`).not.toBe(0);
   });
 });
