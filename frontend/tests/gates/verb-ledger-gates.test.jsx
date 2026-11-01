@@ -40,7 +40,7 @@ import * as THREE from 'three';
 vi.mock('@react-three/fiber', () => import('@react-three/fiber/dist/react-three-fiber.esm.js'));
 vi.mock('@react-three/rapier', () => import('@react-three/rapier/dist/react-three-rapier.esm.js'));
 vi.mock('@react-three/drei', () => import('@react-three/drei/index.js'));
-const H = vi.hoisted(() => ({ live: null, inbox: [], breaks: [], places: 0, rapier: null }));
+const H = vi.hoisted(() => ({ live: null, inbox: [], breaks: [], places: 0, rapier: null, remount: null }));
 vi.mock('../../src/world/terrain.worker.js?worker', () => ({
   default: class FakeTerrainWorker {
     constructor() { H.live = this; this.listeners = new Set(); }
@@ -107,10 +107,12 @@ beforeAll(async () => {
   const { mountR3F } = await import('./_r3f.jsx');
   function RapierProbe() { H.rapier = useRapier(); return null; }
   function QuestProbe() { useQuestSystem(); return null; }
+  // The world can be mounted again inside the same Physics and over the same worker (a new key), as App remounts it.
+  function World() { const [k, setK] = React.useState(0); H.remount = () => setK((n) => n + 1); return <MinecraftWorld key={k} />; }
   store.setState({ addNotification: () => {} });
   r = await mountR3F(
     <Suspense fallback={null}>
-      <Physics gravity={[0, -30, 0]}><RapierProbe /><MinecraftWorld /></Physics>
+      <Physics gravity={[0, -30, 0]}><RapierProbe /><World /></Physics>
       <QuestProbe />
     </Suspense>,
   );
@@ -133,6 +135,18 @@ afterAll(async () => { setActive(false); await r?.unmount(); vi.restoreAllMocks(
 async function pump() {
   const out = [];
   while (H.inbox.length) {
+    const m = H.inbox.shift();
+    if (m.type === 'generate' && !(m.payload.cx === CX && m.payload.cz === CZ)) continue;
+    const rs = asWorker(() => { workerOnMessage({ data: m }); return replies.splice(0); });
+    out.push(...rs);
+    await act(async () => { for (const rep of rs) for (const fn of [...H.live.listeners]) fn({ data: rep }); });
+  }
+  return out;
+}
+/** The worker's queued messages up to the first that `stop` names, delivered as pump() delivers them; the rest stay queued. */
+async function pumpUntil(stop) {
+  const out = [];
+  while (H.inbox.length && !stop(H.inbox[0])) {
     const m = H.inbox.shift();
     if (m.type === 'generate' && !(m.payload.cx === CX && m.payload.cz === CZ)) continue;
     const rs = asWorker(() => { workerOnMessage({ data: m }); return replies.splice(0); });
@@ -396,5 +410,46 @@ describe('a cell placed since the last world step is seen by the next click and 
     expect(seen, `a read before the step went through the new cell ${placedKey} to the ground ${ground}`)
       .toEqual({ build: placedKey, outline: placedKey });
     await land();
+  }, ROW_MS);
+});
+
+// The placement numbering lives as long as the worker (world/placedCellColliders.js): terrain.worker.js stamps every mesh
+// with the last placement seq it has applied, for as long as it lives, and a mesh retires its chunk's stand-ins numbered at
+// or below its stamp. Terrain.jsx makes the numbering beside the worker, at module scope. Made inside the component, a
+// world mounted again would number from 1 again, under the worker's stamp, and the first mesh of that chunk the worker made
+// before the new placement reached it would retire the new cell's stand-in: the cell open to the player until its own mesh
+// lands (registry REVIEW:fix-invisible-box:cut-argument-ungated).
+describe('a world mounted again over the same worker keeps the cell it places solid until the mesh that holds it (Terrain.jsx)', () => {
+  it('a mesh the worker made before the new placement reached it does not retire that placement\'s stand-in', async () => {
+    const stamps = (rs) => rs.filter((m) => m.type === 'chunk_mesh').map((m) => m.payload.editSeq);
+    const before = GameMethods.placedCells;
+    await act(async () => { H.remount(); });
+    for (let i = 0; i < 300 && GameMethods.placedCells === before; i++) await act(async () => { await new Promise((res) => setTimeout(res, 10)); });
+    expect(GameMethods.placedCells, 'SETUP: the world did not mount again').not.toBe(before);
+    H.inbox.length = 0;
+    H.live.postMessage({ type: 'generate', payload: { cx: CX, cz: CZ } });
+    const remeshed = await land();
+    await r.step(1);
+    const workerSeq = Math.max(...stamps(remeshed));
+    expect(workerSeq, 'SETUP: no placement reached the worker before the remount, so its stamp numbers nothing').toBeGreaterThan(0);
+    expect(GameMethods.placedCells.size(), 'SETUP: the new mount holds a stand-in before it placed anything').toBe(0);
+    const [c] = openColumns(1);
+    expect(c, 'SETUP: the chunk has no open column after the rows above').toBeTruthy();
+    const kind = HOTBAR_BLOCKS[0];
+    store.setState((s) => ({ selectedBlock: kind, buildingMode: 'single', buildSize: 1,
+      inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, [kind]: (s.inventory.blocks[kind] || 0) + 1 } } }));
+    // The chunk's mesh is asked for again (the streamer re-asks a chunk), then the click: the worker meets them in order.
+    H.live.postMessage({ type: 'generate', payload: { cx: CX, cz: CZ } });
+    aimAtTop(c);
+    const place = await click(2);
+    expect(place.verb, 'SETUP: the click on the top face did not place').toBe('place');
+    expect(H.inbox.map((m) => m.type), 'SETUP: the mesh request is not ahead of the placement in the worker\'s queue').toEqual(['generate', 'edit_cells']);
+    const early = await pumpUntil((m) => m.type === 'edit_cells');
+    expect(stamps(early), 'SETUP: the early mesh is not stamped with the worker\'s last seq').toEqual([workerSeq]);
+    await r.step(2);
+    expect(GameMethods.placedCells.size(), `a mesh stamped ${workerSeq}, made before the placement reached the worker, retired its stand-in`).toBe(1);
+    await land();
+    await r.step(1);
+    expect(GameMethods.placedCells.size(), 'SETUP: the mesh holding the placement did not retire its stand-in, so the hold above shows nothing').toBe(0);
   }, ROW_MS);
 });
