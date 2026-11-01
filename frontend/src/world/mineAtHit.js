@@ -38,7 +38,7 @@ export function creditBrokenBlock(payload, playBreak) {
 
 /**
  * @param {{hitPoint: object, normal: ({x:number,y:number,z:number}|null), targetedX: number, targetedY: number,
- *   targetedZ: number, targetCoords: string}|null} h the build-ray hit (Terrain.jsx castBuildRay)
+ *   targetedZ: number, targetCoords: string}|null} h the build-ray hit (world/buildRay.js castBuildRay)
  * @param {{post: (msg: object) => void, editCells: (edit: object,
  *   onApplied: (applied: number[], recordable?: number[], broken?: object[]) => void) => void,
  *   playBreak?: (pos: object) => void}} io the worker's postMessage and its batched edit (world/cellEdits.js), and the

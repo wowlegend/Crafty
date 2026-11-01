@@ -24,7 +24,7 @@ import { loadTerrainWorker, sendToWorker, readVoxel, workerVerbIo } from '../_su
 // the panel gains without a row fails. Then, per tool, every size the slider offers: the label's numbers are the
 // footprint the verb then fills or takes.
 //
-// WHAT THIS DOES NOT CHECK: the build ray (the hits are made here, as Terrain.jsx castBuildRay makes them), the verb
+// WHAT THIS DOES NOT CHECK: the build ray (the hits are made here, as world/buildRay.js castBuildRay makes them), the verb
 // router (tests/gates/verb-router-gates.test.js), random footprints and the economy over them
 // (tests/gates/build-tools-worker-gates.test.js).
 //

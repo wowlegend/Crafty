@@ -13,10 +13,11 @@
 //  - each placed cell held solid from the click by world/placedCellColliders.js, retired one step after its trimesh;
 //  - a display frame: @react-three/rapier's stepper first (a fixed 1/60 s accumulator, so at 120 Hz every other frame
 //    takes no step, each step followed by placedCells.afterStep), then the Player frame (Components.jsx): the void guard,
-//    the spawn branch, the blind drop's follow and the stuck-in-rock recovery, grounded from the last sweep, the ledge
+//    the spawn branch, the blind drop's follow and the stuck-in-rock recovery, grounded from the last sweep where a
+//    walkable face bears the capsule (game/grounding.js), the ledge
 //    vault, jump / glue / gravity with the form's multipliers, the queued form swap, and one moveKinematic write with the
 //    unindexed colliders;
-//  - clicks between frames: the build ray from the steady eye (Terrain.jsx castBuildRay, its direction scaled by the
+//  - clicks between frames: the build ray from the steady eye (world/buildRay.js castBuildRay, its direction scaled by the
 //    hit's toi), the real placeAtHit, and the real mineTarget and mineAtHit (the single mine and the Delete Tool), over
 //    the real world/cellEdits.js; the worker applies each edit to the logical world at its click, in order, and its
 //    answer to a batched edit reaches the main thread half the trimesh lag later (rounded up: the reply is posted before
@@ -40,12 +41,14 @@ import { buildFootprint } from '../../../src/game/buildFootprint.js';
 import { createPlacedCellColliders, createEditSeq } from '../../../src/world/placedCellColliders.js';
 import { generateMesh } from '../../../src/world/mesher.js';
 import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, CHUNK_HEIGHT, chunkOf } from '../../../src/world/chunkLayout.js';
-import { moveKinematic, placeBody } from '../../../src/game/kinematicMove.js';
+import { moveKinematic, placeBody, CONTROLLER_OFFSET } from '../../../src/game/kinematicMove.js';
+import { supportedGround, MAX_SLOPE_CLIMB_RAD } from '../../../src/game/grounding.js';
+import { castRayNearest } from '../../../src/world/buildRay.js';
 import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/beasts.js';
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
 import { steadyEye, EYE_HEIGHT_M } from '../../../src/combat/swingOrigin.js';
 import { SEA_LEVEL, DEEP_FLOOR } from '../../../src/world/oceanProfile.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
 import { makeStuckWatch, stuckInRock } from '../../../src/game/stuckInRock.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
 import { buildSaveData, savePosition } from '../../../src/game/saveSchema.js';
@@ -224,10 +227,10 @@ export function setCell(S, x, y, z, t) {
 
 // ---- the player ------------------------------------------------------------------------------------------------------
 function makeKcc(world) {
-  const kcc = world.createCharacterController(0.05);
+  const kcc = world.createCharacterController(CONTROLLER_OFFSET);
   kcc.enableAutostep(1.05, 0.2, true);
   kcc.enableSnapToGround(0.5);
-  kcc.setMaxSlopeClimbAngle(Math.PI / 4);
+  kcc.setMaxSlopeClimbAngle(MAX_SLOPE_CLIMB_RAD);
   return kcc;
 }
 function playerParts(world, body, collider) {
@@ -250,16 +253,16 @@ function spawnBranch(S) {
   if (store.resumeSpawn) {
     const r = store.resumeSpawn;
     const probeY = store.worldReloading ? null : resumeColumnProbe((x, z) => groundProbe(S, x, z), r);
-    const resume = resolveResumeSpawn(r, probeY, S.resumeFails);
+    const resume = resolveResumeSpawn(r, probeY, S.resumeWait, 1 / S.hz);
     if (resume.hold) {
-      S.resumeFails += 1;
+      S.resumeWait += 1 / S.hz;
       S.p.body.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
       S.stats.loadHoldFrames++;
       S.held = true;
       return;
     }
     useGameStore.setState({ resumeSpawn: null });
-    S.resumeFails = 0;
+    S.resumeWait = 0;
     if (resume.place) {
       const spot = fitLoadedSpot(S.world, RAPIER, S.p.body, resume.place, (x, z) => groundProbe(S, x, z), { unindexed: S.cells.unindexed() });
       const at = { x: spot.x, y: spot.y, z: spot.z };
@@ -278,10 +281,12 @@ function spawnBranch(S) {
     S.p.body.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
     return;
   }
-  placeBody(S.world, S.p.body, { x: 0, y: spawnTargetY(spawn.groundY), z: 0 });
+  const c = S.p.body.collider(0); // the body's capsule as it is now, as the Player's spawn branch reads it
+  const at = spawnSpot(spawn, (x, z) => groundProbe(S, x, z), { halfHeight: c.halfHeight(), radius: c.radius() });
+  placeBody(S.world, S.p.body, { x: at.x, y: at.y, z: at.z });
   S.spawn.placed.current = true;
   S.stats.respawns++;
-  if (spawn.blind) S.blind.left = SPAWN_PROBE_MAX_SEC;
+  if (at.blind) S.blind.left = SPAWN_PROBE_MAX_SEC;
 }
 
 /** A load's hold ends: I5 reads whether it let the player go within its frame bound, or gave up for the origin spawn.
@@ -333,7 +338,7 @@ function playerFrame(S, input) {
   }
   const store = useGameStore.getState();
   const loco = formLocomotion(store.beastFormActive ? store.activeBeastForm : null);
-  const grounded = kcc.computedGrounded();
+  const grounded = supportedGround(kcc, S.world, body, body.collider(0), filter);
   const look = { x: Math.cos(input.yaw ?? 0), z: Math.sin(input.yaw ?? 0) };
   // Phase 23 ledge vault: in the air, walking forward, a chest ray meets a wall within 0.8 m and a head ray finds none.
   if (!grounded && input.forward && S.vy <= 2.0) {
@@ -661,11 +666,12 @@ export function escape(S) {
 }
 
 // ---- the verbs ------------------------------------------------------------------------------------------------------
-/** Terrain.jsx castBuildRay from the steady eye: the hit, its normal, and the direction scaled by toi (the quirk). */
+/** world/buildRay.js castBuildRay from the steady eye (its query, cells made since the last step included): the hit, its
+ *  normal, and the direction scaled by toi (the quirk). */
 export function buildRay(S, dir) {
   const from = steadyEye(S.p.body.translation(), {});
   const d = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
-  const hit = S.world.castRayAndGetNormal(new RAPIER.Ray(from, d), 8.0, true, undefined, undefined, undefined, S.p.body, S.p.filter);
+  const hit = castRayNearest(S.world, new RAPIER.Ray(from, d), 8.0, undefined, S.p.body, S.p.filter, S.cells.unindexed());
   if (!hit) return null;
   const toi = hit.timeOfImpact;
   const scaled = d.multiplyScalar(toi);
@@ -792,8 +798,8 @@ export function leftClick(S, h) {
   return c;
 }
 
-/** The Delete Tool's left click (world/mineAtHit.js): the real executor, the cell mineTarget takes as Terrain.jsx
- *  castBuildRay names it, its batched removal answered against the logical world at the click. */
+/** The Delete Tool's left click (world/mineAtHit.js): the real executor, the cell mineTarget takes as
+ *  world/buildRay.js castBuildRay names it, its batched removal answered against the logical world at the click. */
 export function deleteClick(S, h, size) {
   const store = useGameStore.getState();
   const c = mineTarget(h.hitPoint, h.direction, store);
@@ -941,7 +947,7 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
   useGameStore.setState({ worldBlocks: new Map(), chests: new Map() });
   const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
   const S = {
-    world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, resumeFails: 0,
+    world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, resumeWait: 0,
     spawn: { placed: { current: true }, probeWait: { current: 0 } }, camera: { position: new THREE.Vector3() },
     gen: new Map(base().chunks), logical: copyChunks(base().chunks), recs: new Map(), reload: null,
     worker: { seq: 0, lastDue: 0, queue: [] }, standIns: [], recent: [], form: { pending: null, last: null },

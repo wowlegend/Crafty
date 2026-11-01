@@ -19,6 +19,670 @@
 
 ---
 
+## 2026-11-01 (ultrareview chunks 4-6) — [LOOP] the three parts of the game no review had read are reviewed: what the cloud delivered, what a local replica found beside it, and the rows filed
+
+Registry row AUDIT:critic:coverage-gaps/ultra asked for the deep review of the ui, render and audio-and-scene areas, the
+half of `frontend/src` that no whole-game review had read (chunks 1 to 3 ran in the deep audit,
+`docs/superpowers/audits/2026-10-30-deep-audit.md`). This entry records the runs, what each delivered, how the deliveries
+were checked, a local replica of the same review on one chunk, the comparison, the cost and the rows. Records only: no
+code changed. Items 460 to 468.
+
+460. **The three runs.** On 2026-11-01 the three free runs of account 2 (DECISIONS 2026-10-27: three free runs per
+   account, one-time) reviewed the three chunks. Each ran from its own separate local git repository,
+   `.claude/worktrees/ur3-<chunk>`, whose branch `review` is a pair of commits: a base commit holding the whole of Crafty
+   at `dae1afb4` except the chunk's files, and a review commit that adds only the chunk's files. The review's diff is the
+   chunk as pure additions, under the cloud review's diff cap (500 files, 8,000 changed lines), and the reviewer still
+   reads the whole game around it.
+
+   | chunk | files | lines | holds | base / review commit | cloud session |
+   |---|---|---|---|---|---|
+   | 4-ui | 74 | 7,594 | HUD, panels, primitives, i18n, theme, touch controls | `3f8f9f7` / `9bb3ae4` | `session_01PyjBK9f7PTDauQgdTpaFc3` |
+   | 5-render | 57 | 7,688 | render, post FX, spell VFX, mobs, boss, ocean, sky, quality tiers | `2cad929` / `fc048c5` | `session_01PyjBK9NcSj1Nf3w8t5mNDq` |
+   | 6-audio-scene-rest | 40 | 7,170 | audio, SoundManager, GameScene, atmosphere, weather, devtest, lookbook, grass, NPC | `57fc230` / `9d319b8` | `session_01PyjBK9n5bKqvTbjkWkGuFY` |
+
+461. **Counters and delivered counts.** At each run's last progress line (found / verified / refuted): 4-ui 36 / 28 /
+   25, 5-render 30 / 25 / 19, 6-audio-scene-rest 29 / 30 / 13. Each run delivered exactly 10 findings: 4 normal and 6
+   nit (4-ui), 2 and 8 (5-render), 3 and 7 (6-audio-scene-rest), by the cloud's own severity field; the verification
+   text inside 5-render finding 2 and 6-audio-scene-rest finding 2 says nit, and their rows give the field's value. The
+   counters tally verdicts, not unique bugs: the last run shows more verified (30) than found (29), so how many unique
+   verified bugs stood behind the 10 is unknown.
+
+462. **Our verification, and what was filed.** One repro verifier per delivered finding (30 in all) read the code in a
+   `cp -c -R` throwaway of the review repository, `node_modules` symlinked and no browser, built a control and tried to
+   refute the claim. Verdicts: 27 CONFIRMED, 2 PLAUSIBLE (4-ui finding 1, the potion tile: whether a touch browser shows
+   Use is unmeasured; 6-audio-scene-rest finding 2, the Web Audio ramps: the formula was stated from memory and no
+   engine was run) and 1 REFUTED (6-audio-scene-rest finding 6, the place sound's occlusion march: every line-level
+   claim is true, but the block-place sound never reaches the spatial path in GameScene's mount order, so nothing is
+   heard; not filed). By player harm among the 29 not refuted: MED 4, LOW 14, NONE 11. Filed: 27 new rows
+   `AUDIT:ultra-1101:<chunk>-<n>`, n being the finding's 1-based place in that run's list (so `6-audio-scene-rest-6` has
+   no row), and the two history-comment findings (5-render finding 10, 6-audio-scene-rest finding 10) as a line appended
+   to REVIEW:l12:history-comments-ledger, which they match: 15 receipts and six past-tense comments that its ratchet's
+   markers do not count. A NONE-harm finding is a LOW debt row, and so is a LOW-harm finding whose cost has no visible
+   symptom: AUDIT:ultra-1101:4-ui-9 and 6-audio-scene-rest-9, and AUDIT:replica-1101:4-ui-11 from the replica (of the 14
+   LOW-harm cloud findings, 12 are LOW bugs and those two are debt). Our verifiers corrected several cloud claims (cited
+   lines that do not exist in 5-render findings 4, 5 and 9; the refuted 'shading seam' in finding 3), recorded in the
+   rows.
+
+463. **The replica of chunk 4-ui.** To learn what the cloud leaves out, the same chunk was hunted locally: five hunters,
+   each on a player-facing lens, produced 49 raw candidates, merged by root cause into 32; each got three independent
+   votes (CONFIRMED, PLAUSIBLE or REFUTED, and a harm), and a candidate survived unless two or more votes refuted it. 28
+   survived and 4 were killed. Six survivors are cloud findings (4-ui 1, 2, 3, 4, 5 and 10); the other 22 are replica-only.
+   Filed: 21 rows `AUDIT:replica-1101:4-ui-<n>`, n being the candidate's 1-based place in the merged list of 32 (the
+   numbers have gaps), and one line appended to STATUS:G-ledger:35 (the touch surface's own animation loop, candidate
+   29). The replica-only survivors rest on their three votes alone: no probe re-verified them, which is a weaker standard
+   than the cloud's findings met, and each row's evidence says so. Killed and not filed: candidate 23 (about 40 English
+   literals bypass t() and the ratchet cannot see them; R,R,C; the literals are filed from the cloud as
+   AUDIT:ultra-1101:4-ui-7); 24 (4.2 MB of CJK fonts are fetched and no element uses them; R,R,C; our verifier measured
+   font-body-cjk in 0 JS chunks, and the fonts' fate is noted on AUDIT:ultra-1101:4-ui-8); 25 (a partial CJK load
+   latches; R,R,R; filed from the cloud as 4-ui-8, which our probe reproduced); 26 (the panel-load-failed notice is
+   raised pre-translated, so it escapes dedupe; R,R,R). For 26 the mechanism is in the code, read for this entry:
+   `ui/panels/lazyPanels.js:84` passes `t('notice.panelLoadFailed')`, `toNotification` in `ui/notifications.js` gives a
+   plain string without `opts.key` no dedupe key, and `QuestSystem.jsx` admits such a notice each time. The replica's
+   reason for the kill is not in the data, and the harm is a repeated toast, so it stays unfiled and findable here.
+
+464. **The comparison on 4-ui.** 34 distinct defects by root cause: the cloud's 10, the replica's 32, 8 in both. The
+   replica found 8 of the cloud's 10 (80%) and 6 survived its own votes: it killed two that our probes had reproduced in
+   code (4-ui-7 and 4-ui-8, both latent because no player can switch to zh-CN) and never found two (4-ui-6, the
+   classifier's ternary; 4-ui-9, DebugOverlay's boot-time GL context), both outside its five lenses. The cloud delivered
+   6 of the replica's 28 survivors (21%): 6 of 22 normal-severity, 2 of the 9 with MED harm (4-ui-1 and 4-ui-3) and none
+   of the 6 nits. **16 normal-severity defects that survived the replica's votes are absent from the cloud's 10 (15 drew
+   at least two CONFIRMED votes of three; AUDIT:replica-1101:4-ui-16 drew PLAUSIBLE three times), and 7 of them are MED
+   harm, all among the 15:** AUDIT:replica-1101:4-ui-10 (no player can switch to zh-CN), -1 (the Settings panel
+   off-screen), -13 (the chest panel's close off-screen), -15 (the portrait phone Inventory), -18 (the Build tray's
+   ghost click), -20 (the hotbar's numbers) and -21 (keyboard copy on touch). Why is unknown: the cloud's fixed 10 cut
+   them, or the cloud never found them. A severity-first cutoff would not fill six of ten slots with nits while dropping
+   normal bugs, which points to a recall gap or a ranking that is not severity-first, but the data cannot separate the
+   two; the test is an ultra rerun of the chunk with `--max-findings all`, which is Kevin's
+   (AUDIT:ultra-1101:cap-question). Before the replica runs again (AUDIT:replica-1101:chunks-5-6) it takes the changes
+   this comparison asks for: two more lenses (what the production bundle runs; tools that ship in src); a vote split
+   into mechanism and harm, where a refutation carries a proof command and a latent defect stays harm NONE rather than
+   being killed; dedupe by root cause with parent links and kept sub-claims; a harm-ranked top 10 beside the full list;
+   and the per-finding probe on every MED survivor.
+
+465. **What the binary showed, and what the data cannot.** A reading of the installed `claude` binary during this work
+   found no cap of its own on the number of findings the client prints, so a cap, if there is one, is applied on the
+   cloud side; and the session page refuses to open a review session, so the findings were read from the runs' output and
+   the session ids in item 460 are a record, not links that open. Neither fact was re-measured for this entry. Whether a cut at 10 hid bugs the cloud
+   had found stays open (item 464).
+
+466. **Cost.** The three cloud runs spent no usage credits: they were account 2's free runs. Verifying the 30 findings
+   and running the replica on one chunk took 133 agents and 18.7M subagent tokens (the work's own totals, carried and
+   not re-measured for this entry). A further ultrareview costs usage credits (typically $5 to $25 a run, DECISIONS
+   2026-10-27), which is Kevin's to spend.
+
+467. **The rows.** 50 rows added, 2 lines appended, 1 row closed; every new row is open in an open lane. By lane:
+   LANE:W3-C 7 (the first minute on touch and keyboard: AUDIT:ultra-1101:4-ui-1, 4-ui-3 and 4-ui-9;
+   AUDIT:replica-1101:4-ui-1, -16, -20 and -21; the plan's W3-C row names Unit 0, the hint strip, the title's Hearth and
+   the first click after Start, so 4-ui-3, replica -16, -20 and -21 and 4-ui-9 tie to it by touch input, hint copy and
+   Unit 0, while AUDIT:ultra-1101:4-ui-1 (a starting potion's tile) and AUDIT:replica-1101:4-ui-1 (the Esc Settings
+   panel) are first-minute reaches it does not name, and their notes say the lane may hand them to backlog), LANE:W3-B 3
+   (the dragon: AUDIT:ultra-1101:5-render-1, 5-render-2 and 5-render-5), LANE:W3-E 2 (AUDIT:ultra-1101:5-render-3, the
+   fireball's lathe seam, and 6-audio-scene-rest-3, the shadow frustum on the iPad low tier), LANE:backlog 37 and
+   LANE:kevin 1. By kind: 36 bugs (11 MED, 25 LOW), 12 debt rows (LOW) and 2 instrument rows. The MED bugs:
+   AUDIT:ultra-1101:4-ui-1, 4-ui-3, 5-render-1 and 6-audio-scene-rest-3, and AUDIT:replica-1101:4-ui-1, -10, -13, -15,
+   -18, -20 and -21. Two instrument rows record deferrals this entry leaves: AUDIT:ultra-1101:cap-question (LANE:kevin:
+   whether the cut at 10 hid bugs) and AUDIT:replica-1101:chunks-5-6 (the replica has run on one chunk of three; MED).
+   The evidence line of every row says whether the cloud, our probe or the replica's votes carry it. Appended instead of
+   filed: REVIEW:l12:history-comments-ledger (two cloud findings) and STATUS:G-ledger:35 (one replica candidate).
+
+468. **AUDIT:critic:coverage-gaps/ultra closes done.** Its acceptance asked for `/code-review ultra` on chunks 4, 5 and
+   6, the findings filed as rows, and the run ids and session links recorded in a DECISIONS item. Kevin provided account
+   2's three free runs, as the row's note records; the runs, the findings as rows (27 rows, 2 appended lines and 1
+   refuted, item 462) and the session ids are items 460 to 467 and the rows above (the links do not open, item 465, so
+   the ids are the record). Kevin keeps any further ultrareview, which costs credits, and the cap question. The sibling
+   AUDIT:critic:coverage-gaps/hunt (subsystems no hunter read) stays open.
+
+---
+
+## 2026-11-01 (W3-A PR A) — [LOOP] one feedback grammar: danger at the edge, contact on the lit band, magic as a solid core
+
+The W3-A task script's PR A (F0-F5), a re-cut at `eff58e9a` of the feedback-grammar plan
+(`docs/superpowers/plans/2026-10-27-crafty-feedback-grammar.md`) M1, M2, M4, M5 and M7, and the siege plan's Move E.
+Branch `feat/w3a-feedback-grammar`. Each call below was checked against the code at HEAD before it was taken.
+
+420. **The lookbook's combat stage holds a moment with the world's own freeze, not a `lookHold` field.** The plan had
+   `mobLook` honour an `entity.lookHold` set by the seam and the DEV e2e. `stage()` (render/lookbookSeam.js, the lazy
+   chunk) instead freezes the world through the store's `triggerHitstop` (so the AI worker neither moves the mob nor
+   replaces its windup), plants `windupUntil` at 0.8 of the ramp on the world clock, and renews `lastHit` every frame
+   for a hit: the game code reads only the fields it already reads, and no test branch sits in the per-frame look.
+   The same stage holds a spell (`moment: 'cast'`, the spell system's deterministic cast) and an elite's rank. Draws
+   per frame are counted at the WebGL context (`scripts/visual/_glDrawCounter.mjs`), because renderer.info resets at
+   every render() call and postprocessing calls it once per pass.
+421. **Danger is an edge colour, plain danger red, and the rim runs at every tier.** A windup carries the ink outline
+   and the rim's colour from rest to `#ff3a00` over the ramp squared; the rim's strength and power do not ramp (a box
+   face has no fresnel edge, plan amendment 2) and the body takes no emissive. The plan's M1 option (b) is taken: the
+   edge is about sRGB (0.95, 0.25, 0.13) through the Neutral tone map and does not bloom, so the eyes stay a mob's only
+   glow. The 4 Hz throb is dropped (the monotonic ramp tells the timing). `charRim` is deleted from `render/quality.js`
+   (MobModel was its only reader); the iPad's low tier now draws the rim. The plan's mood rim (moon-white at night) is
+   not built: at HEAD `moodRef` is the storm and obsidian overlay, not night (`render/mood.js` header).
+422. **Contact is about 70 ms of white on the band facing the key light, a white edge, and a 50 ms squash.** It
+   supersedes the 300 ms whole-body flood (colour and emissive). FLASH holds 70 ms and at least one drawn frame; SQUASH
+   50 ms and at least two frames, through 1, 0.6, 0.25, so it lasts about 50 ms at 120 Hz and at 30 fps. The flash is a
+   term in the one rim program (`characterStyle.js FLASH_GLSL`), identity at 0 for the beast and the props. Reduced
+   motion keeps the white edge only. MobModel writes uniforms only, so `render/mobFlash.js` (the authored-colour
+   restore the flood needed), its gate and `flashableMaterial` are deleted, and an authored emissive survives. The key
+   light is the moon at night (`render/keyLight.js`), so the plan's elevation fallback is not needed.
+423. **Only a hostile's eyes glow, and identity costs no draw.** The eyes are red lifted to 1.25x the bloom threshold
+   by the bloom pass's own luminance weights (`render/hdrGain.js`, which is now the one home of `BLOOM_THRESHOLD`;
+   GameScene passes it). The plan's part tones were a flush plate and a strap box per mob, each a mesh and an ink hull
+   on every mob of a 40-mob night; they are instead a lighter head and darker legs on parts every mob already has
+   (`render/mobTones.js`), so the unit adds no part, draw or program.
+424. **A spell is a solid core ringed in ink under one additive glow.** The silhouette is now opaque and
+   depth-written with the mobs' ink outline; the two additive white-hot core spheres (depthTest off) and the bolt's
+   five white filaments are deleted, and the bolt, the sigil's accent ring and its motes are solid. Mounted draws per
+   projectile: fire 5 to 4, ice 5 to 4, lightning 15 to 13, arcane 12 to 11 (F4's commit body says fire 5 to 5: wrong,
+   the mounted count is 4). Lightning's strobe lever drove the deleted core's opacity, so the bolt no longer flickers.
+   The plan's merged bolt and sigil geometries and puff pool are row 49's draw cut, and the impact grammar (plan M6: a
+   mark, a ground ring, voxel debris) is deferred to `MASTERPIECE:one-feedback-grammar/c`.
+425. **Elites wear an ember crest and the captain a banner (Move E), drawn by MobModel from `entity.elite`.**
+   `src/night/eliteLook.js` returns the boxes in mobFeatures' vocabulary, each with no shadow; MobModel imports it
+   directly (index), because it reads `entity.elite` at mount; PR C's spawner sets the field. The crest's emissive is
+   `#FF7A2A` at 0.6, under the bloom threshold, so it reads at night without competing with the eyes.
+426. **PR A nets fewer index bytes than main.** 647,757 B on main; F0 +12, F1 +13, F2 +383, F3 +335, F4 -1,651 (the
+   deleted layers and duplicated material props), F5 +624: 647,473 B, 284 B under main, against the task script's
+   400 B allowance. The ceiling (652,500 B) is unchanged.
+
+**Round 2, the fix round (from `a6529156`).** Main `3442443d` (lane L13 part 1) merged at `7230ea86`. Each finding of
+the two round-1 reviews below was fixed with its gate red first, or filed. Frames: `lookbook.mjs --sets combat`, on the
+production build, M3 Max, Chromium 1280x800 at high and WebKit 1180x820 and 820x1180 held at the iPad's low tier.
+
+427. **The ice crystal carries an identity index, so its ink builds the hull from its own copy.** drei's `<Outlines>`
+   builds its hull with three-stdlib's `toCreasedNormals`, which copies an indexed geometry but rewrites a non-indexed
+   one's normals in place, and disposes it on unmount. The shared `ICE_SHARDS` was non-indexed, so the first cast
+   smoothed it for the session and each projectile that ended disposed it under the live ones. Every face still owns
+   its three vertices, so the crystal keeps its per-face normals. The cost is a 72-vertex copy per mounted ice
+   projectile, freed with it, which the other inked cores already paid. `angle={0}` was the alternative: no copy, but a
+   hull pushed along flat normals splits at every facet. Gate: `spell-grammar-gates`, two ice projectiles in a row.
+428. **The mounted MobModel is gated.** Round 1's dynamic review cut seven wires in MobModel at once and the unit suite
+   stayed green. `mob-model-look-gates` mounts the real MobModel through R3F's reconciler with drei's real Outlines and
+   reads what a frame writes: the flash and white edge, the 50 ms squash, reduced motion, the head and leg tones, and an
+   elite's boxes, drawn with no shadow and with their glow. It sees writes, not pixels; the e2e reads the pixels.
+429. **An elite's crest takes a seat per type, the husk wears its own crown in ember, and a nametag stands over the
+   whole silhouette.** It supersedes item 425's one placement, which put the crest's side boxes inside a duskhound's
+   ears, its centre through a skitterling's antennae and the whole crest into the husk's and the moss brute's crowns,
+   and ran the nametag's bar through a zombie's crest. The crest is sized to the head's width (the zombie's is
+   unchanged) and seated in fractions of the head: behind the duskhound's ears with its side boxes between them, behind
+   the skitterling's antennae, on the moss brute's moss crown. The husk's charred crown is a three-spike crest at the
+   same spot, so an elite husk wears it in ember (`crest` in `game/mobFeatures.js`) and adds no boxes. The seat is a
+   table, not a derived rule, because the derived one (raise the crest over whatever it would hit) floated it 0.44 m
+   over a skitterling's head; `elite-clearance-gates` holds every hostile type in `MOB_TYPES` to it at both ranks: no
+   placed box inside the mob's own boxes, head or body (an exact oriented-box test), each crest box resting on the mob
+   and showing half its face from the front. `eliteLook.nametagY` puts a tag 2.4 m over the mob's origin, or higher so
+   the bar's bottom is 0.2 m over the silhouette's top. An elite's tag rises over its crest and banner; three plain tags
+   move too, a zombie's (2.4 to 2.56 m: its bar stood 0.04 m over its head), a moss brute's and a husk's (they stood
+   inside the head and the crown). Every lower mob keeps 2.4 m. Evidence: `elites-noon-before-top-after-bottom.jpg`
+   and `elites-midnight-ipadlow-after.jpg`.
+430. **A removed mob stops being drawn at once.** miniplex 2.0.0 emits `onEntityRemoved` before it takes the entity out
+   of the query (`@miniplex/bucket` remove), and `useEntities` (`systems/_npcShared.js`, with a copy in Nametags)
+   snapshot the query at that event. So the last mob removed stayed mounted, frozen in its last pose, until the next
+   spawn or removal: the round-1 static review's staged captain still drawn after `unstage()`, an open question then.
+   The hook now filters out the entity the event names, and Nametags uses it. In play a killed mob has shrunk to 0.001
+   scale by the time it is removed, so the leftover was mostly unseen; a despawn, a clear or a bind left a full-size one.
+   Item 431's first run found it: on every target the frames after its control and after the draw count's removals
+   (9, 5 and 5) were invalid for a mob model in view with no live mob; the cause was read in miniplex's remove, and the
+   next run, with the fix, called them all valid.
+   Gate: `use-entities-gates`, the real hook over a real miniplex world.
+431. **A combat frame holding anything the stage did not put there is invalid, and each run proves the check can see.**
+   `unstage()` ends a staged cast through the spell system's own clear (`endDeterministicCast`) while the world is still
+   held; round 1 let the projectile fly on into the next staged mobs. The seam's `frame()` reads what is drawn in the
+   game camera's view within 60 m, in the scene it finds among R3F's roots: MobModel groups (named `mob`), each matched
+   to its live mob or reported with none, and spells (projectile heads and impact pops, named `spell`). The two names
+   are production code for a test tool; they cost no work per frame. The combat set clears hostiles within the same
+   60 m (a first run cleared 40 m, and on WebKit 1180x820 all 22 frames of the day cycle went invalid for ambient mobs
+   40 to 60 m out behind the trees), waits out a new hour's toasts, and judges each frame with `combatVerdict`: an
+   unstaged hostile or a model with no live mob in view, a staged mob hurt or not in view, a spell count other than the
+   stage's, a cast still drawn after `unstage()`, a toast up, or a mob left behind. Each round-1 contaminated frame is a
+   fixture in `lookbook-combat-verdict-gates`, invalid naming its cause, beside four clean ones that stay valid. Each
+   run shoots a control first, a zombie spawned through the store beside a staged one, and calls every frame of the
+   run invalid unless the check names it. The second run: the control seen on all three targets, 132 of 132 frames
+   valid; the elite run after it, 72 of 72. Blind spots: a damage number over a mob that has died, a passive mob walking in, and anything inside the view
+   but hidden from the camera (the check reads the frustum, not occlusion).
+432. **The lit band has its own hit frame.** The round-1 hit frames faced the zombie head-on with the key light behind
+   the eye, so every visible face went white. `hit-zombie-lit` looks along the first of five headings where the best
+   turn of 30 to 60 degrees (`litTurn`, the e2e's rule, from the key light's direction, which the seam now reads) leans
+   one visible face at least 0.3 toward the key light and the other away: by day heading 90 and a -30 degree turn
+   (split 0.66), by night under the moon heading 120 and -30 (0.65). The lit front whitens and the side in the shadow
+   band stays green, paled by the white face's bloom (sampled sRGB 140, 171, 148 beside the front's 242, 242, 242 at
+   noon on Chromium), on every target (`hit-lit-noon-after.jpg`, `hit-lit-midnight-ipadlow-after.jpg`).
+433. **The core sphere's dead levers are gone.** `spellMotion`'s `coreIntensity` (the strobe's on/off, still asserted by
+   its test after the bolt stopped flickering) and `innerScale`, and `ENERGY_PROFILE`'s `coreScale` and
+   `coreIntensity`, had no reader after item 424; they go with their assertions, and the strobe's test asserts its live
+   lever instead, the bolt's scale snapping between two sizes. Four comments made stale by PR A say what the code does.
+434. **A killing blow shows no contact (it predates PR A; filed).** MobModel's dissolve branch returns before the look
+   is written, so the killing hit never flashes, and a mob killed mid-windup keeps its heated edge (#c32c0b on the
+   mounted model) through the dissolve. Row `REVIEW:w3a-pr-a:killing-blow-no-contact`, LOW, lane W3-A.
+435. **An ember elite costs about six more main-pass draws, measured.** Four zombies, then four ember-elite zombies,
+   staged 6 m out, draws counted at the GL context over three runs: Chromium +6 each time (13.5 to 19.5 per mob, then
+   22 to 28 twice), the crest's three boxes and their three ink hulls, the count the boxes predict (the per-mob figure
+   itself swings between runs with the frames that carry a shadow render). WebKit at the low tier read +10, +10 and +6
+   at 1180x820 and +5 each time at 820x1180, whose narrower view may drop the side mobs; the two +10 readings are not
+   explained by these runs. A captain's banner adds two boxes and two hulls more; an elite husk adds none of its own
+   (item 429). No elite box casts a shadow.
+436. **Bytes.** Index 649,228 B at this round's head, against main's 649,123 B (`3442443d`): PR A now nets +105 B,
+   this round +389 B (the seats and the tag height +, the cast's end and the two names, less the dead levers and
+   Nametags' copy of the hook). The ceiling (652,500 B) is unchanged.
+
+---
+
+## 2026-10-31 (lane L13) — [LOOP] the stuck-in-solid remainder: a wall is not ground, rays see what was just placed, a dug spawn corner does not loop, a sunk capsule is stood clear, the resume hold is time
+
+Lane L13 (`fix/l13-stuck-in-solid`, from `eff58e9a`) took the rows the audit lanes left in the class Kevin's invisible box
+started, player harm first. Each bug row's gate went red before its fix. The per-frame rows' gates (the wall climb, the
+resume hold, the respawn loop, the capsule sunk with its centre in the air) drive the real Player on real Rapier at 60 and
+120 Hz; the build ray is a per-click query, gated on its module with a fixed camera and, since round 2, in the mounted
+world without the Player (item 398). Items 397 to 402 are the second review round.
+
+390. **A wall is not ground; no wall-jump is kept.** The controller's `computedGrounded()` (rapier3d-compat 0.19.2) counts
+   any contact whose normal points up by more than 1e-3, and a capsule within its offset of a trimesh wall gets such
+   contacts on some frames: each re-armed the jump and set the fall to the glue's speed. `game/grounding.js`
+   `supportedGround` keeps the controller's ground only where a walkable face bears the capsule: a contact of the last
+   sweep with `normal1.y` at least cos 45 (the climb angle, one constant with `setMaxSlopeClimbAngle`), or, on a
+   grounded frame whose sweep met no floor (the snap: 4 of 240 grounded frames on a flat walk at 60 Hz, 13 of 480 at
+   120, measured), a capsule cast straight down within twice the offset that meets one. It removes grounds and never
+   adds one; the jump, the coyote time, the jump buffer and the glue all read it, so the row's question (keep a
+   wall-jump, or require an upward contact) is decided for the upward contact. A brink borne only by an edge more than
+   45 degrees from up is not ground (the player drops off it; within 45 it is). *Proof:* `player-wall-ground-gates`
+   at `eff58e9a`: Space held into a six-high face rose 2.95 / 2.98 m against a 2.35 / 2.30 m jump, the one-column
+   shaft was climbed out, a second's fall 0.03 m off a shaft's middle covered 7.4 m of open air's 15.7; green after.
+   `grounding.test.js` pins the cast (flat walk, shaft, brink). Commit `45cdd30f`. The chaos gate does not see this
+   rule (item 401).
+391. **The build ray sees a cell placed since the last step.** `castBuildRay` moved verbatim from Terrain.jsx to
+   `world/buildRay.js`, where a unit drives it with no terrain worker, and its `castRayNearest` takes the nearer of the
+   world's hit and each `placedCells.unindexed()` collider's own ray hit; the target outline and the chaos harness use
+   it. Not changed: the mob floor probe. *Proof:* `build-ray-unindexed-gates` (two clicks between one pair of frames; a
+   trimesh made since the step), red on the old query. Commit `7be92e39`. Terrain.jsx's own two call sites: item 398.
+392. **The resume hold is 10 s of time** (`RESUME_PROBE_MAX_SEC`), counted by the frame's step as the origin spawn's is:
+   600 frames had been 5 s at 120 Hz, under the origin spawn's 6. *Proof:* the real Player held 9.967 s at 60 Hz and
+   4.983 s at 120 Hz before, within two 60 Hz frames of each other after. Commit `c6f78430`.
+393. **When the spawn's wait runs out it stands on the nearest ground that answers before it drops blind**
+   (`spawnSpot`: the column nearest the corner within 8 m whose ground answers above `PROBE_MIN_Y`). A column in a chunk
+   that has not streamed in answers nothing, so no player is stood on ground that is not there. *Proof:* with the
+   corner's four columns dug out of the world, a minute idle reset the player 9 times before and once after, at 60 and
+   120 Hz. Commit `38ec3ebc`.
+394. **The stuck-in-rock watch reads the capsule's lowest point when its centre reads clear**, 0.02 m above it (a standing
+   capsule keeps it 0.05 m over its ground). Measured first, because the row was found by reading: off the corner the
+   controller frees a body sunk inside one chunk's face and one 0.4 m deep across a border; across the border of chunks
+   0_1 and 1_1 with the centre 0.05 m over the face it stayed 0.4 m deep for 2 s at 60 and 120 Hz. The chaos gate's I7
+   stays 0 (and goes red when the point is read 0.1 m lower). Commit `b64b8349`.
+395. **Instrument holes closed:** I1's tolerance is pinned by a 0.04 m case (`745483fe`); the placement gate's
+   terminal-speed SETUP reads each frame's move from `nextTranslation()` and fails under 45 m/s (`990df4d9`);
+   `mutate.sh` takes `--testTimeout=<ms>` (`fa86baf8`, proven by hand on a 25 s fixture: exit 3 without, RED with);
+   the Player's sweep is cut at a cell placed between a stepped and an unstepped frame at 120 Hz, and deleting the
+   `unindexed()` argument is red (`6389ff27`).
+396. **What the lane leaves open, as registry rows in `LANE:L13-stuck-in-solid-remainder`:** the load hold over a dug
+   column, the rim wedge, caves opening the world's floor, the per-mount edit numbering (cut-argument's second half),
+   the spawn-wait gate reach (3.3 s and no-delta mutants, I6), the cut's `stopAtPenetration`, two first mounts in one
+   window, the corner probes' span, the own-block escape rule, the Rapier panic after a wipe, the roar refund's e2e, and
+   moveKinematic's unused lift. None was reached in this lane; the lane row stays open while they do. Mutants this
+   lane's gates do not kill, each named in its commit: a resume hold one frame late, a stuck reading at another height
+   inside the sunk part, a cut that stops at the collider instead of the offset short of it.
+397. **Round 2: the respawn's fallback stands the body's own capsule clear of every column it reaches** (static review
+   F1). `spawnSpot` read only the top of the column it stood the body over, and a beast form outlives the void guard's
+   reset (`returnToSpawn` ends none): the bull's radius (0.62 m) and the golem's (0.5 m), with the controller's 0.05 m
+   offset, reach past a column's 0.5 m half-width. It now stands the body as high as the highest column its capsule
+   reaches there, as the load fit's column fallback reads them; a column that answers nothing adds nothing, and the base
+   capsule (reach 0.45 m) stands where it did. The controller's offset is one constant, `CONTROLLER_OFFSET`
+   (`game/kinematicMove.js`). *Proof:* the reviewer's probe in a throwaway copy of `082ea2ed` read the bull 0.12 m into a
+   column a block higher and the base capsule 0.1 m clear of it; the real Player in the bull form, the corner dug out and
+   that column beside the nearest one, was stood 0.12 m into it at 60 and 120 Hz with the form still on when the wait ran
+   out (`player-placement-gates`), green after with one reset. `spawnPlacement.test.js` holds every shape beside a higher
+   column on each side, the column's middle and the probe floor, so round 1's surviving mutants S5 and S7 die now.
+   Commit `514bb445`.
+398. **Terrain.jsx's wiring of the ray that sees a just-placed cell is gated in the mounted world** (static F2, dynamic
+   mutant B6). `verb-ledger-gates` already mounts the real MinecraftWorld with its worker stood in for, so the reason
+   item 391 first gave, and the row's note repeated, that vitest cannot import Terrain.jsx, was false (both corrected). A
+   row there places a block and, before any world step, reads the world's own query on the ground (the presence check)
+   and the click's ray and the outline on the new cell; either call site handing `undefined`, or a query that takes an
+   unindexed hit only when the world's own misses, is red. Commit `091a6f65`.
+399. **The grounding rule's "never adds a ground" is pinned, and the cost stories say what they cost** (dynamic G1,
+   static F5). A frame the controller calls airborne stays airborne whatever its sweep met and the cast finds: a stand-in
+   controller, since the claim is the function's; deleting the guard is red. rapier3d-compat 0.19.2's `computedCollision`
+   builds a CharacterCollision unless handed one and six vectors for each collision it returns, so the scan hands it one
+   object and the six vectors stay. `stuckInRock` scans two cells a reading in play, not one. Commit `6616818d`.
+400. **Below 60 fps the resume hold is shorter in wall-clock time than it was, and that is kept** (static F8). The hold
+   counts each frame's step, capped at 0.25 s (`game/frameStep.js`), so it is 10 s at every rate from 4 fps up: at 30 fps
+   the 600 frames had been 20 s, at 4 fps 150 s; under 4 fps the cap makes it longer. That 10 s covers a slow worker
+   streaming a far save's column is not measured; it is in `REVIEW:l4:gate-reach-round1`, beside the 6.5 s hold that
+   passes every spec (dynamic R4).
+401. **What the round-1 gates do not see, recorded where it is read.** The chaos gate does not see the grounding rule:
+   with its harness back on `computedGrounded()` it stays green (dynamic H1); the rule's gates are
+   `player-wall-ground-gates` and `grounding.test.js`, and `.claude/rules/physics.md` names them. The centre-clear
+   closure (item 394) covers the vertical sink it measured; a capsule reaching sideways into the rock with its centre and
+   lowest point clear is the open row `REVIEW:l13:sideways-reach-in-rock-unread`. The grounding rejects the rim contact
+   steeper than 45 degrees that `REVIEW:chaos-play:rim-wedge` names, so that row's jump path is gone by design.
+402. **The chaos gate on seeds 1 to 8 at `6616818d`**, run locally (CI plays seed 1; `CHAOS_SEED=<n>` plays another), the
+   five chaos files on each seed:
+
+   | Seed | Sessions (56) red | Walk-held readings | Deepest in solid | Denominator floors |
+   |---|---|---|---|---|
+   | 1 | 0 | 14 | 0.000 m | all met |
+   | 2 | 0 | 14 | 0.000 m | all met |
+   | 3 | 0 | 19 | 0.000 m | field-origin swapsRefused 1, floor 2 (SETUP) |
+   | 4 | 0 | 16 | 0.000 m | all met |
+   | 5 | 0 | 15 | 0.000 m | field-origin ownShellOut 0, floor 1 (SETUP) |
+   | 6 | 0 | 26 | 0.000 m | all met |
+   | 7 | 0 | 12 | 0.000 m | all met |
+   | 8 | 0 | 16 | 0.000 m | all met |
+
+   Every one of the 448 sessions holds I1 to I8 at 0. The two floor misses are this lane's: the round-1 dynamic review
+   read the same two at `082ea2ed`, and at `eff58e9a` (with the head's new and changed gate files) seeds 2, 3 and 5
+   passed every test. Which change moved the driver is not measured; the open row is
+   `REVIEW:l13:chaos-floors-seeds-3-5`.
+
+---
+
+## 2026-10-31 (lane start-stall) — [LOOP] a Start clicked before the world is built: the stall named, the world-building screen a still caption, and the touch-tap flake's cause
+
+Registry `REVIEW:l10:music-e2e-title-hang` (MED): on CI's software renderer a title Start clicked before the spawn chunk
+was built stopped the page answering, and two Chromium processes grew to the runner's 16 GB (item 306). This lane found
+what grows, where, and the one thing the stall needs on the page's side. Branch `fix/start-before-built-stall` from
+`bd06dacf`, main merged at `5510db64` (registry v2). Every CI run below is a throwaway `probe/start-stall-*` ref (deleted
+after), each with one change named in its commit; the local runs used the production build (`vite preview`) and the dev
+server, one browser at a time from 21:00Z, on ports 4291 and 4292.
+
+370. **What grows, and why.** Under the browser's own pointer lock (granted on the trusted Start click), Chrome's headless
+   shell on Linux streams raw pointer updates with no input at all: 79 to 284 by the first read after the click, and where
+   the page kept up it counted 2,000 to 9,400 a second (`pointerrawupdate`, runs 41245341682, 41247342006, 41248629909;
+   what a page counts is what it dispatched, so a stalled page counts fewer). While App's loading screen covered the
+   canvas in play (`bg-black/90`, `backdrop-blur-sm`, a spinning ring, a pulsing line), the page could not drain them: it
+   stopped answering, the renderer and the browser process grew together at 10 to 44 MB/s each, and the GPU process
+   stayed flat at about 0.35 GB (runs 41243964839, 41244013585, 41244702994, 41245341682, 41246539717). Of 64 pause
+   samples of the stalled main thread (`Debugger.pause`, runs 41244702994 to 41246663123), 38 landed in input listeners
+   (React's continuous-event dispatch among them), 14 in an R3F root's unmount (the title's canvas is the one that unmounts
+   at Start) and 9 in the nametags' troika text warm-up. With the lock granted in the page instead of by the browser (no
+   flood), 4 of 4 attempts kept answering with the browser flat (run 41245341682). With the chunk meshes held back 45 s
+   after the lock, no chunk delivered, the stall came 8 of 8 times (runs 41246642496, 41246663123): it needs play entered
+   with the world unbuilt, not the build's work. Under that hold the browser grew 757 to 1,859 MB in 75 s with the
+   screen as it was (8 of 8, runs 41246642496, 41246663123), and 88 to 455 MB with it hidden or restyled to a still
+   caption at the foot of the screen (7 of 7, runs 41247342006, 41248629909). Removing only the blur, or only the two
+   animations, or only its pointer events, was not enough (1 of 2 stalled; 2 of 2 grew it 0.5 to 0.9 GB; 2 of 2 grew it
+   1.2 to 1.6 GB). Why compositing a layer
+   over the live canvas starves the input drain is not measured: two traces of it were lost (run 41242773722 past V8's
+   string limit, run 41248095937 to a tracing end slower than its 90 s wait).
+
+371. **The fix: the world-building screen is a still caption at the foot of the screen** (`src/App.jsx`, `ac6409ed`). Its
+   two lines of text, unchanged, sit there with no background, no blur, no spinner, no pulse and no pointer events, and
+   nothing covers the canvas. Its text shadow did not make it legible over the unbuilt world's bright fog (1.03:1 for the
+   subtitle, measured on the frame), so it now takes the ink outline of type drawn on the world (item 380). Under the title it is covered, as
+   before; a Start clicked before the world is built now shows the world streaming in behind the caption instead of a black
+   screen, a look change to the loading moment, shot on the real GPU of item 372 (the before and after pair is item 380's).
+   A first fix, `7179f88f`, kept the full-screen layer opaque and still. An earlier form of
+   `tests/e2e/start-before-built.spec.js` (a 600 MB bound over 75 s and a check that the world builds by 135 s, both
+   restored by item 378) failed it 2 of 6 times (runs 41249827128, 41250492755: the browser +659 MB once, the world unbuilt
+   135 s after the click once), against 4 of 4 for the caption there; at n=6 against 4 the two shapes' growth ranges
+   overlap (186 to 659 MB, 88 to 545 MB), so the choice rests on the failures, not on separated ranges. Pacing the canvas at
+   10 fps under it made it worse (1 of 1, +2.4 GB). The caption is not a full cure: under the same flood its page still
+   stalled and grew in 1 of 20 attempts (run 41254347251: the browser +978 MB, all its processes +3.5 GB, 1 read of 6
+   answered), and fell behind for the whole window with the browser bounded in 1 more (run 41253190798); counted by the
+   reworked spec's arms, which also fail a page that stops answering or a world that does not build, the residual is
+   item 378's. Why a page in play before the world is built drains worse than one after it is not measured
+   (`REVIEW:start-stall:caption-page-still-stalls`, item 376). `tests/gates/static-gates.test.js`
+   no longer exempts `App.jsx` from the design language's backdrop-blur ban, so a blur back on that screen reds it (S1 RED
+   on the Tailwind class and the CSS property, the identity edit survived); a blur written as React's inline
+   `backdropFilter` passed it until item 379.
+
+372. **On one Mac's real GPU nothing stalled.** On Kevin's Mac (Apple M3 Max, ANGLE Metal, full Chromium in new headless mode, the
+   production build), a Start clicked 1.6 s and 7.6 s after the title showed, before the world was built, held 60 fps and
+   1.3 to 1.7 GB flat over 90 s with the old screen (the lock granted in the page); with the browser's own lock, granted
+   there, the page received one raw pointer update in 35 s and stayed flat; and the caption, under the browser's lock with
+   the world held 8 s, received one raw pointer update, held 60 fps and 1.3 GB flat and built the world when the hold
+   ended. The flood is the Linux headless shell's, under its own lock; on that Mac a mouse at rest sent nothing. What
+   this measured is one machine (an M3 Max), one browser (Chromium in new headless mode) and a still mouse, 3 runs: there
+   the page met neither the flood nor the stall. It did not measure a mouse moving during the build (a 1,000 to 8,000 Hz
+   mouse streams input at the order of CI's flood, 2,000 to 9,400 a second), Windows or Linux, or a slow GPU, so whether a
+   player can meet the stall is not established; and the M3 Max heat in Kevin's original report is not explained by
+   this. Nor is the growth bounded for a player: item 371's caption cut the stall under the held world from 8 of 8 to about
+   1 in 20, and the gate's 4 GB brake (item 374) stops a test runner, not the product. The green run on `debfdfc2` itself
+   grew all of the page's Chromium processes by 2,175 MB (run 41263751030), and no run of a Start clicked after the world
+   is built gives the baseline that would say whether that is normal.
+
+373. **Ruled out, each by its own run.** The music route (item 306). The debris pool before `83c5abd3` (all 200 bodies
+   awake at one point under the world): main has the fix and still stalled, and main with the old pool copied in by a CI
+   step stalled alike (run 41244181568). The canvas pace: `5a9158d4` paced a world being built at the title's 10 fps with
+   no governor, and the stall came 5 of 5 (run 41246539717) and 4 of 4 under the hold (run 41246663123); reverted in
+   `38ec3f9c`, its gates with it. Local runs never reproduced: macOS's headless shell grants no lock, and the full
+   Chromium's lock streams no flood; CPU throttling (6x, CDP) and the old code (`f0c027e6`, item 306's control) were flat
+   there too.
+
+374. **The gate: `tests/e2e/start-before-built.spec.js`.** The title's Start clicked with a trusted mouse click at its box
+   (no actionability wait), the lock the browser's own on a trusted gesture (L10's probe form), and the chunk meshes
+   held 45 s after the lock, so play is entered with the world unbuilt on any machine (it sets what it reads,
+   gate-authoring class 12). This is the spec as `e8b1acf7` committed it; item 378 reworks it. Over 90 s from the lock it
+   reads the page every 2 s (4 s bound) and the browser process's RSS from `ps`; it fails when the browser grows more
+   than 700 MB (the throwaway probe branches had committed 600 MB over a 75 s window, then 900 and 700; item 378 restores
+   600) or all of the page's Chromium processes together more
+   than 4 GB (a brake: the drained runs' renderer rose 1 to 1.5 GB), stopping the moment either does and crashing the
+   renderer through CDP first so a runner is not run out of memory with its log (L10's runs ended so, and so did this
+   lane's E1 twice, runs 41253190798 and 41253785118, before the brake), or when the page never answers. The bound sits
+   between the caption's 88 to 545 MB (16 attempts, most flat by 75 s) and the old screen's 757 to 1,859 MB by 75 s (8
+   of 8, still growing). Every verdict waits for the window or the bound, so a stalled page fails rather than skips (a
+   SETUP read at the lock raced the lock's own event and scored the stalled page COULD NOT CHECK, run 41249479316; the
+   hold's precondition is a count kept in the page, read on any answer). A browser that grants no lock, or a page that
+   answered 90% of its reads and counted under 100 raw updates, skips as INCONCLUSIVE with the reason printed (the shape
+   `tier-downgrade-reclaim.spec.js` uses; item 372's Mac counted 1 in 35 s). The answers and whether the world built are
+   printed, not judged: under the flood even the caption's page misses many 4 s reads on CI, and in 1 of 12 of this
+   spec's attempts on it it answered 1 of 8 for the whole window with the browser bounded (+406 MB, run 41253190798). It
+   does not separate the full-screen opaque, still screen of `7179f88f` (186 to 659 MB, inside the bound; E2 survived,
+   run 41253190798). Proof, on the runner through `scripts/dev/mutate-e2e.sh` (nothing mutated committed): with the
+   screen as it was (E1) the spec went RED 3 times in 3 (runs 41253785118 and 41254347251: the browser +771, +1,068 and
+   +725 MB, each stopped at the bound); the identity edit (E0) survived in run 41254347251, and in run 41253785118 it
+   scored COULD NOT CHECK (exit 3: its 2 answers of 9 missed the held state, on the earlier spec `4e36364b`), so it
+   survived once, not twice; on the caption the spec passed 7 of 8
+   attempts, the eighth the residual stall of item 371. In CI it runs with the suite's two retries, so the residual
+   reaches a red run only when three attempts in a row meet it, and `flaky-report` names it when a retry passes.
+
+375. **Two commit messages corrected here.** `5a9158d4` stated that the page saturated because the canvas drew at the play
+   pace under the loading screen; item 373 refutes it, and `38ec3f9c` reverts it. `7179f88f`'s "neither the blur alone nor
+   the animations alone were enough to remove" means: removing only the blur, or only the animations, did not remove the
+   stall; and its shape was not the last (item 371).
+
+376. **What is left, as a registry row and a question.** On a local SwiftShader run with the world held, the tier governor
+   stepped high, med, low while the loading screen was up, and the second decline settles the tier for the session
+   (`render/tierGovernor.js`): a slow machine that clicks Start early may play at a tier its build chose
+   (`REVIEW:start-stall:governor-samples-the-build`, LOW). And merging main the documented way failed the commit hook:
+   registry v2's S6 reads `git rev-list HEAD`, and in a merge's pre-commit HEAD is the branch's own tip, so every
+   `closedBy` sha main added read as no ancestor (18 of 37 registry-harvest tests red). The merge `4eb154a0` was made from
+   main's side and the lane fast-forwarded to it; whether S6 should read `MERGE_HEAD` too was the registry v2 owner's
+   (`REVIEW:start-stall:s6-in-a-merge-commit`, LOW), answered the same night by the registry S6 lane (item 369), and the
+   lane's second merge of main (`f7228b13`) went through the documented way. The caption's residual stall under the headless flood is
+   `REVIEW:start-stall:caption-page-still-stalls` (LOW, LANE:flakes). Its candidate fix is to take the pointer lock only
+   once the world is built (the lock is what the flood rides on, and until then the player is held in the sky with nothing
+   to look at), a change to the pointer-lock entry path that this lane did not make: the recovery overlay and the
+   no-stranded-player invariant of `.claude/rules/input-and-pointer-lock.md` gain a dimension, and that wants its own lane
+   and gates. The lane's QUESTION.md asks the command session for that ruling.
+
+377. **The touch taps the caption broke, and the harness input under them.** PR #76's CI (run 41255314244, two attempts)
+   failed `panels.spec.js:83`, the phone tray tap, 6 of 6 and the touch Pause tap of `pause-freezes-world.spec.js:217` 3
+   of 6, each with a canvas over the button, against about 2 of 7 first attempts of the tray tap on other PRs that
+   night. An A/B on the runner put it on this lane (run 41259967132): with main's loading screen restored the tray tap
+   passed 4 of 4 and the touch Pause 4 of 4; with the caption, 0 of 4 and 2 of 4. Run 41261223279 named the mechanism:
+   with the caption the world-ready auto-lock (`App.jsx`, 100 ms after the spawn chunk) was granted and the game started
+   under it, and the tap's `pointerdown` carried clientX/clientY 0,0, where Playwright's hit-target check found the
+   canvas and blocked the tap on every retry; with main's screen the same request was refused (`pointerlockerror`) and
+   the tap landed 3 of 3. Pointer Lock 2.0 refuses a request made without transient activation unless the document
+   released a lock itself with `exitPointerLock()` (`requestPointerLock`, step 3, w3c.github.io/pointerlock, read
+   2026-11-01); the grant came from Playwright running every `page.evaluate` as a user gesture (`frame-cap.spec.js` says
+   how that was found), and the caption builds the world sooner (the lock asked for 7 to 10 s after load, against 13 to
+   20 s), inside the activation the test's own wait had opened. So the flake those rows chased was never the title's
+   canvas, and the fix is the harness's: `tests/e2e/_fixtures.js` now refuses, in a touch context, a lock asked for
+   outside a trusted input event (`4fc42a61`; desktop contexts unchanged). That is stricter than a conforming browser,
+   not the same: transient activation outlasts its event by a few seconds, and PR #76's dynamic review measured Chromium
+   granting a lock asked for 1 s after a real tap where the fixture refuses it (its arms D and DF), so the touch suite
+   cannot show a touch Chromium taking the world-ready auto-lock after a real tap; item 381 rules on that path. Proof, run
+   41262061859 on that tree: the tray tap 6 of 6 and the touch Pause 4 of 4 with it, the tray tap 0 of 3 with its
+   install line removed (the touch Pause passed 2 of 2 there: it is a race), and every other Chromium touch spec 26 of
+   26 with it. `4fc42a61`'s trailer says the touch Pause went 0 of 4 in run 41259967132; it went 2 of 4 there, against 4
+   of 4. The four flake rows (`REVIEW:w2d:pause-tap-title-canvas`, `REVIEW:e2e-flakes:panels-phone-tray-tap-timeout`,
+   `REVIEW:e2e-flakes:hud-at-rest-tracker-tap-canvas`, `REVIEW:e2e-flakes:touch-gear-tap-canvas-intercepts`) get the
+   finding and stay open for their acceptance's ten clean CI runs. Not measured: a real touch browser that has a pointer
+   (a Chromium tablet with a mouse) after a Start before the build.
+
+378. **The gate reworked: it judges the page and the world, not memory alone** (`tests/e2e/start-before-built.spec.js`,
+   `3ec4218f`; PR #76's static review findings 1, 2, 5 and 9, the dynamic review's optional fix). Item 374's spec failed only
+   on memory and printed the answers and the world unjudged, so a page that answered once and then went silent for the
+   window passed (item 374 records one). It now fails on any of five arms, each printed with its number, and prints every
+   2 s sample (the page's answer, the browser's and all of Chromium's RSS, the pointer updates, the lock, the world):
+   - **bound:** the browser process +600 MB over its value at the click. 600 is restored: the throwaway probe branches
+     committed 600 over a 75 s window, then 900 and 700 as the window grew to 90 s, with no measured reason (`git log -p`
+     of the probe refs `32f11347` to `8e7e4819`). The caption's browser rose at most +545 MB in any attempt measured
+     (with the listener below), the outlined caption's +132 to +364 MB over 27 attempts (runs 41269336217 to
+     41270557952), and the old screen stopped at +609 to +895 MB on its first sample past 600 (runs 41268462804 to
+     41270557952), so 600 holds the caption with room and keeps the old screen red;
+   - **brake:** all of the page's Chromium processes +4 GB together (unchanged);
+   - **answers:** the longest span with no answered read over 30 s, from the answer before it to the answer after it, or
+     from the click, or to the end. Judged in time, not in reads: with `page.waitForTimeout` pacing the samples, each
+     missed sample took 12 s while a mutant held the page's main thread and a 45 s silence read as 3 missed reads (run
+     41268462804); Node's own timer paces them now;
+   - **late:** the browser's floor (its lowest sample, over the reads the page answered) over the window's last 15 s
+     more than 50 MB above its floor over the 30 s before. Floors, not peaks: a page that falls behind for one sample
+     spikes the browser and gives it back (+275 and +328 MB, then +42, run 41268462804), which a max-minus-first measure
+     failed 6 of 9 plated attempts on; a leak raises the floor. Over answered reads only, and not judged when a span
+     holds none, because a missed read finds the browser at a spike (item 383);
+   - **world:** the spawn chunk not built 135 s after the click (the hold ends 45 s after the lock).
+   A browser that grants no lock, or streams no flood, is INCONCLUSIVE: a printed skip on a workstation, a failure on CI
+   (`process.env.CI`), so the gate cannot go dark there if CI's Chromium stops flooding. The flood is counted from the
+   game's own `pointermove` events (each carries the raw updates coalesced into it), not from a `pointerrawupdate`
+   listener the shipped page lacks (static finding 5). That listener is not free: added back on the runner, the outlined
+   caption's page failed 4 of 4 attempts on the answers arm (silent 35 to 66 s; once also the bound, at +745 MB),
+   against 0 of 8 without it (run 41269336217), so item 374's spec, and the probes behind items 370 and 371, loaded
+   the page they measured (item 382). That run also printed the late arm failing three of the four at +63, +99 and
+   +79 MB; those floors were missed-read spikes (none of the four had an answered read in the window's last half,
+   item 383), so the verdict rests on the answers arm.
+   The hold now delivers its held meshes in order ahead of any later one, as its comment said (static finding 9).
+   The thresholds against what the outlined caption showed in 27 green attempts on nine runners (runs 41269336217 to
+   41270557952): the browser +132 to +364 MB (600), the longest silence 4.9 to 23.7 s (30), the floor's rise -24 to +39
+   MB (50), the world built 50 to 68 s after the click (135). The silence and floor bounds have the least room. (The floor
+   range is the arm as `3ec4218f` had it; item 383's arm reads -17 to +39 MB over 40 outlined attempts.)
+   On any failure the spec now kills every Chromium process of the test from Node before raising it. Item 374's spec
+   crashed the renderer through CDP instead, and that did not hold: in run 41269336217 one old-screen attempt filled its
+   runner and the runner was shut down with nothing printed, and in run 41270116196 the bound failed at +895 MB, the
+   page then went unanswered, and the largest chrome-headless process on the runner grew to 11.5 GB while Playwright
+   waited to close it, until that runner was shut down too (the log's process list names no role, so that process is not
+   shown to be the browser rather than the renderer). Proof of the spec as `3ec4218f` committed it, on the runner through
+   `scripts/dev/mutate-e2e.sh` (run 41270557952, the spec byte-identical; nothing mutated committed; its late arm read
+   every sample until item 383), each arm red by a mutant that reds it alone: the old screen RED 3 of
+   3 on the bound (+672, +657, +609 MB, each runner keeping its memory and its log); a page that releases the lock 20 s
+   after it and blocks its main thread 60 s RED on answers alone (60.2 s silent); 16 MB/s of blobs from 60 s after the
+   lock RED on late alone (the floor +84 MB, the bound +364 MB passed); a spawn chunk that never marks the world built
+   RED on the world alone; Start with no lock RED as INCONCLUSIVE on CI; the identity edit SURVIVED; the outlined
+   caption passed 8 of 8. The earlier drafts met the same mutants in runs 41268462804, 41269336217 and 41270116196 with
+   the same verdicts, except where this item says why a draft changed: round 1's identity edit went red on the
+   peak-based late measure, round 1's 45 s silence passed as 3 missed reads, and round 1's 4 MB/s blob leak raised the
+   floor only about 1.8 MB/s and passed, so the late arm's reach starts above that rate.
+
+379. **The design language's blur ban sees React's inline spelling** (`tests/gates/static-gates.test.js`, `1d95958a`; the
+   dynamic review's finding 1). The S1-C gate matched `backdrop-blur|backdrop-filter`, so `style={{ backdropFilter: ... }}`
+   passed it, which falsified its own comment and item 371. One case-insensitive pattern now covers the Tailwind class,
+   the CSS property and the inline key (`backdropFilter`, `WebkitBackdropFilter`) in the ban, the App.css check and the
+   reporter. Proof (`scripts/dev/mutate.sh`, 8 tests): the caption with an inline `backdropFilter` SURVIVED the old
+   pattern and is RED on the new; `WebkitBackdropFilter` RED; Tailwind `backdrop-blur-sm` RED; an identity edit SURVIVED.
+
+380. **The caption's look: an ink outline, not a plate** (`src/App.jsx`, `d8b50695`; static finding 7, dynamic finding 4).
+   On the real GPU (production build, Chromium new headless, Apple M3 Max ANGLE Metal, 1280x800 at DPR 2, Start clicked
+   before the world was built, the lock held), the bare caption read 1.03:1 (subtitle) and 1.78:1 (headline) against the
+   unbuilt world's pink fog, and 1.38:1 and 2.84:1 against the soft shadows around its glyphs. A first fix, `30fef172`,
+   set it on a small solid plate in the design language (bg-panel, ink border, hard offset): 9.53:1 and 12.99:1. On the
+   runner the plated page measured worse than the bare caption: the browser +116 to +337 MB and the longest silence up
+   to 26.9 s over 8 attempts, against +35 to +57 MB and at most 8.8 s over 4 (run 41268462804), which read at first as
+   the plate's cost. `d8b50695` gives the caption the ink outline of type drawn on the
+   world (`ui/onWorldText.js`, as the coin count and the target's nameplate have) and no plate: the subtitle's fill reads
+   9.71:1 and the headline's 14.53:1 against their immediate surround (the non-glyph pixels within 2 device pixels),
+   while the fog beyond stays 1.10:1 and 1.50:1, so the outline carries the legibility. On the runner the outlined page
+   passed every arm in 27 of 27 attempts (item 378's numbers; runs 41269336217 to 41270557952, nine runners), the
+   first 8, in run 41269336217, at the browser +168 to +295 MB and the longest silence 5.3 to 17.9 s. Those runs do not
+   separate the plate from the outline: the bare caption's 4 attempts ran on one runner of an older image (20261015),
+   the plate's 8 on two runners and the outline's first 8 on two more, all of the newer image (20261021), and the plate
+   and the outline measured alike there. So `d8b50695`'s message overstates when it says a covering element, even a
+   small one, costs the drain: these runs do not show that. The outline is kept because it adds no element over the
+   canvas, where items 370 and 371 found a covering layer to starve the drain, and because it is the design language's
+   own convention for type on the world. The lookbook's sets cannot show this state (each enters a built world), so the
+   before and after pair is a lane probe's: `docs/superpowers/masterpiece-2026-10/evidence/start-stall/` (both frames, both crops at full
+   resolution, the plate's frame, and `contrast.json` with the method). The first probe run's after frame was shot
+   under the Paused surface (the browser had released the lock) and its measure took the commonest colour for the
+   backdrop; both were redone before any number here was read.
+
+381. **Ruling: the world-ready auto-lock waits for a mouse or a pen** (the dynamic review's finding 3; the lane's QUESTION.md
+   third question). App asks for the pointer lock 100 ms after the spawn chunk is built whatever started play, and on a
+   touch Chromium that has the API a Start tap's activation can still be live then (the review's arm D: Chromium grants
+   a lock asked 1 s after a real tap), and under that lock a tap's `pointerdown` carries 0,0 (arm L). The command
+   session's ruling: the auto-lock asks only when the gesture that started play was a mouse or a pen (its
+   `pointerType`), never touch, so an iPad with a trackpad keeps mouse-look and a touch player is not locked. This lane
+   does not make the change, a product change to the input path that wants its own red-first e2e; it is
+   `REVIEW:start-stall:touch-start-auto-lock` (LOW, LANE:W3-C, the first minute), accepted when a touch Start never
+   requests the lock and a mouse Start on a touch-capable device still does.
+
+382. **Records corrected before landing.** Items 371, 372, 374 and 377 were edited in place, since none had landed: 371
+   no longer leans on a spec form that was not committed (its 2 of 6 is the earlier spec's) and records the text
+   shadow's failure; 372 no longer says a player meets neither the flood nor the stall, or that the growth is bounded,
+   and says what was measured (one M3 Max, Chromium in new headless mode, a still mouse); 374's identity edit survived
+   once, not twice; 377's fixture is stricter than a conforming browser, not the same. The fixture's comment says so
+   too (`f4bef2b3`). The registry's `REVIEW:start-stall:caption-page-still-stalls` and the closed
+   `REVIEW:l10:music-e2e-title-hang` carry the narrowed claim about players. Static finding 5 changes the record most:
+   items 370, 371 and 374 measured the caption under a `pointerrawupdate` listener the shipped page lacks, which item
+   378 shows loads the page, so the caption's 88 to 545 MB and its residual stall of about 1 in 20 describe the page
+   under that listener, not the shipped page; the old screen still fails without it (item 378).
+   `REVIEW:start-stall:caption-page-still-stalls` stays open on its acceptance with that recorded. One commit message of
+   this round overstates: `d8b50695`'s, on what the plate cost (item 380 says how). The next round's corrections are item
+   383's.
+
+383. **Fix round 3: the late arm reads answered reads only, the blur ban reads every stylesheet, and the records are
+   corrected** (`tests/e2e/start-before-built.spec.js` `f5c8b67c`, `tests/gates/static-gates.test.js` `c9199dfd`; PR #76's
+   round-2 reviews: the dynamic review's F1 to F5 and the static review's findings 3 and 4). This round changes tests and
+   records only; `src/App.jsx` changes a comment.
+   - **F1, the late arm no longer calls a missed read a leak.** It took each half's floor over every sample, and a read that
+     misses finds the browser at a spike (13 to 358 MB above the attempt's answered floor in 76 missed samples of the green
+     outlined attempts, runs 41269336217 to 41271264457). So a span whose samples all missed read a spike as its floor:
+     plate-a attempt 3 of run 41268462804 failed at +210 MB on one missed sample, and the head's own green run
+     (41271264457) had one answered read of three in its last half. Both floors are now taken over the reads the page
+     answered. *The first form did not hold.* It compared the last 15 s with the 15 s before and read "not reached" when a
+     half held no answered read. On the runner (run 41274837477) the slow-leak mutant was RED once (+108 MB) and then
+     SURVIVED: the leaking page missed four reads in a row (63 to 81 s), so its reference half held none, the arm read "not
+     reached", and the answers arm saw 27.1 s of silence against its 30. The arm of `f025bc5b` reads -52 MB on that run as
+     well: the missed reads' spikes hid the leak, which only answered reads see. So the reference is the 30 s before the last
+     15 s (45 to 75 s), where the same run holds answered reads and reads +147 MB. A span with no answered read is "not
+     reached" and not failed, because a page silent that long is the answers arm's; a span with no browser reading at all
+     (ps found none) still fails the arm. What this leaves: a leak that also silences the page for the whole last 15 s, and
+     for under 30 s, passes both arms; and the arm reads only the window's last 45 s, when the world is usually built (50
+     to 68 s), so a leak confined to the unbuilt phase is held by the bound and the brake alone (static finding 1, not
+     changed here).
+     *Proof, on the runner* through `scripts/dev/mutate-e2e.sh` (run 41275275384 at `7e43b22c`, whose probe copy of the spec
+     is byte-identical to the committed one; nothing mutated committed): the slow-leak mutant RED on late alone 3 of 3 (+145,
+     +124, +85 MB; the bound +219, +342, +240 MB passed; answers and the world passed); the old screen RED on the bound
+     (+623 MB); the page that releases the lock and blocks its main thread 60 s RED on answers alone (63.2 s silent; late
+     not reached); a spawn chunk that never marks the world built RED on the world alone; Start with no lock RED as
+     INCONCLUSIVE on CI; the identity edit SURVIVED twice (late +6 and -11 MB); the outlined caption passed 8 of 8 (late -7
+     to +18 MB, the bound +108 to +398 MB, the longest silence 9.3 to 16.9 s, the world built 46 to 61 s after the click).
+     *Rescore of the logs* (102 attempts from runs 41268462804 to 41275275384, to the 0.1 s the logs print, so a sample
+     printed at 75.0 s may belong to either span; the spec's own function over the logs gives the same numbers, and the
+     runs' printed values are the ones cited above): plate-a attempt 3 (+210 MB FAIL) is not reached; the raw-listener
+     attempts 2 to 4 (+63, +99, +79 MB FAIL) are not reached, where the answers arm fails all four; the first form's missed
+     slow-leak sample reads +147 MB FAIL; no other attempt changes its verdict, every slow-leak attempt that failed before
+     still fails, and the 51 judged attempts of pages that are not mutants read -17 to +39 MB against the bound of 50 (the
+     40 outlined attempts the same). The surviving margin is the one item 378 names: the floor bound has the least room.
+   - **F4, the blur ban reads every stylesheet under `src/`** (`c9199dfd`). It read the JS and JSX files and `App.css`, so
+     `backdrop-filter` in `index.css` passed (8 of 8), while item 379 and the gate's comment say a blur on the screen reds
+     it. Its walk now covers every `.css` file and asserts it found at least the three there are. Proof
+     (`scripts/dev/mutate.sh`, 8 tests): the blur in `index.css` SURVIVED the gate as it stood and is RED on this one;
+     `-webkit-backdrop-filter` in `theme/fonts.css` RED; the old `App.css` and Tailwind-on-`App.jsx` checks RED; a walk that
+     enumerates nothing RED; an appended comment SURVIVED.
+   - **F5, noted.** The spec's flood counter calls `getCoalescedEvents()` on each `pointermove`, which nothing in `src`
+     calls, at about 70,000 raw updates a second by its own count. Its cost is not measured; the risk it carries is a false
+     red, never a false green. The spec's comment says so.
+   - **Records corrected.** F2: item 378 and the spec said the browser grew to 11.5 GB, but the log lists only the largest
+     chrome-headless process (the browser process read 1,010 MB at the verdict), so the 11.5 GB process is not shown to be
+     the browser. F3: item 378's "floor +63 to +99 MB" for the raw-listener run were missed-read spikes (none of the four
+     attempts had an answered read in its last half); that run's verdict rests on the answers arm, which failed all four.
+     Static finding 3: item 371 still said the caption sits on a plate, and `App.jsx`'s comment and `contrast.json` still
+     said the plate drained the flood worse, which item 380 withdraws; all three now say what item 380 says. Static finding
+     4: `REVIEW:start-stall:caption-page-still-stalls` was a `flake` that was not player-visible, while its note says whether
+     a player can meet the flood is not measured; it is now an `instrument` (a real mouse and a real GPU against the flood,
+     not yet run), area `input`, player-visible, as the registry's other unmeasured-exposure rows are.
+   - **Not changed here:** static finding 2 (the flood check asks whether the lock and 100 updates were ever seen, not for
+     the whole unbuilt phase), 5 (the answers arm judges the longest silence, not the answered fraction) and 8 (the
+     counter's work, F5 above), and the touch buttons that stay live during the build, which have no registry row yet.
+
+---
+
 ## 2026-10-31 (registry S6) — [LOOP] a lane takes main in the documented way and the commit goes through: S6 reads MERGE_HEAD while a merge is unfinished
 
 Found by the start-stall lane (`fix/start-before-built-stall`), which could not merge main without `--no-verify` and

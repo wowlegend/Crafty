@@ -28,11 +28,11 @@ import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
 import { nearestLandmark, landmarkAt } from './shrines.js';
 import { HubRender } from '../render/HubRender';
 import { HEARTH_Y, HEARTH_FIRE } from './homeAnchor.js';
-import { chestHasItems } from '../game/chestState.js';
 import { placeAtHit } from './placeAtHit.js';
 import { mineAtHit, creditBrokenBlock } from './mineAtHit.js';
 import { createCellEdits } from './cellEdits.js';
 import { mineTarget } from './buildTarget.js';
+import { castBuildRay as castBuildRayFrom, castRayNearest } from './buildRay.js';
 import { createPlacedCellColliders, createEditSeq } from './placedCellColliders.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 import { makeMobFloorProbe } from './mobFloorProbe.js';
@@ -172,7 +172,8 @@ const TargetOutline = () => {
         };
         // Every world query here passes EXCLUDE_DYNAMIC: the only dynamic bodies are the block-break debris
         // (world/BlockParticleSystem.jsx), and a ray that met them for their 2 s aimed at the empty cell they tumble through.
-        const hit = world.castRay(ray, 8.0, true, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, playerRigidBody, filterPredicate);
+        // The cells placed since the last step are cast against too (world/buildRay.js): the outline frames what the click hits.
+        const hit = castRayNearest(world, ray, 8.0, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, playerRigidBody, filterPredicate, GameMethods.placedCells?.unindexed());
         if (hit) {
             // #72 sweep fix: `timeOfImpact`, not the legacy `toi` (undefined -> NaN target ->
             // the block-target outline never resolved a real voxel).
@@ -729,59 +730,8 @@ export const MinecraftWorld = React.memo(function MinecraftWorldRender() {
         // unmapped name fell back to `|| 1` (GRASS). Both directions now derive from the ONE table in
         // src/world/blockIds.js, so they cannot drift again. Locked by block-id-gates.test.js.
 
-        // The single per-click build ray. null on no-hit; else everything the router needs
-        // (toi, chestTargeted) plus everything the executors need (hitPoint/normal/coords).
-        // NOTE (preserved quirk): multiplyScalar MUTATES `direction` to dir*toi, and the
-        // original deletePos/place-fallback offsets used that scaled vector — kept verbatim.
-        const castBuildRay = () => {
-            const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
-            const playerHandle = playerRigidBody?.handle;
-
-            const direction = new THREE.Vector3();
-            camera.getWorldDirection(direction);
-            const rayStart = camera.position.clone();
-
-            const ray = new rapier.Ray(
-                { x: rayStart.x, y: rayStart.y, z: rayStart.z },
-                { x: direction.x, y: direction.y, z: direction.z }
-            );
-
-            const filterPredicate = (collider) => {
-                if (playerHandle === undefined) return true;
-                const parent = collider.parent();
-                return !parent || parent.handle !== playerHandle;
-            };
-
-            const hit = world.castRayAndGetNormal(ray, 8.0, true, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, playerRigidBody, filterPredicate);
-            if (!hit) return null;
-
-            // #72 smoke-found fix: this rapier build exposes `timeOfImpact` — the legacy `hit.toi`
-            // is undefined at runtime (typings agree), so the OLD listener computed NaN coordinates:
-            // instant mine/place at HEAD was silently broken (junk "NaN_NaN_NaN" worldBlocks keys,
-            // break/place SFX with no real edit). Verified via the executor smoke + ray.d.ts.
-            const toi = hit.timeOfImpact;
-            const hitPoint = rayStart.clone().add(direction.multiplyScalar(toi));
-
-            const store = useGameStore.getState();
-            const { x: targetedX, y: targetedY, z: targetedZ } = mineTarget(hitPoint, direction, store);
-            const targetCoords = `${targetedX}_${targetedY}_${targetedZ}`;
-
-            return {
-                toi,
-                normal: hit.normal ? { x: hit.normal.x, y: hit.normal.y, z: hit.normal.z } : null,
-                direction,
-                hitPoint,
-                targetedX,
-                targetedY,
-                targetedZ,
-                targetCoords,
-                chestTargeted: !!(store.chests && store.chests.has(targetCoords)),
-                // Whether that chest still holds anything. The router refuses a left-click MINE on a
-                // loaded chest (mine() deletes the chest and drops nothing), but lets you remove an
-                // empty one you placed — so the guard needs the contents, not just the presence.
-                chestHasItems: chestHasItems(store.chests && store.chests.get(targetCoords)),
-            };
-        };
+        // The single per-click build ray (world/buildRay.js), which also sees the cells placed since the last step.
+        const castBuildRay = () => castBuildRayFrom(world, rapier, camera, placedCells.unindexed());
 
         // The executors live in mineAtHit.js and placeAtHit.js so the unit suite drives the real verbs; the worker stays here.
         const mine = (h) => mineAtHit(h, { post: (msg) => worker.postMessage(msg), editCells: cellEdits.request, playBreak: playBlockBreak });

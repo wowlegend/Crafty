@@ -25,7 +25,7 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // collider per chunk over the drawn positions and indices (Terrain.jsx ChunkMesh), rebuilt on every edit
 // (terrain.worker.js update_block); the player as Components.jsx makes it (kinematic body, capsule BASE_CAPSULE, KCC
 // offset 0.05, autostep 1.05 / 0.2, snap 0.5, 45 degree slope), moved once a frame through moveKinematic; the eye
-// EYE_HEIGHT_M over the body; the build ray as Terrain.jsx castBuildRay casts it (8 m, the player's body excluded); and
+// EYE_HEIGHT_M over the body; the build ray as world/buildRay.js castBuildRay casts it (8 m, the player's body excluded); and
 // the real placeAtHit against the real store, its batched edit answered as the worker answers it. @dimforge/rapier3d-compat is
 // the build the app ships.
 //
@@ -217,7 +217,7 @@ function frame(P, { mx = 0, mz = 0, jump = false, hz = 60 } = {}) {
 
 const eye = (S) => { const t = S.p.body.translation(); return new THREE.Vector3(t.x, t.y + EYE_HEIGHT_M, t.z); };
 
-/** Terrain.jsx castBuildRay: the hit the place verb is handed (the direction scaled by toi, as there), from the camera,
+/** world/buildRay.js castBuildRay: the hit the place verb is handed (the direction scaled by toi, as there), from the camera,
  *  which is the eye unless a test moves it. */
 function buildRay(S, dir, from = eye(S)) {
   const d = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();

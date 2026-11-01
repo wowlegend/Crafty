@@ -26,7 +26,9 @@ import * as THREE from 'three';
  *  - every block the hotbar holds and every good the Forge sells, placed and mined, comes back as itself;
  *  - the dragon's smash breaks only blocks (never the air above them, never a chest) and pays, counts and sounds nothing;
  *  - for 120 frames of debris over the aimed cell, the build ray, the outline, the anvil ray and the ground probe all see
- *    the terrain, while a ray that does not exclude dynamic bodies sees the debris (the instrument's presence check).
+ *    the terrain, while a ray that does not exclude dynamic bodies sees the debris (the instrument's presence check);
+ *  - before the world steps again, the next click's build ray and the outline meet a cell just placed, while the world's
+ *    own query still meets the ground behind it (Terrain.jsx hands world/buildRay.js placedCells.unindexed()).
  *
  * WHAT THIS DOES NOT CHECK: the Player loop's own queries (the ledge vault's rays and the controller's sweep:
  * tests/gates/player-debris-gates.test.jsx), a real browser's worker timing (the window is made by the pump), the Delete
@@ -122,8 +124,8 @@ beforeAll(async () => {
   await pump();
   await r.step(2);
   expect(topAt(CX * 16 + 8, CZ * 16 + 8), 'SETUP: the chunk\'s trimesh is not in the world').not.toBeNull();
-  SITES = openColumns(4);
-  expect(SITES.length, 'SETUP: the chunk has fewer than four open columns four apart').toBe(4);
+  SITES = openColumns(5);
+  expect(SITES.length, 'SETUP: the chunk has fewer than five open columns four apart').toBe(5);
 }, 60000);
 afterAll(async () => { setActive(false); await r?.unmount(); vi.restoreAllMocks(); });
 
@@ -352,5 +354,47 @@ describe('the debris a mine bursts is not the world: 120 frames of it under the 
     expect(every.debrisSeen, 'SETUP: the aim did not pass through the cube, so this measured nothing').toBe(every.aimed);
     expect(every, `a world query saw the debris (${wrong.slice(0, 6).join('; ')})`)
       .toEqual({ ...every, build: every.aimed, outline: every.aimed, anvil: every.aimed, ground: every.aimed });
+  }, ROW_MS);
+});
+
+// Terrain.jsx's own wiring of the query that sees a cell placed since the last world step (world/buildRay.js
+// castRayNearest): the click's build ray and the target outline each hand it placedCells.unindexed(). Rapier answers a
+// world query from a broad phase only a step updates, so until the next step the world's own ray passes through the new
+// cell's stand-in to the ground behind it, and a second click between one pair of frames aimed there.
+describe('a cell placed since the last world step is seen by the next click and by the outline (Terrain.jsx)', () => {
+  it('the build ray and the outline meet the new cell before any step, where the world\'s own query meets the ground', async () => {
+    const c = SITES[4];
+    const kind = HOTBAR_BLOCKS[0];
+    store.setState((s) => ({ selectedBlock: kind, buildingMode: 'single', buildSize: 1,
+      inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, [kind]: (s.inventory.blocks[kind] || 0) + 1 } } }));
+    const top = aimAtTop(c);
+    const ground = `${c.x}_${top - 1}_${c.z}`, placedKey = `${c.x}_${top}_${c.z}`;
+    const place = await click(2);
+    expect(place, 'SETUP: the click on the top face did not place on it').toEqual({ verb: 'place', cell: ground });
+    const stand = GameMethods.placedCells.unindexed().slice();
+    expect(stand.length, 'SETUP: the placement made no collider since the step').toBe(1);
+    // The presence check: the world's own query, the broad phase alone, still meets the ground under the new cell.
+    const dir = new THREE.Vector3();
+    camera().getWorldDirection(dir);
+    const bvh = world().castRay(new RAPIER.Ray(camera().position, dir), 8, true, RAPIER.QueryFilterFlags.EXCLUDE_DYNAMIC);
+    const toGround = camera().position.distanceTo(new THREE.Vector3(c.x + 0.5, top, c.z + 0.5));
+    expect(bvh?.timeOfImpact, 'SETUP: the world\'s own query already sees the new cell, so this measures nothing').toBeCloseTo(toGround, 3);
+    // The next click between the same pair of frames: Terrain.jsx's castBuildRay.
+    let next;
+    await act(async () => { next = GameMethods.castBuildRay(); });
+    // The next frame, of no time (no world step), from a pose a few centimetres along: the outline casts again.
+    setActive(true);
+    const lines = [];
+    r.three().scene.traverse((o) => { if (o.isLineSegments) lines.push(o); });
+    expect(lines.length, 'SETUP: the target outline is not in the scene').toBe(1);
+    aim([c.x + 0.5, top + 2.5, c.z + 0.25], [c.x + 0.5, top, c.z + 0.5]);
+    await r.step(1, 0);
+    setActive(false);
+    const o = lines[0].position;
+    const seen = { build: next?.targetCoords, outline: lines[0].visible ? `${o.x - 0.5}_${o.y - 0.5}_${o.z - 0.5}` : 'hidden' };
+    expect(GameMethods.placedCells.unindexed().includes(stand[0]), `SETUP: the world stepped before the reads ${JSON.stringify(seen)}`).toBe(true);
+    expect(seen, `a read before the step went through the new cell ${placedKey} to the ground ${ground}`)
+      .toEqual({ build: placedKey, outline: placedKey });
+    await land();
   }, ROW_MS);
 });

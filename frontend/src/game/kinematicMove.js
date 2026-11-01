@@ -23,6 +23,9 @@
 // trimesh is passed through by the sweep until the next step (world/placedCellColliders.js). Those colliders come in as
 // `unindexed`, and the swept movement is cut where the capsule would meet one, short of it by the controller's offset.
 
+/** The gap the player's controller keeps between its capsule and every collider (Components.jsx creates it with this). */
+export const CONTROLLER_OFFSET = 0.05;
+
 const _d = { x: 0, y: 0, z: 0 };
 const _still = { x: 0, y: 0, z: 0 };
 const _unswept = new WeakMap(); // body -> metres of lift in its pending target

@@ -19,7 +19,7 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
 import { makeStuckWatch, stuckInRock } from './game/stuckInRock.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
@@ -59,7 +59,8 @@ import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingOrigin.js';
-import { moveKinematic, placeBody } from './game/kinematicMove.js';
+import { moveKinematic, placeBody, CONTROLLER_OFFSET } from './game/kinematicMove.js';
+import { supportedGround, MAX_SLOPE_CLIMB_RAD } from './game/grounding.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
 import { isInputLive } from './input/inputLive.js';
@@ -121,7 +122,7 @@ export const Player = ({ isWorldBuilt }) => {
   const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
   const prevImbueRef = useRef(false);
   const spawnProbeWaitRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait, in seconds (game/spawnPlacement.js)
-  const resumeProbeFailsRef = useRef(0); // the resumed save's own bounded wait (game/spawnPlacement.js resolveResumeSpawn)
+  const resumeWaitRef = useRef(0); // seconds the resumed save has been held (game/spawnPlacement.js resolveResumeSpawn)
   const blindFollowRef = useRef({ left: 0 }); // the spawn's blind drop, followed (game/spawnPlacement.js followBlindDrop)
   const stuckWatchRef = useRef(makeStuckWatch()); // the stuck-in-rock recovery's readings (game/stuckInRock.js)
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
@@ -135,11 +136,10 @@ export const Player = ({ isWorldBuilt }) => {
   // Initialize Rapier Kinematic Character Controller
   useEffect(() => {
     if (world) {
-      const offset = 0.05; // Gap offset between character capsule and environment
-      const c = world.createCharacterController(offset);
+      const c = world.createCharacterController(CONTROLLER_OFFSET);
       c.enableAutostep(1.05, 0.2, true); // Step-up height of 1.05m
       c.enableSnapToGround(0.5); // snap to ground when descending slopes
-      c.setMaxSlopeClimbAngle(Math.PI / 4); // 45 degrees
+      c.setMaxSlopeClimbAngle(MAX_SLOPE_CLIMB_RAD); // 45 degrees: what game/grounding.js calls walkable
       controllerRef.current = c;
       return () => {
         world.removeCharacterController(c);
@@ -1042,16 +1042,16 @@ export const Player = ({ isWorldBuilt }) => {
       if (store.resumeSpawn) {
         const r = store.resumeSpawn;
         const probeY = store.getMobGroundLevel && !store.worldReloading ? resumeColumnProbe(store.getMobGroundLevel, r) : null;
-        const resume = resolveResumeSpawn(r, probeY, resumeProbeFailsRef.current);
+        const resume = resolveResumeSpawn(r, probeY, resumeWaitRef.current, delta);
         if (resume.hold) {
-          resumeProbeFailsRef.current += 1;
+          resumeWaitRef.current += delta;
           rigidBodyRef.current.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
           camera.position.set(r.x, r.y + EYE_HEIGHT_M, r.z);
           return;
         }
         useGameStore.setState({ resumeSpawn: null }); // one-shot: placed, or given up for the origin spawn below
-        resumeProbeFailsRef.current = 0;
+        resumeWaitRef.current = 0;
         if (resume.place) {
           // Where the base capsule stands clear nearest the saved centre (game/formFit.js fitLoadedSpot): a save on disk
           // can hold a spot in a wall or under the ground (the old Save button's rounded camera).
@@ -1082,16 +1082,19 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       // Player center 1.2 above ground (instant land), the collider with it: the next frame sweeps from here, not from
-      // the sky the body waited in (game/kinematicMove.js placeBody).
-      const safeY = spawnTargetY(spawn.groundY);
-      placeBody(world, rigidBodyRef.current, { x: 0, y: safeY, z: 0 });
+      // the sky the body waited in (game/kinematicMove.js placeBody). A wait that ran out stands on the nearest ground
+      // that answers, before any blind drop, clear of every column the body's capsule reaches in the shape it has now: a
+      // beast form outlives the void guard's reset (game/spawnPlacement.js spawnSpot).
+      const capsule = rigidBodyRef.current.collider(0);
+      const at = spawnSpot(spawn, probeAvailable ? store.getMobGroundLevel : null, { halfHeight: capsule.halfHeight(), radius: capsule.radius() });
+      placeBody(world, rigidBodyRef.current, { x: at.x, y: at.y, z: at.z });
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
 
       // Cancel skyfall lerp transition: set camera position instantly
-      camera.position.set(0, safeY + EYE_HEIGHT_M, 0);
+      camera.position.set(at.x, at.y + EYE_HEIGHT_M, at.z);
 
       spawnPosSet.current = true;
-      if (spawn.blind) blindFollowRef.current.left = SPAWN_PROBE_MAX_SEC; // dropped over a corner that never answered: followed as long again
+      if (at.blind) blindFollowRef.current.left = SPAWN_PROBE_MAX_SEC; // dropped over a corner that never answered: followed as long again
       return;
     }
 
@@ -1263,8 +1266,11 @@ export const Player = ({ isWorldBuilt }) => {
       return !parent || parent.handle !== playerHandle;
     };
 
-    // Kinematic ground check from Rapier character controller
-    const isGrounded = controllerRef.current ? controllerRef.current.computedGrounded() : false;
+    // Ground from the controller's last sweep, kept only where a walkable face bears the capsule (game/grounding.js): the
+    // controller's own flag counts a wall, and every reader below (the jump, the coyote time, the glue) takes this one.
+    const isGrounded = controllerRef.current
+      ? supportedGround(controllerRef.current, world, rigidBodyRef.current, rigidBodyRef.current.collider(0), filterPredicate, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC)
+      : false;
 
     // W4 game-feel: maintain coyote + jump-buffer timestamps (seconds; pure refs, no React state).
     const nowSec = performance.now() / 1000;
