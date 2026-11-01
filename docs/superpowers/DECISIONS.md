@@ -19,6 +19,108 @@
 
 ---
 
+## 2026-11-01 (ultrareview chunks 4-6) — [LOOP] the three parts of the game no review had read are reviewed: what the cloud delivered, what a local replica found beside it, and the rows filed
+
+Registry row AUDIT:critic:coverage-gaps/ultra asked for the deep review of the ui, render and audio-and-scene areas, the
+half of `frontend/src` that no whole-game review had read (chunks 1 to 3 ran in the deep audit,
+`docs/superpowers/audits/2026-10-30-deep-audit.md`). This entry records the runs, what each delivered, how the deliveries
+were checked, a local replica of the same review on one chunk, the comparison, the cost and the rows. Records only: no
+code changed. Items 460 to 468.
+
+460. **The three runs.** On 2026-11-01 the three free runs of account 2 (DECISIONS 2026-10-27: three free runs per
+   account, one-time) reviewed the three chunks. Each ran from its own separate local git repository,
+   `.claude/worktrees/ur3-<chunk>`, whose branch `review` is a pair of commits: a base commit holding the whole of Crafty
+   at `dae1afb4` except the chunk's files, and a review commit that adds only the chunk's files. The review's diff is the
+   chunk as pure additions, under the cloud review's diff cap (500 files, 8,000 changed lines), and the reviewer still
+   reads the whole game around it.
+
+   | chunk | files | lines | holds | base / review commit | cloud session |
+   |---|---|---|---|---|---|
+   | 4-ui | 74 | 7,594 | HUD, panels, primitives, i18n, theme, touch controls | `3f8f9f7` / `9bb3ae4` | `session_01PyjBK9f7PTDauQgdTpaFc3` |
+   | 5-render | 57 | 7,688 | render, post FX, spell VFX, mobs, boss, ocean, sky, quality tiers | `2cad929` / `fc048c5` | `session_01PyjBK9NcSj1Nf3w8t5mNDq` |
+   | 6-audio-scene-rest | 40 | 7,170 | audio, SoundManager, GameScene, atmosphere, weather, devtest, lookbook, grass, NPC | `57fc230` / `9d319b8` | `session_01PyjBK9n5bKqvTbjkWkGuFY` |
+
+461. **Counters and delivered counts.** At each run's last progress line (found / verified / refuted): 4-ui 36 / 28 / 25,
+   5-render 30 / 25 / 19, 6-audio-scene-rest 29 / 30 / 13. Each run delivered exactly 10 findings: 4 normal and 6 nit
+   (4-ui), 2 and 8 (5-render), 3 and 7 (6-audio-scene-rest). The counters tally verdicts, not unique bugs: the last run
+   shows more verified (30) than found (29), so how many unique verified bugs stood behind the 10 is unknown.
+
+462. **Our verification, and what was filed.** One repro verifier per delivered finding (30 in all) read the code in a
+   `cp -c -R` throwaway of the review repository, `node_modules` symlinked and no browser, built a control and tried to
+   refute the claim. Verdicts: 27 CONFIRMED, 2 PLAUSIBLE (4-ui finding 1, the potion tile: whether a touch browser shows
+   Use is unmeasured; 6-audio-scene-rest finding 2, the Web Audio ramps: the formula was stated from memory and no
+   engine was run) and 1 REFUTED (6-audio-scene-rest finding 6, the place sound's occlusion march: every line-level
+   claim is true, but the block-place sound never reaches the spatial path in GameScene's mount order, so nothing is
+   heard; not filed). By player harm among the 29 not refuted: MED 4, LOW 14, NONE 11. Filed: 27 new rows
+   `AUDIT:ultra-1101:<chunk>-<n>`, n being the finding's 1-based place in that run's list (so `6-audio-scene-rest-6` has
+   no row), and the two history-comment findings (5-render finding 10, 6-audio-scene-rest finding 10) as a line appended
+   to REVIEW:l12:history-comments-ledger, which they match: 15 receipts and six past-tense comments that its ratchet's
+   markers do not count. A NONE-harm finding is a LOW debt row. Our verifiers corrected several cloud claims (cited lines
+   that do not exist in 5-render findings 4, 5 and 9; the refuted 'shading seam' in finding 3), recorded in the rows.
+
+463. **The replica of chunk 4-ui.** To learn what the cloud leaves out, the same chunk was hunted locally: five hunters,
+   each on a player-facing lens, produced 49 raw candidates, merged by root cause into 32; each got three independent
+   votes (CONFIRMED, PLAUSIBLE or REFUTED, and a harm), and a candidate survived unless two or more votes refuted it. 28
+   survived and 4 were killed. Six survivors are cloud findings (4-ui 1, 2, 3, 4, 5 and 10); the other 22 are replica-only.
+   Filed: 21 rows `AUDIT:replica-1101:4-ui-<n>`, n being the candidate's 1-based place in the merged list of 32 (the
+   numbers have gaps), and one line appended to STATUS:G-ledger:35 (the touch surface's own animation loop, candidate
+   29). The replica-only survivors rest on their three votes alone: no probe re-verified them, which is a weaker standard
+   than the cloud's findings met, and each row's evidence says so. Killed and not filed: candidate 23 (about 40 English
+   literals bypass t() and the ratchet cannot see them; R,R,C; the literals are filed from the cloud as
+   AUDIT:ultra-1101:4-ui-7); 24 (4.2 MB of CJK fonts are fetched and no element uses them; R,R,C; our verifier measured
+   font-body-cjk in 0 JS chunks, and the fonts' fate is noted on AUDIT:ultra-1101:4-ui-8); 25 (a partial CJK load
+   latches; R,R,R; filed from the cloud as 4-ui-8, which our probe reproduced); 26 (the panel-load-failed notice is
+   raised pre-translated, so it escapes dedupe; R,R,R). For 26 the mechanism is in the code, read for this entry:
+   `ui/panels/lazyPanels.js:84` passes `t('notice.panelLoadFailed')`, `toNotification` in `ui/notifications.js` gives a
+   plain string without `opts.key` no dedupe key, and `QuestSystem.jsx` admits such a notice each time. The replica's
+   reason for the kill is not in the data, and the harm is a repeated toast, so it stays unfiled and findable here.
+
+464. **The comparison on 4-ui.** 34 distinct defects by root cause: the cloud's 10, the replica's 32, 8 in both. The
+   replica found 8 of the cloud's 10 (80%) and 6 survived its own votes: it killed two that our probes had reproduced in
+   code (4-ui-7 and 4-ui-8, both latent because no player can switch to zh-CN) and never found two (4-ui-6, the
+   classifier's ternary; 4-ui-9, DebugOverlay's boot-time GL context), both outside its five lenses. The cloud delivered
+   6 of the replica's 28 survivors (21%): 6 of 22 normal-severity, 2 of the 9 with MED harm (4-ui-1 and 4-ui-3) and none
+   of the 6 nits. **16 normal-severity defects the replica confirmed are absent from the cloud's 10, and 7 of them are
+   MED harm:** AUDIT:replica-1101:4-ui-10 (no player can switch to zh-CN), -1 (the Settings panel off-screen), -13 (the
+   chest panel's close off-screen), -15 (the portrait phone Inventory), -18 (the Build tray's ghost click), -20 (the
+   hotbar's numbers) and -21 (keyboard copy on touch). Why is unknown: the cloud's fixed 10 cut them, or the cloud never
+   found them. A severity-first cutoff would not fill six of ten slots with nits while dropping normal bugs, which points
+   to a recall gap or a ranking that is not severity-first, but the data cannot separate the two; the test is an ultra
+   rerun of the chunk with `--max-findings all`, which is Kevin's (AUDIT:ultra-1101:cap-question). Before the replica
+   runs again (AUDIT:replica-1101:chunks-5-6) it takes the changes this comparison asks for: two more lenses (what the
+   production bundle runs; tools that ship in src); a vote split into mechanism and harm, where a refutation carries a
+   proof command and a latent defect stays harm NONE rather than being killed; dedupe by root cause with parent links and
+   kept sub-claims; a harm-ranked top 10 beside the full list; and the per-finding probe on every MED survivor.
+
+465. **What the binary showed, and what the data cannot.** A reading of the installed `claude` binary during this work
+   found no cap of its own on the number of findings the client prints, so a cap, if there is one, is applied on the
+   cloud side; and the session page refuses to open a review session, so the findings were read from the runs' output and
+   the session ids in item 460 are a record, not links that open. Neither fact was re-measured for this entry. Whether a cut at 10 hid bugs the cloud
+   had found stays open (item 464).
+
+466. **Cost.** The three cloud runs spent no usage credits: they were account 2's free runs. Verifying the 30 findings and
+   running the replica on one chunk took 133 agents and 18.7M subagent tokens. A further ultrareview costs usage credits
+   (typically $5 to $25 a run, DECISIONS 2026-10-27), which is Kevin's to spend.
+
+467. **The rows.** 50 rows added, 2 lines appended, 1 row closed; every new row is open in an open lane. By lane:
+   LANE:W3-C 7 (the first minute on touch and keyboard: AUDIT:ultra-1101:4-ui-1, 4-ui-3 and 4-ui-9;
+   AUDIT:replica-1101:4-ui-1, -16, -20 and -21), LANE:W3-B 3 (the dragon: AUDIT:ultra-1101:5-render-1, 5-render-2 and
+   5-render-5), LANE:W3-E 2 (AUDIT:ultra-1101:5-render-3, the fireball's lathe seam, and 6-audio-scene-rest-3, the shadow
+   frustum on the iPad low tier), LANE:backlog 37 and LANE:kevin 1. By kind: 36 bugs (11 MED, 25 LOW), 12 debt rows (LOW)
+   and 2 instrument rows. The MED bugs: AUDIT:ultra-1101:4-ui-1, 4-ui-3, 5-render-1 and 6-audio-scene-rest-3, and
+   AUDIT:replica-1101:4-ui-1, -10, -13, -15, -18, -20 and -21. Two instrument rows record deferrals this entry leaves:
+   AUDIT:ultra-1101:cap-question (LANE:kevin: whether the cut at 10 hid bugs) and AUDIT:replica-1101:chunks-5-6 (the
+   replica has run on one chunk of three; MED). The evidence line of every row says whether the cloud, our probe or the
+   replica's votes carry it. Appended instead of filed: REVIEW:l12:history-comments-ledger (two cloud findings) and
+   STATUS:G-ledger:35 (one replica candidate).
+
+468. **AUDIT:critic:coverage-gaps/ultra closes done.** Its acceptance asked for `/code-review ultra` on chunks 4, 5 and 6,
+   the findings filed as rows, and the run ids and session links recorded in a DECISIONS item. Kevin provided account
+   2's three free runs, as the row's note records; the runs, the findings as rows and the session ids are items 460 to
+   467 and the rows above (the links do not open, item 465, so the ids are the record). Kevin keeps any further
+   ultrareview, which costs credits, and the cap question. The sibling AUDIT:critic:coverage-gaps/hunt (subsystems no
+   hunter read) stays open.
+
 ## 2026-10-31 (lane L13) — [LOOP] the stuck-in-solid remainder: a wall is not ground, rays see what was just placed, a dug spawn corner does not loop, a sunk capsule is stood clear, the resume hold is time
 
 Lane L13 (`fix/l13-stuck-in-solid`, from `eff58e9a`) took the rows the audit lanes left in the class Kevin's invisible box
