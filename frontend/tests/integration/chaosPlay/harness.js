@@ -48,7 +48,7 @@ import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/bea
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
 import { steadyEye, EYE_HEIGHT_M } from '../../../src/combat/swingOrigin.js';
 import { SEA_LEVEL, DEEP_FLOOR } from '../../../src/world/oceanProfile.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
 import { makeStuckWatch, stuckInRock } from '../../../src/game/stuckInRock.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
 import { buildSaveData, savePosition } from '../../../src/game/saveSchema.js';
@@ -281,10 +281,11 @@ function spawnBranch(S) {
     S.p.body.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
     return;
   }
-  placeBody(S.world, S.p.body, { x: 0, y: spawnTargetY(spawn.groundY), z: 0 });
+  const at = spawnSpot(spawn, (x, z) => groundProbe(S, x, z));
+  placeBody(S.world, S.p.body, { x: at.x, y: at.y, z: at.z });
   S.spawn.placed.current = true;
   S.stats.respawns++;
-  if (spawn.blind) S.blind.left = SPAWN_PROBE_MAX_SEC;
+  if (at.blind) S.blind.left = SPAWN_PROBE_MAX_SEC;
 }
 
 /** A load's hold ends: I5 reads whether it let the player go within its frame bound, or gave up for the origin spawn.

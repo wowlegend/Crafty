@@ -19,7 +19,7 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnSpot, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
 import { makeStuckWatch, stuckInRock } from './game/stuckInRock.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
@@ -1083,16 +1083,17 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       // Player center 1.2 above ground (instant land), the collider with it: the next frame sweeps from here, not from
-      // the sky the body waited in (game/kinematicMove.js placeBody).
-      const safeY = spawnTargetY(spawn.groundY);
-      placeBody(world, rigidBodyRef.current, { x: 0, y: safeY, z: 0 });
+      // the sky the body waited in (game/kinematicMove.js placeBody). A wait that ran out stands on the nearest ground
+      // that answers, before any blind drop (game/spawnPlacement.js spawnSpot).
+      const at = spawnSpot(spawn, probeAvailable ? store.getMobGroundLevel : null);
+      placeBody(world, rigidBodyRef.current, { x: at.x, y: at.y, z: at.z });
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
 
       // Cancel skyfall lerp transition: set camera position instantly
-      camera.position.set(0, safeY + EYE_HEIGHT_M, 0);
+      camera.position.set(at.x, at.y + EYE_HEIGHT_M, at.z);
 
       spawnPosSet.current = true;
-      if (spawn.blind) blindFollowRef.current.left = SPAWN_PROBE_MAX_SEC; // dropped over a corner that never answered: followed as long again
+      if (at.blind) blindFollowRef.current.left = SPAWN_PROBE_MAX_SEC; // dropped over a corner that never answered: followed as long again
       return;
     }
 

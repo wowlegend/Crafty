@@ -81,6 +81,47 @@ export function resolveSpawnGround(blockGroundY, physicsY, waitedSec, probeAvail
 
 export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
 
+// THE FALLBACK STANDS ON GROUND THAT ANSWERS BEFORE IT DROPS BLIND. A corner whose four columns the player dug out of the
+// world answers nothing, as a corner whose chunks have not streamed in does, so the wait ran out, the body dropped blind
+// from SPAWN_FALLBACK_Y down the hole, fell out of the world, and the void guard sent it back to wait again: nine resets in
+// a minute's idle (registry REVIEW:l4:origin-corner-dug-through-respawn-loop; tests/gates/player-placement-gates.test.jsx).
+// So when the wait runs out, the column nearest the corner within FALLBACK_REACH whose ground answers (above PROBE_MIN_Y,
+// the spawn's own rule) is stood on, at its middle, where the capsule fits inside the column. A column in a chunk that has
+// not streamed in answers nothing either, so this stands no player on ground that is not there; with none answering, the
+// blind drop goes ahead and is followed (followBlindDrop).
+// Cost: up to (2 x FALLBACK_REACH)^2 probes, once, on the frame the wait runs out.
+const FALLBACK_REACH = 8;
+
+/** The middle of the column nearest the spawn corner within FALLBACK_REACH whose ground answers, and its ground; or null. */
+function nearestAnsweringColumn(probe) {
+  let best = null;
+  for (let x = -FALLBACK_REACH; x < FALLBACK_REACH; x++) {
+    for (let z = -FALLBACK_REACH; z < FALLBACK_REACH; z++) {
+      const d = Math.hypot(x + 0.5, z + 0.5);
+      if (d > FALLBACK_REACH || (best && d >= best.d)) continue;
+      const y = probe(x, z);
+      if (y == null || Number.isNaN(y) || y <= PROBE_MIN_Y) continue;
+      best = { x: x + 0.5, z: z + 0.5, y, d };
+    }
+  }
+  return best;
+}
+
+/**
+ * Where the spawn stands the body (Components.jsx's spawn branch): over the corner on resolveSpawnGround's ground, or, once
+ * its wait has run out (`blind`), on the nearest column whose ground answers. Returns { x, y, z, blind }: the centre to
+ * place the body at, and whether the drop is blind (the caller follows it, followBlindDrop).
+ *   spawn  resolveSpawnGround's answer for a frame that spawns (not a retry)
+ *   probe  the ground probe (Terrain.jsx getMobGroundLevel), or null when there is none
+ */
+export function spawnSpot(spawn, probe) {
+  if (spawn.blind && probe) {
+    const near = nearestAnsweringColumn(probe);
+    if (near) return { x: near.x, y: spawnTargetY(near.y), z: near.z, blind: false };
+  }
+  return { x: 0, y: spawnTargetY(spawn.groundY), z: 0, blind: !!spawn.blind };
+}
+
 // THE BLIND DROP IS FOLLOWED. The fallback drops the body from SPAWN_FALLBACK_Y over a corner whose ground has not
 // answered, and a chunk whose trimesh lands round the falling body leaves it in the rock: at the corner the capsule
 // straddles the closed edges of four chunks, the only faces there, and they stop it inside them

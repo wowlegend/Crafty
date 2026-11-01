@@ -297,6 +297,43 @@ function placement() {
   return { body: spot(h.body.translation()), collider: spot(h.body.collider(0).translation()), eye: h.camera.position.toArray().map(r4) };
 }
 
+/** The player dug the spawn corner's four columns (x and z -1 and 0) out of the world: their chunks re-meshed, as a
+ *  React commit re-mounts them. */
+function digSpawnCorner() {
+  for (const key of ['-1_-1', '0_-1', '-1_0', '0_0']) {
+    const [cx, cz] = key.split('_').map(Number);
+    const b = grid.logical.get(key).slice();
+    for (const [x, z] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+      if (Math.floor(x / CHUNK_SIZE) !== cx || Math.floor(z / CHUNK_SIZE) !== cz) continue;
+      for (let y = 0; y < 40; y++) b[voxelIndex(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE)] = 0;
+    }
+    h.world.removeRigidBody(chunks.get(key).body);
+    const body = h.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE));
+    const m = generateMesh(cx, cz, b, undefined);
+    chunks.set(key, { body, collider: h.world.createCollider(RAPIER.ColliderDesc.trimesh(m.positions, m.indices), body) });
+  }
+}
+
+describe('the respawn over a spawn corner dug out of the world stands on the nearest ground, and does not loop', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: with the corner's four columns dug through y 0, a minute idle resets the player at most once`, () => {
+      standPlayer(hz);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      digSpawnCorner();
+      for (const [x, z] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+        expect(groundProbe(x, z), `SETUP: the corner column (${x}, ${z}) still answers after the dig`).toBeNull();
+      }
+      for (let i = 0; i < 60 * hz; i++) frame(hz);
+      const end = at();
+      const r = { resets: voidWarnings(warn), end };
+      expect(r.resets, `SETUP: the dig did not drop the player out of the world ${JSON.stringify(r)}`).toBeGreaterThan(0);
+      expect(r.resets, `the respawn over the dug corner looped ${JSON.stringify(r)}`).toBeLessThanOrEqual(1);
+      expect(end.y, `the player does not stand on the land after the minute ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+      expect(Math.hypot(end.x, end.z), `the player stands far from the spawn corner ${JSON.stringify(r)}`).toBeLessThan(3);
+    });
+  }
+});
+
 describe('the void guard fires under the world, never in it, and it and the respawn go back to the spawn one way', () => {
   it('a player on the deepest seabed (world/oceanProfile.js DEEP_FLOOR) stands and walks there, and is not reset to the origin', () => {
     const hz = 60;
