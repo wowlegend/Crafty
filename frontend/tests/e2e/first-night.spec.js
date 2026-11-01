@@ -6,6 +6,7 @@ import { EYE_HEIGHT_M, SWING_APEX_OVER_BODY_M } from '../../src/combat/swingOrig
 import { installNoticeLog, isHornKey } from '../../scripts/visual/_firstNight.mjs';
 import { BEATS, AWAITS, compareReds, redLine, unitsOf } from './_firstNightAwaits.js';
 import { respawnCases, caseHolds, roseRight, distances } from './_firstNightRespawn.js';
+import { marches, READINGS } from './_firstNightMarch.js';
 
 // THE FIRST NIGHT, PLAYED (the W3-A task script's U0: docs/superpowers/plans/2026-11-01-w3a-first-night-tasks.md; the
 // brief's acceptance 1; DECISIONS 2026-11-01 (W3-A PR C) items 482 and 485-492). Eight beats, each its own test of 120 s
@@ -15,8 +16,8 @@ import { respawnCases, caseHolds, roseRight, distances } from './_firstNightResp
 //   (a) kindle    a fresh profile's brazier is cold at Start; a real G within 3 m lights it
 //   (b) horn      at the clock's crossing, one horn, and none on a load into night; the compass wedge within 2 degrees of
 //                 the siege's bearing ahead and pinned to the strip's edge behind; wave 1 placed from that bearing, and
-//                 marching on the Hearth (10 m closer in 20 s, and nearer it than the player, who stands 32 m off the
-//                 line, where a hunter would turn to them)
+//                 marching on the Hearth (10 m closer in 20 s, closing at every 5 s step, and nearer it than the player,
+//                 who stands 32 m off the line, where a hunter would turn to them)
 //   (c) beast     a real R on a full bar: the camera 3 m or more behind the body from 1.2 s to roarSec, held to the end
 //                 and back at the eye within 1 s of it; playerPosition within 1 m of the body throughout
 //   (d) regen     health flat to 4.0 s of calm, then 5 HP/s or more; a hit at 3 s restarts the clock
@@ -159,6 +160,13 @@ const readNight = () => {
   };
 };
 
+/** What the clock waits on (game/dayNight.js shouldAdvanceClock), for a failure that names why it did not move. */
+const readClockGates = () => {
+  const s = window.useGameStore.getState();
+  return { gameTime: s.gameTime, worldBuilt: s.isSpawnChunkLoaded === true, active: window.__craftyTest.call('readIntents').active === true,
+    alive: s.isAlive, hidden: document.hidden, spawnProtectedMs: Math.max(0, 5000 - (Date.now() - (s._spawnTime || 0))) };
+};
+
 /** The body's translation. */
 const readBody = () => {
   const t = window.useGameStore.getState().playerRigidBodyRef?.current?.translation?.();
@@ -203,9 +211,41 @@ const frames = (n) => new Promise((resolve) => {
 const noticesSince = (page, mark) => page.evaluate((m) => window.__fnNotices.slice(m).map((n) => n.key), mark);
 const noticeMark = (page) => page.evaluate(() => window.__fnNotices.length);
 
+/** IN THE PAGE: log every notice RAISED on the one channel (the store's addNotification, which QuestSystem publishes
+ *  and may publish again) into window.__fnRaised, by key. The horn is counted here, not on screen: a load rebuilds the
+ *  world, and a notice raised while the HUD waits for it can end its 4 s life unseen, so a horn on a load read 1 in two
+ *  runs and 0 in a third through the toasts. The other notice checks read what is shown. */
+const installNoticeCalls = () => {
+  const raised = (window.__fnRaised = []);
+  const wrap = (s) => {
+    const fn = s.addNotification;
+    if (typeof fn !== 'function' || fn.__fnRaised) return;
+    const logged = (message, ...rest) => {
+      raised.push({ key: typeof message === 'string' ? message : null, at: performance.now() });
+      return fn(message, ...rest);
+    };
+    logged.__fnRaised = true;
+    window.useGameStore.setState({ addNotification: logged });
+  };
+  wrap(window.useGameStore.getState());
+  window.useGameStore.subscribe(wrap);
+  return typeof window.useGameStore.getState().addNotification === 'function';
+};
+const raisedSince = (page, mark) => page.evaluate((m) => window.__fnRaised.slice(m).map((n) => n.key), mark);
+const raisedMark = (page) => page.evaluate(() => window.__fnRaised.length);
+
 /** A clock crossing, the way play makes one: the store's own writer set `units` before the boundary, then the ticker. */
 async function crossFrom(page, boundary, units) {
   await page.evaluate((t) => window.useGameStore.getState().setGameTime(t), boundary - units);
+}
+
+/** A real crossing of `boundary` from `units` before it, with the input gate held first (the clock runs only while
+ *  it is open); waits for the phase it leads into, and names the clock's gates when it never comes. */
+async function crossInto(page, boundary, units, isDay, what) {
+  await startPlayActive(page);
+  await crossFrom(page, boundary, units);
+  await page.waitForFunction((d) => window.useGameStore.getState().isDay === d, isDay, { timeout: 15000 })
+    .catch(async () => { throw new Error(`PRESENCE: the clock never crossed into ${what} from ${units} units before it: ${JSON.stringify(await page.evaluate(readClockGates))}`); });
 }
 
 async function stand(page, at) {
@@ -223,15 +263,16 @@ async function enterPlay(page) {
     && window.GameMethods?.damageMob && window.useGameStore.getState().playerRigidBodyRef?.current && window.useGameStore.getState().getMobFloor
     && Array.isArray(window.__fnNotices),
   null, { timeout: 60000 }).catch((e) => { throw new Error(`SETUP: the body, the camera, the mob hooks or the notice log never came up: ${e.message}`); });
+  await page.waitForFunction(() => typeof window.useGameStore.getState().addNotification === 'function', null, { timeout: 30000 })
+    .catch(() => { throw new Error('SETUP: the notification channel was never published'); });
+  presence(await page.evaluate(installNoticeCalls), 'the notice channel could not be wrapped for its log');
 }
 
 /** Into night 1 by a real crossing, from 5 units before dusk; returns the night as it reads just after. */
 async function intoNightOne(page) {
   const start = await page.evaluate(readNight);
   presence(start.isDay === true && start.nightCount === 0, `a returning profile's world does not start in day 0: ${JSON.stringify(start)}`);
-  await crossFrom(page, HALF_CYCLE_UNITS, 5);
-  await page.waitForFunction(() => window.useGameStore.getState().isDay === false, null, { timeout: 15000 })
-    .catch(() => { throw new Error('PRESENCE: the clock never crossed into night from 5 units before dusk: is it running?'); });
+  await crossInto(page, HALF_CYCLE_UNITS, 5, false, 'night 1');
   const night = await page.evaluate(readNight);
   presence(night.nightCount === 1, `the crossing did not count night 1: ${JSON.stringify(night)}`);
   return night;
@@ -353,16 +394,14 @@ test.describe('a fresh profile', () => {
 beat('b', 'horn: one at the crossing and none on a load, the wedge on the bearing, wave 1 marching on the Hearth', async (page, { red, standIn }) => {
   await enterPlay(page);
   await page.evaluate(clearHostiles, 60);
-  const mark = await noticeMark(page);
+  const mark = await raisedMark(page);
   const seen = await page.evaluate(() => window.__craftyTest.call('readMobs').map((m) => m.id));
   // 10 units before dusk, by the store's own clock writer (a set inside the day half crosses nothing), then the ticker.
-  await crossFrom(page, HALF_CYCLE_UNITS, 10);
-  await page.waitForFunction(() => window.useGameStore.getState().isDay === false, null, { timeout: 15000 })
-    .catch(() => { throw new Error('PRESENCE: the clock never crossed into night from 10 units before dusk'); });
+  await crossInto(page, HALF_CYCLE_UNITS, 10, false, 'night 1');
   await page.waitForTimeout(3000);
   const night = await page.evaluate(readNight);
   presence(night.nightCount === 1, `the crossing did not count night 1: ${JSON.stringify(night)}`);
-  const crossingHorns = (await noticesSince(page, mark)).filter(isHornKey).length;
+  const crossingHorns = (await raisedSince(page, mark)).filter(isHornKey).length;
   const stated = night.siege?.bearings?.[0];
   const sieged = red('siege', Number.isFinite(stated), `no siege at the crossing: the store holds ${JSON.stringify(night.siege)}`);
   let bearing = stated;
@@ -406,28 +445,33 @@ beat('b', 'horn: one at the crossing and none on a load, the wedge on the bearin
     wave = await page.evaluate(placeHostiles, { at: [[p.x - 2, p.z], [p.x + 2, p.z]], type: 'zombie' });
     presence(wave.length > 0, 'SETUP: spawnMob placed no stand-in husk 28 m out');
   }
-  const t0 = await page.evaluate(distancesOf, wave);
-  await page.waitForTimeout(20000);
-  const t20 = await page.evaluate(distancesOf, wave);
-  const rows = wave.map((id) => ({ id, from: t0[id] ?? null, to: t20[id] ?? null }));
-  const marched = rows.filter((m) => m.from && m.to && m.from.dH - m.to.dH >= 10 && m.to.dH < m.to.dP);
+  // Read every 5 s for 20 s: what counts as a march is tests/e2e/_firstNightMarch.js marches, gated on its own.
+  const samples = [await page.evaluate(distancesOf, wave)];
+  for (let k = 1; k < READINGS; k++) {
+    await page.waitForTimeout(5000);
+    samples.push(await page.evaluate(distancesOf, wave));
+  }
+  const rows = wave.map((id) => ({ id, at: samples.map((s) => s[id] ?? null) }));
+  const marched = rows.filter((m) => marches(m.at));
   red('march', wave.length > 0 && marched.length >= Math.ceil(wave.length / 2),
-    `no wave-1 hostile marched on the Hearth (10 m closer to it in 20 s, and ending nearer it than the player): ${JSON.stringify(rows.map((m) => [m.id,
-      m.from && [+m.from.dH.toFixed(1), +m.from.dP.toFixed(1)], m.to && [+m.to.dH.toFixed(1), +m.to.dP.toFixed(1)]]))}`);
+    `no wave-1 hostile marched on the Hearth (10 m closer to it in 20 s, closing at every 5 s step, and ending nearer it than the player): ${JSON.stringify(rows.map((m) => [m.id,
+      m.at.map((s) => s && [+s.dH.toFixed(1), +s.dP.toFixed(1)])]))}`);
   // Never on a load: back to day by the store's own phase write, then the live world saved and loaded into night 1.
   await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5));
   await page.waitForFunction(() => window.useGameStore.getState().isDay === true, null, { timeout: 5000 })
     .catch(() => { throw new Error('PRESENCE: setTimeOfDay(0.5) did not bring day back before the load'); });
   await page.waitForTimeout(500);
-  const loadMark = await noticeMark(page);
+  const loadMark = await raisedMark(page);
+  const shownLoadMark = await noticeMark(page);
   const loaded = await page.evaluate(loadIntoNight, { gameTime: HALF_CYCLE_UNITS + 120, nightCount: 1 });
   presence(!loaded.why, loaded.why);
   await page.waitForFunction(() => window.useGameStore.getState().isDay === false, null, { timeout: 10000 })
     .catch(() => { throw new Error('PRESENCE: the load of a night save did not put the world in night'); });
   await page.waitForTimeout(3000);
-  const loadHorns = (await noticesSince(page, loadMark)).filter(isHornKey).length;
+  const loadHorns = (await raisedSince(page, loadMark)).filter(isHornKey).length;
+  const shownOnLoad = (await noticesSince(page, shownLoadMark)).filter(isHornKey).length;
   red('horn', crossingHorns === 1 && loadHorns === 0,
-    `the horn sounded ${crossingHorns} time${crossingHorns === 1 ? '' : 's'} at the crossing and ${loadHorns} time${loadHorns === 1 ? '' : 's'} on a load into night (once at the crossing, never on a load)`);
+    `the horn sounded ${crossingHorns} time${crossingHorns === 1 ? '' : 's'} at the crossing and ${loadHorns} time${loadHorns === 1 ? '' : 's'} on a load into night (once at the crossing, never on a load; on screen after the load: ${shownOnLoad})`);
 });
 
 beat('c', 'beast: a real R on a full bar holds the camera behind the body for the form, and the eye point stays put', async (page, { red }) => {
@@ -699,12 +743,9 @@ beat('h', 'lend: on night 1 a lit Hearth fills the bar to 100 as wave 3 is place
   const lines = (await noticesSince(page, mark)).filter((k) => k === 'notice.hearthLends');
   red('line', lines.length === 1, `the lend's line showed ${lines.length} times`);
   // Night 2: through dawn and the day by the clock's own crossings, the bar at 40 again at wave 3.
-  await crossFrom(page, 2 * HALF_CYCLE_UNITS, 5);
-  await page.waitForFunction(() => window.useGameStore.getState().isDay === true, null, { timeout: 15000 })
-    .catch(() => { throw new Error('PRESENCE: the clock never crossed into day 2'); });
-  await crossFrom(page, 3 * HALF_CYCLE_UNITS, 5);
-  await page.waitForFunction(() => window.useGameStore.getState().nightCount === 2, null, { timeout: 15000 })
-    .catch(() => { throw new Error('PRESENCE: the clock never crossed into night 2'); });
+  await crossInto(page, 2 * HALF_CYCLE_UNITS, 5, true, 'day 2');
+  await crossInto(page, 3 * HALF_CYCLE_UNITS, 5, false, 'night 2');
+  presence((await page.evaluate(readNight)).nightCount === 2, 'the crossing into night 2 did not count night 2');
   await page.evaluate(() => window.useGameStore.setState({ ember: 40 }));
   const two = await toWaveThree(page, 2);
   red('night2', two.came && two.night.ember === 40, two.came
@@ -743,10 +784,15 @@ async function mineLantern(page, at, { red }) {
   return red('mine', gone, 'a real left click 2 m from the lantern did not mine it');
 }
 
-/** Stand at `at`, fall to a lethal hit, press Respawn, and hold the input gate again; where the body rose. */
+/** Stand at `at`, fall to a lethal hit, press Respawn, and hold the input gate again; where the body rose. The hit
+ *  waits out the 5 s a respawn protects the player for (useGameStore damagePlayer, `_spawnTime`), or it is ignored. */
 async function dieAt(page, at) {
   await stand(page, at);
+  await page.waitForFunction(() => Date.now() - (window.useGameStore.getState()._spawnTime || 0) >= 5200, null, { timeout: 10000 })
+    .catch(() => { throw new Error('PRESENCE: the respawn protection never ran out'); });
   await page.evaluate(() => window.useGameStore.getState().damagePlayer(99999, 'zombie'));
+  await page.waitForFunction(() => window.useGameStore.getState().isAlive === false, null, { timeout: 3000 })
+    .catch(async () => { throw new Error(`PRESENCE: a lethal hit did not kill the player: ${JSON.stringify(await page.evaluate(readClockGates))}`); });
   await expect(page.getByTestId('death-respawn'), 'PRESENCE: a lethal hit showed no respawn button').toBeVisible({ timeout: 10000 });
   await page.getByTestId('death-respawn').click();
   await page.waitForFunction(() => window.useGameStore.getState().isAlive === true, null, { timeout: 10000 })

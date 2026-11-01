@@ -145,7 +145,12 @@ ceiling.
    `isDay`-edge horn fires on the crossing. The horn check is now the brief's one claim: once at the crossing and never on
    a load, with the live world saved and loaded into night 1 (today: once and once, red). Wave 1 must come from the
    stated bearing (two or more new hostiles, and three quarters of them, within 30 degrees of it and 20 m out) and march:
-   10 m closer to the Hearth in 20 s, ending nearer it than the player. The player stands 32 m or more from the Hearth,
+   10 m closer to the Hearth in 20 s, closing at every 5 s step until it is within 4 m, and ending nearer it than the
+   player. The steps are there because a wanderer's random walk (`game/mobWander.js`: 3-8 m legs, a pause one time in
+   three) drifts 10 m toward the Hearth in 20 s about one time in twelve (estimated from those legs, not measured), and a
+   stand-in husk ended about 6 m nearer it in two runs of six; it rarely closes at all four steps. The rule is
+   `tests/e2e/_firstNightMarch.js marches`, gated in `first-night-march-gates` (M1-M3 red) on a marcher's, a hunter's and a
+   wanderer's tracks. The player stands 32 m or more from the Hearth,
    square to the bearing, past the largest aggro range (28 m, the duskhound), so a mob hunting the player closes on them
    and not on the Hearth; the first column with a floor among 18 nearby is taken. The wedge must sit within 2 degrees
    ahead and within 12 px of an edge behind (U3's pin, which the brief names).
@@ -178,7 +183,11 @@ ceiling.
 490. **A notice is counted once, however often its toast mounts** (finding 11). The stack's toasts
    (`QuestSystem.jsx` NotificationStack) and the boss bar's line carry the channel's id as `data-notification-id`, and
    the notice log the spec and the probe share (`_firstNight.mjs installNoticeLog`) counts an id once; a toast from a
-   build without the id counts each insertion, as before. Gated: `first-night-notice-log-gates` (N1-N3 red).
+   build without the id counts each insertion, as before. Gated: `first-night-notice-log-gates` (N1-N3 red). The spec's
+   horn is counted where it is raised instead (the store's `addNotification`, wrapped in the DEV page): a load rebuilds
+   the world, and a notice raised while the HUD waits can end its 4 s life unseen. Three runs of (b) raised the load's
+   horn each time and showed it on screen once; counted on screen, the record would read the horn green two times in
+   three. The probe, on the production build with no store to wrap, keeps the shown log.
 
 491. **The boss bar takes the line only once it is drawn** (finding 16, from C0). Where the encounter column holds the
    notices, the line went into the boss bar whenever a boss was up, and since C0 the bar is lazy: while its chunk loads,
@@ -198,7 +207,10 @@ ceiling.
    for the Forge's price through `buyForgeOffer` (`goods:lantern`), so L3 joins the beat's units as the task script has
    it. (h)'s night-2 wave is a red, not a timeout. The Respawn button's own pointer-lock request is refused on a headless
    page (finding 14, measured in item 493: the gate read shut after each of the three respawns), so the beats hold the
-   gate again as `startPlayActive` does. `initArgs` (`_lookbookPage.mjs`) builds the init script's seed, a returning
+   gate again as `startPlayActive` does. A lethal hit waits out the 5 s a respawn protects the player for
+   (`damagePlayer`'s `_spawnTime`), which ignored (f)'s second death in one run; and every crossing holds the gate first
+   and names the clock's gates (`shouldAdvanceClock`'s inputs) when it never comes, after one run under a load of 98 saw
+   (b)'s crossing not come in 15 s. `initArgs` (`_lookbookPage.mjs`) builds the init script's seed, a returning
    player unless named, and the init script refuses an argument with none (finding 13; S1, S2 red). The head run's two
    flake sightings are on their rows, with the light-pool fall the dynamic review read (`e362323e`).
 
