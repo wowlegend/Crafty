@@ -30,7 +30,7 @@ import { logImpulse } from './devtest/impulseLog.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
 import { stanceFrame, stanceWalk, dodgeBurst, resetStance } from './game/combatStance.js';
-import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
+import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick, hurtKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
 import { shakeOffset, SHAKE_WEIGHT_MAX, HITSTOP } from './game/trauma.js';
@@ -464,6 +464,13 @@ export const Player = ({ isWorldBuilt }) => {
         if (!e.repeat) denyAspectPress('imbue', useGameStore.getState());
       }
 
+      // Held C: a right click places where it would open a chest or cast at a mob (input/verbRouter.js). C, not Alt: on
+      // Windows an Alt press and release dropped the pointer lock in Chromium before main@{#1577353} (bug 40734020), and
+      // Firefox raises its menu bar on Alt. On macOS a key let go while Cmd is down sends no keyup (Mozilla bug 1299553),
+      // so any keydown with Cmd or Ctrl down, the modifier's own included, lets go of C: a C pressed with one is copy.
+      if (e.metaKey || e.ctrlKey) setIntent('forcePlace', false);
+      else if (e.code === 'KeyC') setIntent('forcePlace', true);
+
       // 2026-06-28 (Kevin): magic spells are the marquee feature -> the prime F key CASTS the
       // selected spell; melee moves to T. Both gate on input being live, inside the router, like every other live verb.
       const express = routeExpressVerb(e.code, useGameStore.getState(), getInput().active);
@@ -501,6 +508,8 @@ export const Player = ({ isWorldBuilt }) => {
       if (e.code === 'KeyZ') {
         setIntent('imbue', false);
       }
+
+      if (e.code === 'KeyC') setIntent('forcePlace', false);
 
       // Shift was the ONE held key with no release branch. Releasing it must clear the intent even if the
       // press was refused above, so a Shift held across a panel open/close cannot arrive as a queued roll.
@@ -574,6 +583,7 @@ export const Player = ({ isWorldBuilt }) => {
         terrainDist: hit ? hit.toi : Infinity,
         chestTargeted: !!(hit && hit.chestTargeted),
         chestHasItems: !!(hit && hit.chestHasItems),
+        forcePlace: getInput().forcePlace,
       });
 
       if (verb === 'attack') {
@@ -1421,11 +1431,12 @@ export const Player = ({ isWorldBuilt }) => {
     // this one originates in the store (damagePlayer), which has no camera, so the controller polls the hit
     // stamp instead of subscribing — a reactive subscription here is exactly the Game-Loop-Isolation trap.
     // `isNewHit` is the edge detector: without it one hit would kick every frame until the next one.
-    if (isNewHit(seenHitRef.current, useGameStore.getState().lastHitDir)) {
-      seenHitRef.current = useGameStore.getState().lastHitDir.t;
+    const lastHit = useGameStore.getState().lastHitDir;
+    if (isNewHit(seenHitRef.current, lastHit)) {
+      seenHitRef.current = lastHit.t;
       cancelHeavy(); // a hit taken breaks a heavy's charge
       const _hf = new THREE.Vector3(); camera.getWorldDirection(_hf);
-      addKick(kickRef.current, localToWorldKick(_hf.x, _hf.z, KICK_PROFILES.hurt));
+      addKick(kickRef.current, localToWorldKick(_hf.x, _hf.z, hurtKick(lastHit.angle)));
     }
 
     // Calculate displacement vector

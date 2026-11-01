@@ -37,9 +37,10 @@
  * a deeper abstraction than the reserved attack/cast (which fire imperatively), and touch-ready.
  * `grab`/`snare`/`imbue` (the S2-B Aspect verbs) follow the SAME pattern as `roar`: their key listeners
  * write them and each Aspect's state machine reads them transiently in the player loop.
+ * `forcePlace` is held while C is down (Components' keydown/keyup); the click's verb router reads it (input/verbRouter.js).
  * @type {readonly string[]}
  */
-export const INTENT_KEYS = ['moveF', 'moveB', 'moveL', 'moveR', 'jump', 'dodge', 'attack', 'cast', 'interact', 'roar', 'grab', 'snare', 'imbue'];
+export const INTENT_KEYS = ['moveF', 'moveB', 'moveL', 'moveR', 'jump', 'dodge', 'attack', 'cast', 'interact', 'roar', 'grab', 'snare', 'imbue', 'forcePlace'];
 
 /**
  * Module singleton — the one live intent object. Built from INTENT_KEYS (all

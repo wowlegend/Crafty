@@ -37,9 +37,8 @@ describe('W2-T4 per-element silhouette is the hero + distinct trail/impact', () 
   it('the four IMPACTS are distinct', () => {
     expect(new Set(els.map((e) => ENERGY_PROFILE[e].impact)).size).toBe(4);
   });
-  it('the shape now dominates the core (coreScale shrunk, shape emissive boosted)', () => {
+  it('the shape reads first (its emissive boosted; the white core sphere is gone, W3-A PR A)', () => {
     for (const e of els) {
-      expect(ENERGY_PROFILE[e].coreScale).toBeLessThanOrEqual(0.42); // white core is a small spec
       expect(ENERGY_PROFILE[e].glowIntensity).toBeGreaterThanOrEqual(5.0); // shape reads first
     }
   });

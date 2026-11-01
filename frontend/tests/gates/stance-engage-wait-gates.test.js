@@ -13,7 +13,7 @@
 // scripted frame by frame, its clock stepped by the real frame-step cap.
 //
 // WHAT THIS DOES NOT CHECK: that the specs install the helper before boot and pass their wall bound (a CI run of the
-// specs does); what the real stance does across a long frame (registry REVIEW:w2b:stance-clocks-long-frame).
+// specs does); what the real stance does across a long frame (src/game/combatStance.test.js drives one through stanceFrame).
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { installStanceEngage } from '../e2e/_stanceEngage.js';
 import { MAX_FRAME_STEP_SEC } from '../../src/game/frameStep.js';

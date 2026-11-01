@@ -73,7 +73,7 @@ export const setCycle = (page, c) => page.evaluate((x) => window.__craftyLookboo
 // Hostiles within this radius are removed before each eye shot and clip, so the frame is the world and not a mob at
 // arm's length; farther ones stay in view. Each record says how many went.
 const CLEAR_RADIUS_M = 12;
-export const clearHostiles = (page) => page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), CLEAR_RADIUS_M);
+export const clearHostiles = (page, radius = CLEAR_RADIUS_M) => page.evaluate((r) => window.__craftyLookbook.clearHostiles({ radius: r }), radius);
 export const play = (page) => page.evaluate(() => window.__craftyLookbook.play());
 /** The vitals stack is on screen: the HUD a player sees, not merely mounted. */
 export const hudOn = (page) => page.evaluate(() => {

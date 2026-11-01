@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, act } from '@testing-library/react';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { EmberBar } from '../../src/ui/EmberBar.jsx';
-import { EMBER_MAX } from '../../src/game/ember.js';
+import { EMBER_MAX, GRAB_COST, IMBUE_COST, SNARE_COST, FUSE_COST, ROAR_COST } from '../../src/game/ember.js';
 
 // ONE EMBER-GOLD BAR IN PLACE OF FOUR (DECISIONS 2026-10-28 W1-H item 5). The bar reads the store's one bank, live,
 // and takes no room when it is empty.
@@ -48,5 +48,22 @@ describe('the ember bar', () => {
     useGameStore.setState({ ember: 12, locale: 'zh-CN' });
     render(<EmberBar />);
     expect(screen.getByTestId('ember-bar').textContent).toContain('余烬');
+  });
+
+  // REVIEW:w2f:ember-bar-no-readiness. Where each mark sits on screen is hud-at-rest.spec.js's (jsdom has no layout).
+  it('marks the price of each unlocked Aspect verb along the track, and lights the ones the bar pays for', () => {
+    useGameStore.setState({ ember: 30, unlockedTalents: {} });
+    render(<EmberBar />);
+    expect(screen.getByTestId('ember-bar').querySelectorAll('[data-testid="ember-mark"]').length, 'a bar with no Aspect unlocked carries marks').toBe(0);
+    act(() => useGameStore.setState({ unlockedTalents: { voidhand_grasp: 1, elemancer_imbue: 1, soulbind_snare: 1, wildheart_roar: 1 } }));
+    const read = () => [...screen.getByTestId('ember-bar').querySelectorAll('[data-testid="ember-mark"]')]
+      .map((el) => [Number(el.getAttribute('data-cost')), el.getAttribute('data-lit'), el.style.left, el.parentElement.contains(el.parentElement.querySelector('[data-fill]'))]);
+    const at = (c) => `calc(${(c / EMBER_MAX) * 100}% - 1px)`;
+    expect(read()).toEqual([[GRAB_COST, 'true', at(GRAB_COST), true], [IMBUE_COST, 'true', at(IMBUE_COST), true],
+      [SNARE_COST, 'false', at(SNARE_COST), true], [FUSE_COST, 'false', at(FUSE_COST), true], [ROAR_COST, 'false', at(ROAR_COST), true]]);
+    act(() => useGameStore.setState({ ember: EMBER_MAX }));
+    expect(read().map((m) => m[1]), 'a full bar does not light every mark').toEqual(['true', 'true', 'true', 'true', 'true']);
+    act(() => useGameStore.setState({ ember: SNARE_COST - 1 }));
+    expect(read().map((m) => m[1]), 'a bar one short of the snare lights it').toEqual(['true', 'true', 'false', 'false', 'false']);
   });
 });

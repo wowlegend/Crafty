@@ -34,6 +34,9 @@ export const STRINGS = {
     'notice.dragonLoadFailed': 'The dragon could not be loaded. Trying again...',
     'notice.dragonLoadGaveUp': 'The dragon could not be loaded. Reload the page, especially if Crafty was just updated, or leave the lair and come back to try again. Its health is kept.',
     'notice.dusk': 'Dusk approaches. Night falls soon: ready your defenses!',
+    // {how} is notice.keyHint on a keyboard and nothing on touch (game/ember.js duskNotice).
+    'notice.dusk.roar': 'Dusk approaches. Night falls soon: ready your defenses! A full ember bar wakes the beast{how}.',
+    'notice.keyHint': ' ({key})',
     // The siege notice by night tier (game/dayNight.js siegeWarning), the dawn notice (world/dawnSurvival.js), the
     // dragon's calls (world/bossSystem.js) and an Aspect's first unlock (game/aspectHints.js): every one is a toast in the
     // notification stack (ui/notifications.js). {boss} and {item} are themselves keys, translated when shown.
@@ -245,6 +248,7 @@ export const STRINGS = {
     'hud.quests': 'Quests',
     'controls.move': 'Move', 'controls.jump': 'Jump', 'controls.dodge': 'Dodge-roll (at a lunge: perfect)',
     'controls.attack': 'Attack (hold: heavy) / mine', 'controls.use': 'Cast / place / interact', 'controls.cast': 'Cast spell',
+    'controls.forcePlace': 'Hold with RMB: place at a chest or a mob',
     'controls.melee': 'Melee (hold: heavy)', 'controls.spell': 'Select spell', 'controls.wheel': 'Cycle block',
     'controls.roar': 'WILDHEART: roar', 'controls.grab': 'VOIDHAND: grab and hurl', 'controls.snare': 'SOULBIND: snare and fuse',
     'controls.imbue': 'ELEMANCER: imbue a cast',
@@ -344,6 +348,8 @@ export const STRINGS = {
     'notice.dragonLoadFailed': '巨龙加载失败，正在重试……',
     'notice.dragonLoadGaveUp': '巨龙加载失败。请刷新页面（尤其是游戏刚刚更新的时候），或者离开巢穴再回来重试。它的生命值会保留。',
     'notice.dusk': '黄昏将至，夜幕即将降临，快做好防御！',
+    'notice.dusk.roar': '黄昏将至，夜幕即将降临，快做好防御！余烬攒满，即可唤醒野兽{how}。',
+    'notice.keyHint': '（{key}）',
     'notice.siege.first': '第 {n} 夜：第一次围攻开始了，坚守到黎明！',
     'notice.siege.harder': '第 {n} 夜：怪物攻势更猛了，坚守到黎明！',
     'notice.siege.intensifies': '第 {n} 夜：围攻愈演愈烈，坚守到黎明！',
@@ -536,6 +542,7 @@ export const STRINGS = {
     'hud.quests': '任务',
     'controls.move': '移动', 'controls.jump': '跳跃', 'controls.dodge': '翻滚闪避（在敌人扑来时：完美闪避）',
     'controls.attack': '攻击（按住：重击）/ 挖掘', 'controls.use': '施法 / 放置 / 互动', 'controls.cast': '施放法术',
+    'controls.forcePlace': '按住再右键：对着箱子或怪物也能放置方块',
     'controls.melee': '近战（按住：重击）', 'controls.spell': '选择法术', 'controls.wheel': '切换方块',
     'controls.roar': 'WILDHEART：咆哮', 'controls.grab': 'VOIDHAND：抓取并投掷', 'controls.snare': 'SOULBIND：束缚与融合',
     'controls.imbue': 'ELEMANCER：为法术灌注',

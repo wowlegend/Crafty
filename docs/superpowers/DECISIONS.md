@@ -19,6 +19,403 @@
 
 ---
 
+## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
+
+The 2026-11-01 W3-A task script's "PR B" (it lives on branch `feat/w3a-first-night` until that lane lands), branch
+`feat/w3a-small-fixes` from `3442443d`, PR #80. Each gate went red before its fix: the unit and jsdom gates locally, the
+two e2e cases (I1, U2) on CI first (run 41287676192 at `e0b8a5cb`: hud-at-rest "the ember bar does not mark the five
+unlocked prices ... []" at every layout; build-placement "held Q did not turn the right click on a chest into a
+placement", the control's interact seen first). The looks were shot on the M3 Max: the lookbook's self set on the
+production build (D1), and throwaway probes on the dev server with a real key or the store's own hit (F6, U2, B2),
+deleted after; the frames are in `docs/superpowers/masterpiece-2026-10/evidence/w3a-small-fixes/`.
+
+440. **The pad by the Hearth's fire is gated through the night on the terrain stone, and the brazier's light is amber;
+   the midnight maroon on screen is not fixed by it.** `colour-script-gates` G2b: the pad lit by `HEARTH_FIRE` at 0.5, 1
+   and 2 m, terrain stone, f 0.44 to 1.06, chroma at most 0.025 wherever the model's hue lies within 20 deg of maroon's
+   band (the screen reads 10 to 20 deg redder: DECISIONS 2026-10-28, the landing lifecycle entry, item 21 (d)). Red on
+   the orange `#FF8A2A`; green on amber `#FFB050` (worst 0.0221); a lavender twilight that every other case passes is red
+   here. On screen (the lookbook's `self-brazier-110` at midnight, the pad left of the brazier on the maroon rule): 48.5%
+   before, 45.9% after; throwaway builds: the fire off 4.7%, a warm white `#FFE2A8` 39.4%, amber at 2.6 56.6%. Whatever
+   its colour, what the fire adds to the dark pad on screen carries green at about a quarter of the light's own
+   green-to-red ratio and almost no blue, so any warm light on the violet night pad reads magenta-red; the model does not
+   reproduce that. `REVIEW:light:g2-pad-coverage` closes (its acceptance is the gate); `REVIEW:light:midnight-brazier-maroon`
+   stays open with the numbers. Amber ships because the gate needs a fire it passes and the screen moves the right way, a
+   little; the night key and the display's dark end are the light lane's next question, not a small fix. Commit `f88147b1`.
+   (G2b's claim is narrowed to the model, and the open row goes to W3-A unit L1: item 454.)
+441. **The stance keeps its own clock: each frame adds the world clock's advance, at most the frame's step.** A frame
+   longer than `MAX_FRAME_STEP_SEC` moves the world clock its whole length and every mover the cap; counted whole, one
+   3.5 s CI hitch stalled a husk still walking in and spent the calm (`REVIEW:w2b:stance-clocks-long-frame`). The two
+   e2e idles that waited out the calm on the wall clock wait on the stance's clock. Commit `7fc0224b`.
+442. **Being hit kicks the camera away from the blow.** `game/cameraKick.js` `hurtKick(angle)` turns the hurt profile's
+   back push by the store's `lastHitDir.angle` (a hit from the right throws the view left; from behind, forward; with no
+   source, back as before), same size. The look, in the running game through `damagePlayer` with a source position: a
+   hit from the left moved the camera +0.079 m along its right on the frame after, a hit from the right -0.072 m, both
+   gone in about 0.25 s, beside the edge glow on the hit side. Subtle by design, as the hurt kick was. `OPEN_ITEMS:OI-37`.
+   Commit `1aad531a`. (The no-source case was false after a sourced hit: item 448.)
+443. **Held C with a right click places where the click would open a chest or cast at a mob; Alt is not used.** The row
+   named Alt. Under a pointer lock on Windows, Chromium released the lock when Alt was pressed and released (Chromium
+   commit 560e652, bug 40734020, suppressed from main@{#1577353}, 2026-01-30); Firefox on Windows raises its menu bar on
+   Alt (bugzilla 1574057); Alt+D takes the address bar on Windows and Linux. Ctrl+W closes the tab and Shift is the
+   dodge. Q, the first pick, is a panel key item 96 (2026-10-29) retired, which `keyMap.test.js` and `taught-keys-gates`
+   hold unbound. C is bound to nothing. The intent `forcePlace` is set by the keydown and cleared by the keyup and on
+   blur; the router places on the right button with the hands free wherever the build ray met terrain in reach. Touch is
+   desktop only: the cast button fires on the lift, so a long press would turn a held cast into a placement, and
+   real-device feel is Kevin's. `QUEUE:Q26/b`. Commits `bf412b84` (the e2e, red first on Q), `d4b22d9d`. (Cmd and Ctrl
+   let go of C: item 449; a forced block at a mob's feet: item 450.)
+444. **The ember bar marks each unlocked Aspect verb's price and lights the ones it pays for; the dusk warning names the
+   roar once it is unlocked.** Grab 25, imbue 30, snare 35, fuse 50, roar 100, from KEY_MAP's verb rows (the fuse rides
+   the snare's talent); "A full ember bar wakes the beast (R)." in en and zh-CN. Judged on frames at 1280x800 and
+   390x844: the notches read as lit and dim at a glance, but the slim track beside its label is 78 px wide on the
+   desktops and iPads and 30 px on phones (hud-at-rest, CI run 41289153753), so the three cheap prices sit within 8 and
+   3 px of each other and which verb a notch is cannot be read from the bar; the keys are taught in the controls panel.
+   `REVIEW:w2f:ember-bar-no-readiness`. Commits `e0b8a5cb` (the e2e, red first), `d2c066f7`. (That row closes
+   superseded, not done, and the touch line names no key: items 451, 452.)
+445. **Each beast form stands on the floor its own capsule rests on, from the entrance's first frame.** The parts hang in
+   an inner group at `formLift(element, scale)`: the lowest point of the boxes (each turned by its rotation) on the
+   floor that halfHeight + radius + `CONTROLLER_OFFSET` puts under the centre, at every scale of the entrance. The outer
+   group stays `FEET_OFFSET` under the centre, so the first-person test and the DEV hook `frameBeastReveal` read as
+   before and `devtest/devBridge.js` (in flight in PR A) is untouched. The gate's reference is real Rapier's rest height
+   (0.77, 1.12, 0.97, 1.25 m). In the running game, a real roar on R: before, the bull's and the golem's lowest boxes
+   stood 0.21 and 0.35 m over the ground under the body; after, 0.000 for all four. From the reveal's hold, above and
+   behind, a gap of that size is hard to see by eye: the measurement carries it. `REVIEW:w2e-follow:beast-feet-per-form`.
+   Commit `0f9c9b4c`.
+446. **PR B nets +2,290 B of index against about 400 B of shares; the ceiling is not raised.** Main was 649,123 B at
+   `3442443d` (1,366 B over the plan's 647,757), and PR B leaves 651,413 B: V1 +146, F6 +112, D1 0, I1 +410 (the KEY_MAP
+   row and two strings), U2 +1,037 (two sentences of about 220 B, the marks and the helpers), B2 +585 (the rotated
+   lowest point and the per-frame lift). That leaves 1,087 B under 652,500 for PR C, whose C0 must free correspondingly
+   more before its index units land. (The command session's ruling and round 2's bytes: item 453.)
+447. **A flake row for input-live.spec.js:72's victory case** (`REVIEW:e2e-flakes:input-live-victory-scrim-intercepts`,
+   LANE:flakes): CI run 41282171902 (PR #77 at `3442443d`), shard 5/8, attempt 1 timed out clicking Keep exploring
+   because the victory overlay's own `z-modal` scrim intercepted the pointer; retry #1 passed. First sighting. The same
+   run's light-pool.spec.js first-attempt failure (programs 97 to 98, the point lights held at 5) is a sighting in
+   `REVIEW:w2f:light-pool-first-attempt-programs`. PR B's own green run (41289153753, `d2c066f7`) retried four cases on
+   code it does not touch: three known rows take the sighting (heavy-melee's release, combat-touch's spawn race,
+   quest-text's held world), and music-bus.spec.js:74's Mute All wait gets a row of its own
+   (`REVIEW:e2e-flakes:music-bus-mute-all-wait`).
+
+Items 448 to 458 are the second review round (a static and a dynamic review of `3442443d..3e3decc7`). Each code item's
+gate went red before its fix, or, where the code already did what the item decides (450), its mutants did; every gate
+commit carries a `Mutation-Proof:` trailer with two comment-only identity mutants that survived.
+
+448. **A hit with no source kicks straight back; item 442's "with no source, back as before" was false.** `damagePlayer`
+   stamped a hit with no attacker position (a projectile, the dragon's fireball impact, its lava) with the previous
+   hit's angle, so after a mob's blow from the left a projectile threw the view sideways with no back push (the dynamic
+   review, through the real `damagePlayer`). The stamp's angle is now null for such a hit: the kick keeps the hurt
+   profile, and the edge glow (`ui/DamageDirection.jsx`) shows nothing for it instead of the old side, cutting short a
+   glow still fading from a sourced hit. `player-hurt-kick-gates` drives the real `damagePlayer` on the real Player and
+   Rapier. Commit `cf84f202`.
+449. **C cannot stay held.** On macOS a key let go while Cmd is down sends no keyup (Mozilla bug 1299553; Chromium issue
+   40880986, where Chromium has since forwarded those keyups behind a killswitch), so a Cmd+C, or a C held into a Cmd
+   press, kept `forcePlace` on and every right click at a chest or a mob placed (the static review, item 7). Any keydown
+   with Cmd or Ctrl down, the modifier's own included, lets go of C, and a C pressed with one is copy and sets nothing;
+   any C keyup lets go, whatever its modifiers; a blur and a hidden tab already cleared every held intent and are now
+   gated for C. A C held through a Cmd press must be pressed again. The first version let go on the MetaLeft and
+   MetaRight keyups and turned `keyMap.test.js`'s reverse gate red ("handled but advertised nowhere"): the commit hook
+   runs only the tests that statically import a staged file, and that test reads `Components.jsx` as text. A release
+   guard is not a binding, so the gate stays as it is and the release moved to the keydown. The Alt comment in
+   `Components.jsx` now names Chromium's fix (commit 560e652, main@{#1577353}, 2026-01-30). Commits `f4259473`,
+   `64611843`.
+450. **A forced block aimed at a mob's feet is placed, and the mob stands on it.** Terrain nearer than the mob already
+   places without C, so what C adds is a block at or beyond the mob: under its feet or on the wall behind it, never
+   "the wall between them", as `verbRouter.js` had it (the static review, item 4). Placed, not refused: `placeAtHit`
+   refuses only the player's own capsule, because a cell the player fills holds them for good (item 132, 2026-10-30),
+   while a mob whose cell is filled is lifted onto the block by its floor rule (`game/mobFloor.js`), as with any block
+   built under a mob, and walks off it. Refusing it would need the mobs' positions in the executor for a case that
+   strands no one. `force-place-mob-cell-gates` drives the router, `placeAtHit`, the click's cuboid and the snap
+   AIWorkerSystem makes, on real Rapier over the real mesher's ground, before the re-mesh and after. Commit `5cf3c6d5`.
+451. **`REVIEW:w2f:ember-bar-no-readiness` closes superseded, not done.** Its title asks which verb the bar can pay for;
+   `hud-at-rest` reads each mark's price and whether it is lit, and on a 30 px phone track the 25, 30 and 35 marks sit
+   within 3 px, so a player cannot tell which notch is which verb (the static review, item 2). The command session's
+   ruling was to reopen it in this branch, where alone it is closed; `registry-append-only` R2 refuses a reopen on the
+   pushed range (`3e3decc7..` the head, where it is closed at the base), and a push never skips that check. So it closes
+   `superseded:REVIEW:w3a-pr-b:ember-marks-name-no-verb`, a new open row (LOW, LANE:W3-A) whose acceptance is that
+   check, and main never sees it closed as done. The U2 marks and the dusk line stay.
+452. **On touch the dusk line names no key.** The roar is a sector of the Aspect ring there, so "(R)" named a key the
+   device lacks (the static review, item 8). `duskNotice` takes the touch UI's predicate (`isTouchUIMode`): the line's
+   `{how}` is `notice.keyHint`, " (R)" or "（R）", with a keyboard, and empty on touch. The gate reads the words the toast
+   shows in en and zh-CN on both. The Aspect unlock toast's "press R" (`game/aspectHints.js`) has the same shape and is
+   not changed here. Commit `fd4d8b47`.
+453. **The index budget, reconciled with the command session's ruling.** The ruling (session record, 2026-11-01): PR B's
+   growth is accepted, and PR C's C0 frees at least 2,500 B before PR C's index units land. Item 446's numbers stand
+   for round 1 (651,413 B; the builder's QUESTION.md, which said +2,311 B and 651,434 B, was a draft and is corrected
+   to them). Round 2 nets +102 B (651,515 B), and main's PR A, merged in, adds its +105 B (item 436): 651,620 B at
+   this round's head, 880 B under 652,500. The task script's units after PR B share about 4.7 KB of index and C0
+   frees 2,500 B, a net of about 2.2 KB against those 880 B, so PR C fits only if C0 frees about 3,800 B or its units
+   come in under their shares.
+454. **G2b's claim is narrowed to the colour model; the midnight brazier stays open, for W3-A unit L1.** G2b reads the
+   model's pad by the fire, not the screen, which still reads it maroon at midnight under amber (item 440). Its test
+   name, its blind-spot note (which had kept history: the old orange's numbers) and the `HEARTH_FIRE` comment now say
+   so; `REVIEW:light:g2-pad-coverage` stays closed on its acceptance with that said in its note, and
+   `REVIEW:light:midnight-brazier-maroon` stays open, owned by W3-A's lights unit L1 (the command session's ruling).
+   Commit `f1c78a5e`.
+455. **Doc drift.** `stanceStep`'s `nowMs` named the world clock; `stanceFrame` passes the stance's own clock since
+   item 441, and the comment now says so. Commit `f1c78a5e`.
+456. **A row for the lookbook's self set, which rests every beast form at the human rest height**
+   (`REVIEW:w3a-pr-b:lookbook-self-human-rest-height`, LOW, LANE:W3-E; the static review, item 1). The body rests at
+   0.5 + 0.4 + 0.05 = 0.95 m, and since B2 each form's lowest box sits at 0.95 minus its own rest (halfHeight + radius +
+   `CONTROLLER_OFFSET`): the comet's 0.77, 0.18 m afloat; the bull's 1.12, 0.17 m sunk; the hawk's 0.97, 0.02 m; the
+   golem's 1.25, 0.30 m. The game is right (item 445); the frames would show a gap that is not there. `lookbook.mjs`
+   is in flight in PR A, so the fix waits for W3-E.
+457. **Round 1's head run had no `ci ok`.** Run 41290740368 on `3e3decc7` reported success in 0 s with ten of its
+   twelve jobs, each carrying a completion time before its start time by GitHub's own record; `runtime reach (merged)`
+   and `ci ok`, which need the e2e matrix, were never created, so the PR stayed blocked (the dynamic review, item 1).
+   Nothing in `ci.yml` explains it; this round's push runs CI again on its own head.
+458. **Round 2's first run, read.** Run 41296767030 on `fcda6c6d` concluded success with all twelve jobs, `ci ok`
+   included. Two cases passed on retry, both on code this PR does not touch: heavy-melee.spec.js:45's charged release
+   (a sighting in `REVIEW:e2e-flakes:heavy-melee-release-nothing`) and feedback-grammar.spec.js:140's held hit, "0 of
+   12617" interior pixels white on the lit band (a first sighting, `REVIEW:e2e-flakes:feedback-grammar-lit-band-white`,
+   LANE:flakes). CodeQL, which `ci ok` does not read, raised one high alert (js/incomplete-sanitization) on the PR: the
+   dusk gate built a RegExp from a string with only `.`, `!` and `?` escaped; it reads `startsWith` now (`a53cb517`).
+   Main moved twice in the round, to `e5e1f745` (W3-A PR A) and `cf815ac4` (the ultrareview records), and each was
+   merged in; the second brought only DECISIONS and registry rows, so the index stays 651,620 B.
+
+---
+
+## 2026-11-01 (ultrareview chunks 4-6) — [LOOP] the three parts of the game no review had read are reviewed: what the cloud delivered, what a local replica found beside it, and the rows filed
+
+Registry row AUDIT:critic:coverage-gaps/ultra asked for the deep review of the ui, render and audio-and-scene areas, the
+half of `frontend/src` that no whole-game review had read (chunks 1 to 3 ran in the deep audit,
+`docs/superpowers/audits/2026-10-30-deep-audit.md`). This entry records the runs, what each delivered, how the deliveries
+were checked, a local replica of the same review on one chunk, the comparison, the cost and the rows. Records only: no
+code changed. Items 460 to 468.
+
+460. **The three runs.** On 2026-11-01 the three free runs of account 2 (DECISIONS 2026-10-27: three free runs per
+   account, one-time) reviewed the three chunks. Each ran from its own separate local git repository,
+   `.claude/worktrees/ur3-<chunk>`, whose branch `review` is a pair of commits: a base commit holding the whole of Crafty
+   at `dae1afb4` except the chunk's files, and a review commit that adds only the chunk's files. The review's diff is the
+   chunk as pure additions, under the cloud review's diff cap (500 files, 8,000 changed lines), and the reviewer still
+   reads the whole game around it.
+
+   | chunk | files | lines | holds | base / review commit | cloud session |
+   |---|---|---|---|---|---|
+   | 4-ui | 74 | 7,594 | HUD, panels, primitives, i18n, theme, touch controls | `3f8f9f7` / `9bb3ae4` | `session_01PyjBK9f7PTDauQgdTpaFc3` |
+   | 5-render | 57 | 7,688 | render, post FX, spell VFX, mobs, boss, ocean, sky, quality tiers | `2cad929` / `fc048c5` | `session_01PyjBK9NcSj1Nf3w8t5mNDq` |
+   | 6-audio-scene-rest | 40 | 7,170 | audio, SoundManager, GameScene, atmosphere, weather, devtest, lookbook, grass, NPC | `57fc230` / `9d319b8` | `session_01PyjBK9n5bKqvTbjkWkGuFY` |
+
+461. **Counters and delivered counts.** At each run's last progress line (found / verified / refuted): 4-ui 36 / 28 /
+   25, 5-render 30 / 25 / 19, 6-audio-scene-rest 29 / 30 / 13. Each run delivered exactly 10 findings: 4 normal and 6
+   nit (4-ui), 2 and 8 (5-render), 3 and 7 (6-audio-scene-rest), by the cloud's own severity field; the verification
+   text inside 5-render finding 2 and 6-audio-scene-rest finding 2 says nit, and their rows give the field's value. The
+   counters tally verdicts, not unique bugs: the last run shows more verified (30) than found (29), so how many unique
+   verified bugs stood behind the 10 is unknown.
+
+462. **Our verification, and what was filed.** One repro verifier per delivered finding (30 in all) read the code in a
+   `cp -c -R` throwaway of the review repository, `node_modules` symlinked and no browser, built a control and tried to
+   refute the claim. Verdicts: 27 CONFIRMED, 2 PLAUSIBLE (4-ui finding 1, the potion tile: whether a touch browser shows
+   Use is unmeasured; 6-audio-scene-rest finding 2, the Web Audio ramps: the formula was stated from memory and no
+   engine was run) and 1 REFUTED (6-audio-scene-rest finding 6, the place sound's occlusion march: every line-level
+   claim is true, but the block-place sound never reaches the spatial path in GameScene's mount order, so nothing is
+   heard; not filed). By player harm among the 29 not refuted: MED 4, LOW 14, NONE 11. Filed: 27 new rows
+   `AUDIT:ultra-1101:<chunk>-<n>`, n being the finding's 1-based place in that run's list (so `6-audio-scene-rest-6` has
+   no row), and the two history-comment findings (5-render finding 10, 6-audio-scene-rest finding 10) as a line appended
+   to REVIEW:l12:history-comments-ledger, which they match: 15 receipts and six past-tense comments that its ratchet's
+   markers do not count. A NONE-harm finding is a LOW debt row, and so is a LOW-harm finding whose cost has no visible
+   symptom: AUDIT:ultra-1101:4-ui-9 and 6-audio-scene-rest-9, and AUDIT:replica-1101:4-ui-11 from the replica (of the 14
+   LOW-harm cloud findings, 12 are LOW bugs and those two are debt). Our verifiers corrected several cloud claims (cited
+   lines that do not exist in 5-render findings 4, 5 and 9; the refuted 'shading seam' in finding 3), recorded in the
+   rows.
+
+463. **The replica of chunk 4-ui.** To learn what the cloud leaves out, the same chunk was hunted locally: five hunters,
+   each on a player-facing lens, produced 49 raw candidates, merged by root cause into 32; each got three independent
+   votes (CONFIRMED, PLAUSIBLE or REFUTED, and a harm), and a candidate survived unless two or more votes refuted it. 28
+   survived and 4 were killed. Six survivors are cloud findings (4-ui 1, 2, 3, 4, 5 and 10); the other 22 are replica-only.
+   Filed: 21 rows `AUDIT:replica-1101:4-ui-<n>`, n being the candidate's 1-based place in the merged list of 32 (the
+   numbers have gaps), and one line appended to STATUS:G-ledger:35 (the touch surface's own animation loop, candidate
+   29). The replica-only survivors rest on their three votes alone: no probe re-verified them, which is a weaker standard
+   than the cloud's findings met, and each row's evidence says so. Killed and not filed: candidate 23 (about 40 English
+   literals bypass t() and the ratchet cannot see them; R,R,C; the literals are filed from the cloud as
+   AUDIT:ultra-1101:4-ui-7); 24 (4.2 MB of CJK fonts are fetched and no element uses them; R,R,C; our verifier measured
+   font-body-cjk in 0 JS chunks, and the fonts' fate is noted on AUDIT:ultra-1101:4-ui-8); 25 (a partial CJK load
+   latches; R,R,R; filed from the cloud as 4-ui-8, which our probe reproduced); 26 (the panel-load-failed notice is
+   raised pre-translated, so it escapes dedupe; R,R,R). For 26 the mechanism is in the code, read for this entry:
+   `ui/panels/lazyPanels.js:84` passes `t('notice.panelLoadFailed')`, `toNotification` in `ui/notifications.js` gives a
+   plain string without `opts.key` no dedupe key, and `QuestSystem.jsx` admits such a notice each time. The replica's
+   reason for the kill is not in the data, and the harm is a repeated toast, so it stays unfiled and findable here.
+
+464. **The comparison on 4-ui.** 34 distinct defects by root cause: the cloud's 10, the replica's 32, 8 in both. The
+   replica found 8 of the cloud's 10 (80%) and 6 survived its own votes: it killed two that our probes had reproduced in
+   code (4-ui-7 and 4-ui-8, both latent because no player can switch to zh-CN) and never found two (4-ui-6, the
+   classifier's ternary; 4-ui-9, DebugOverlay's boot-time GL context), both outside its five lenses. The cloud delivered
+   6 of the replica's 28 survivors (21%): 6 of 22 normal-severity, 2 of the 9 with MED harm (4-ui-1 and 4-ui-3) and none
+   of the 6 nits. **16 normal-severity defects that survived the replica's votes are absent from the cloud's 10 (15 drew
+   at least two CONFIRMED votes of three; AUDIT:replica-1101:4-ui-16 drew PLAUSIBLE three times), and 7 of them are MED
+   harm, all among the 15:** AUDIT:replica-1101:4-ui-10 (no player can switch to zh-CN), -1 (the Settings panel
+   off-screen), -13 (the chest panel's close off-screen), -15 (the portrait phone Inventory), -18 (the Build tray's
+   ghost click), -20 (the hotbar's numbers) and -21 (keyboard copy on touch). Why is unknown: the cloud's fixed 10 cut
+   them, or the cloud never found them. A severity-first cutoff would not fill six of ten slots with nits while dropping
+   normal bugs, which points to a recall gap or a ranking that is not severity-first, but the data cannot separate the
+   two; the test is an ultra rerun of the chunk with `--max-findings all`, which is Kevin's
+   (AUDIT:ultra-1101:cap-question). Before the replica runs again (AUDIT:replica-1101:chunks-5-6) it takes the changes
+   this comparison asks for: two more lenses (what the production bundle runs; tools that ship in src); a vote split
+   into mechanism and harm, where a refutation carries a proof command and a latent defect stays harm NONE rather than
+   being killed; dedupe by root cause with parent links and kept sub-claims; a harm-ranked top 10 beside the full list;
+   and the per-finding probe on every MED survivor.
+
+465. **What the binary showed, and what the data cannot.** A reading of the installed `claude` binary during this work
+   found no cap of its own on the number of findings the client prints, so a cap, if there is one, is applied on the
+   cloud side; and the session page refuses to open a review session, so the findings were read from the runs' output and
+   the session ids in item 460 are a record, not links that open. Neither fact was re-measured for this entry. Whether a cut at 10 hid bugs the cloud
+   had found stays open (item 464).
+
+466. **Cost.** The three cloud runs spent no usage credits: they were account 2's free runs. Verifying the 30 findings
+   and running the replica on one chunk took 133 agents and 18.7M subagent tokens (the work's own totals, carried and
+   not re-measured for this entry). A further ultrareview costs usage credits (typically $5 to $25 a run, DECISIONS
+   2026-10-27), which is Kevin's to spend.
+
+467. **The rows.** 50 rows added, 2 lines appended, 1 row closed; every new row is open in an open lane. By lane:
+   LANE:W3-C 7 (the first minute on touch and keyboard: AUDIT:ultra-1101:4-ui-1, 4-ui-3 and 4-ui-9;
+   AUDIT:replica-1101:4-ui-1, -16, -20 and -21; the plan's W3-C row names Unit 0, the hint strip, the title's Hearth and
+   the first click after Start, so 4-ui-3, replica -16, -20 and -21 and 4-ui-9 tie to it by touch input, hint copy and
+   Unit 0, while AUDIT:ultra-1101:4-ui-1 (a starting potion's tile) and AUDIT:replica-1101:4-ui-1 (the Esc Settings
+   panel) are first-minute reaches it does not name, and their notes say the lane may hand them to backlog), LANE:W3-B 3
+   (the dragon: AUDIT:ultra-1101:5-render-1, 5-render-2 and 5-render-5), LANE:W3-E 2 (AUDIT:ultra-1101:5-render-3, the
+   fireball's lathe seam, and 6-audio-scene-rest-3, the shadow frustum on the iPad low tier), LANE:backlog 37 and
+   LANE:kevin 1. By kind: 36 bugs (11 MED, 25 LOW), 12 debt rows (LOW) and 2 instrument rows. The MED bugs:
+   AUDIT:ultra-1101:4-ui-1, 4-ui-3, 5-render-1 and 6-audio-scene-rest-3, and AUDIT:replica-1101:4-ui-1, -10, -13, -15,
+   -18, -20 and -21. Two instrument rows record deferrals this entry leaves: AUDIT:ultra-1101:cap-question (LANE:kevin:
+   whether the cut at 10 hid bugs) and AUDIT:replica-1101:chunks-5-6 (the replica has run on one chunk of three; MED).
+   The evidence line of every row says whether the cloud, our probe or the replica's votes carry it. Appended instead of
+   filed: REVIEW:l12:history-comments-ledger (two cloud findings) and STATUS:G-ledger:35 (one replica candidate).
+
+468. **AUDIT:critic:coverage-gaps/ultra closes done.** Its acceptance asked for `/code-review ultra` on chunks 4, 5 and
+   6, the findings filed as rows, and the run ids and session links recorded in a DECISIONS item. Kevin provided account
+   2's three free runs, as the row's note records; the runs, the findings as rows (27 rows, 2 appended lines and 1
+   refuted, item 462) and the session ids are items 460 to 467 and the rows above (the links do not open, item 465, so
+   the ids are the record). Kevin keeps any further ultrareview, which costs credits, and the cap question. The sibling
+   AUDIT:critic:coverage-gaps/hunt (subsystems no hunter read) stays open.
+
+---
+
+## 2026-11-01 (W3-A PR A) — [LOOP] one feedback grammar: danger at the edge, contact on the lit band, magic as a solid core
+
+The W3-A task script's PR A (F0-F5), a re-cut at `eff58e9a` of the feedback-grammar plan
+(`docs/superpowers/plans/2026-10-27-crafty-feedback-grammar.md`) M1, M2, M4, M5 and M7, and the siege plan's Move E.
+Branch `feat/w3a-feedback-grammar`. Each call below was checked against the code at HEAD before it was taken.
+
+420. **The lookbook's combat stage holds a moment with the world's own freeze, not a `lookHold` field.** The plan had
+   `mobLook` honour an `entity.lookHold` set by the seam and the DEV e2e. `stage()` (render/lookbookSeam.js, the lazy
+   chunk) instead freezes the world through the store's `triggerHitstop` (so the AI worker neither moves the mob nor
+   replaces its windup), plants `windupUntil` at 0.8 of the ramp on the world clock, and renews `lastHit` every frame
+   for a hit: the game code reads only the fields it already reads, and no test branch sits in the per-frame look.
+   The same stage holds a spell (`moment: 'cast'`, the spell system's deterministic cast) and an elite's rank. Draws
+   per frame are counted at the WebGL context (`scripts/visual/_glDrawCounter.mjs`), because renderer.info resets at
+   every render() call and postprocessing calls it once per pass.
+421. **Danger is an edge colour, plain danger red, and the rim runs at every tier.** A windup carries the ink outline
+   and the rim's colour from rest to `#ff3a00` over the ramp squared; the rim's strength and power do not ramp (a box
+   face has no fresnel edge, plan amendment 2) and the body takes no emissive. The plan's M1 option (b) is taken: the
+   edge is about sRGB (0.95, 0.25, 0.13) through the Neutral tone map and does not bloom, so the eyes stay a mob's only
+   glow. The 4 Hz throb is dropped (the monotonic ramp tells the timing). `charRim` is deleted from `render/quality.js`
+   (MobModel was its only reader); the iPad's low tier now draws the rim. The plan's mood rim (moon-white at night) is
+   not built: at HEAD `moodRef` is the storm and obsidian overlay, not night (`render/mood.js` header).
+422. **Contact is about 70 ms of white on the band facing the key light, a white edge, and a 50 ms squash.** It
+   supersedes the 300 ms whole-body flood (colour and emissive). FLASH holds 70 ms and at least one drawn frame; SQUASH
+   50 ms and at least two frames, through 1, 0.6, 0.25, so it lasts about 50 ms at 120 Hz and at 30 fps. The flash is a
+   term in the one rim program (`characterStyle.js FLASH_GLSL`), identity at 0 for the beast and the props. Reduced
+   motion keeps the white edge only. MobModel writes uniforms only, so `render/mobFlash.js` (the authored-colour
+   restore the flood needed), its gate and `flashableMaterial` are deleted, and an authored emissive survives. The key
+   light is the moon at night (`render/keyLight.js`), so the plan's elevation fallback is not needed.
+423. **Only a hostile's eyes glow, and identity costs no draw.** The eyes are red lifted to 1.25x the bloom threshold
+   by the bloom pass's own luminance weights (`render/hdrGain.js`, which is now the one home of `BLOOM_THRESHOLD`;
+   GameScene passes it). The plan's part tones were a flush plate and a strap box per mob, each a mesh and an ink hull
+   on every mob of a 40-mob night; they are instead a lighter head and darker legs on parts every mob already has
+   (`render/mobTones.js`), so the unit adds no part, draw or program.
+424. **A spell is a solid core ringed in ink under one additive glow.** The silhouette is now opaque and
+   depth-written with the mobs' ink outline; the two additive white-hot core spheres (depthTest off) and the bolt's
+   five white filaments are deleted, and the bolt, the sigil's accent ring and its motes are solid. Mounted draws per
+   projectile: fire 5 to 4, ice 5 to 4, lightning 15 to 13, arcane 12 to 11 (F4's commit body says fire 5 to 5: wrong,
+   the mounted count is 4). Lightning's strobe lever drove the deleted core's opacity, so the bolt no longer flickers.
+   The plan's merged bolt and sigil geometries and puff pool are row 49's draw cut, and the impact grammar (plan M6: a
+   mark, a ground ring, voxel debris) is deferred to `MASTERPIECE:one-feedback-grammar/c`.
+425. **Elites wear an ember crest and the captain a banner (Move E), drawn by MobModel from `entity.elite`.**
+   `src/night/eliteLook.js` returns the boxes in mobFeatures' vocabulary, each with no shadow; MobModel imports it
+   directly (index), because it reads `entity.elite` at mount; PR C's spawner sets the field. The crest's emissive is
+   `#FF7A2A` at 0.6, under the bloom threshold, so it reads at night without competing with the eyes.
+426. **PR A nets fewer index bytes than main.** 647,757 B on main; F0 +12, F1 +13, F2 +383, F3 +335, F4 -1,651 (the
+   deleted layers and duplicated material props), F5 +624: 647,473 B, 284 B under main, against the task script's
+   400 B allowance. The ceiling (652,500 B) is unchanged.
+
+**Round 2, the fix round (from `a6529156`).** Main `3442443d` (lane L13 part 1) merged at `7230ea86`. Each finding of
+the two round-1 reviews below was fixed with its gate red first, or filed. Frames: `lookbook.mjs --sets combat`, on the
+production build, M3 Max, Chromium 1280x800 at high and WebKit 1180x820 and 820x1180 held at the iPad's low tier.
+
+427. **The ice crystal carries an identity index, so its ink builds the hull from its own copy.** drei's `<Outlines>`
+   builds its hull with three-stdlib's `toCreasedNormals`, which copies an indexed geometry but rewrites a non-indexed
+   one's normals in place, and disposes it on unmount. The shared `ICE_SHARDS` was non-indexed, so the first cast
+   smoothed it for the session and each projectile that ended disposed it under the live ones. Every face still owns
+   its three vertices, so the crystal keeps its per-face normals. The cost is a 72-vertex copy per mounted ice
+   projectile, freed with it, which the other inked cores already paid. `angle={0}` was the alternative: no copy, but a
+   hull pushed along flat normals splits at every facet. Gate: `spell-grammar-gates`, two ice projectiles in a row.
+428. **The mounted MobModel is gated.** Round 1's dynamic review cut seven wires in MobModel at once and the unit suite
+   stayed green. `mob-model-look-gates` mounts the real MobModel through R3F's reconciler with drei's real Outlines and
+   reads what a frame writes: the flash and white edge, the 50 ms squash, reduced motion, the head and leg tones, and an
+   elite's boxes, drawn with no shadow and with their glow. It sees writes, not pixels; the e2e reads the pixels.
+429. **An elite's crest takes a seat per type, the husk wears its own crown in ember, and a nametag stands over the
+   whole silhouette.** It supersedes item 425's one placement, which put the crest's side boxes inside a duskhound's
+   ears, its centre through a skitterling's antennae and the whole crest into the husk's and the moss brute's crowns,
+   and ran the nametag's bar through a zombie's crest. The crest is sized to the head's width (the zombie's is
+   unchanged) and seated in fractions of the head: behind the duskhound's ears with its side boxes between them, behind
+   the skitterling's antennae, on the moss brute's moss crown. The husk's charred crown is a three-spike crest at the
+   same spot, so an elite husk wears it in ember (`crest` in `game/mobFeatures.js`) and adds no boxes. The seat is a
+   table, not a derived rule, because the derived one (raise the crest over whatever it would hit) floated it 0.44 m
+   over a skitterling's head; `elite-clearance-gates` holds every hostile type in `MOB_TYPES` to it at both ranks: no
+   placed box inside the mob's own boxes, head or body (an exact oriented-box test), each crest box resting on the mob
+   and showing half its face from the front. `eliteLook.nametagY` puts a tag 2.4 m over the mob's origin, or higher so
+   the bar's bottom is 0.2 m over the silhouette's top. An elite's tag rises over its crest and banner; three plain tags
+   move too, a zombie's (2.4 to 2.56 m: its bar stood 0.04 m over its head), a moss brute's and a husk's (they stood
+   inside the head and the crown). Every lower mob keeps 2.4 m. Evidence: `elites-noon-before-top-after-bottom.jpg`
+   and `elites-midnight-ipadlow-after.jpg`.
+430. **A removed mob stops being drawn at once.** miniplex 2.0.0 emits `onEntityRemoved` before it takes the entity out
+   of the query (`@miniplex/bucket` remove), and `useEntities` (`systems/_npcShared.js`, with a copy in Nametags)
+   snapshot the query at that event. So the last mob removed stayed mounted, frozen in its last pose, until the next
+   spawn or removal: the round-1 static review's staged captain still drawn after `unstage()`, an open question then.
+   The hook now filters out the entity the event names, and Nametags uses it. In play a killed mob has shrunk to 0.001
+   scale by the time it is removed, so the leftover was mostly unseen; a despawn, a clear or a bind left a full-size one.
+   Item 431's first run found it: on every target the frames after its control and after the draw count's removals
+   (9, 5 and 5) were invalid for a mob model in view with no live mob; the cause was read in miniplex's remove, and the
+   next run, with the fix, called them all valid.
+   Gate: `use-entities-gates`, the real hook over a real miniplex world.
+431. **A combat frame holding anything the stage did not put there is invalid, and each run proves the check can see.**
+   `unstage()` ends a staged cast through the spell system's own clear (`endDeterministicCast`) while the world is still
+   held; round 1 let the projectile fly on into the next staged mobs. The seam's `frame()` reads what is drawn in the
+   game camera's view within 60 m, in the scene it finds among R3F's roots: MobModel groups (named `mob`), each matched
+   to its live mob or reported with none, and spells (projectile heads and impact pops, named `spell`). The two names
+   are production code for a test tool; they cost no work per frame. The combat set clears hostiles within the same
+   60 m (a first run cleared 40 m, and on WebKit 1180x820 all 22 frames of the day cycle went invalid for ambient mobs
+   40 to 60 m out behind the trees), waits out a new hour's toasts, and judges each frame with `combatVerdict`: an
+   unstaged hostile or a model with no live mob in view, a staged mob hurt or not in view, a spell count other than the
+   stage's, a cast still drawn after `unstage()`, a toast up, or a mob left behind. Each round-1 contaminated frame is a
+   fixture in `lookbook-combat-verdict-gates`, invalid naming its cause, beside four clean ones that stay valid. Each
+   run shoots a control first, a zombie spawned through the store beside a staged one, and calls every frame of the
+   run invalid unless the check names it. The second run: the control seen on all three targets, 132 of 132 frames
+   valid; the elite run after it, 72 of 72. Blind spots: a damage number over a mob that has died, a passive mob walking in, and anything inside the view
+   but hidden from the camera (the check reads the frustum, not occlusion).
+432. **The lit band has its own hit frame.** The round-1 hit frames faced the zombie head-on with the key light behind
+   the eye, so every visible face went white. `hit-zombie-lit` looks along the first of five headings where the best
+   turn of 30 to 60 degrees (`litTurn`, the e2e's rule, from the key light's direction, which the seam now reads) leans
+   one visible face at least 0.3 toward the key light and the other away: by day heading 90 and a -30 degree turn
+   (split 0.66), by night under the moon heading 120 and -30 (0.65). The lit front whitens and the side in the shadow
+   band stays green, paled by the white face's bloom (sampled sRGB 140, 171, 148 beside the front's 242, 242, 242 at
+   noon on Chromium), on every target (`hit-lit-noon-after.jpg`, `hit-lit-midnight-ipadlow-after.jpg`).
+433. **The core sphere's dead levers are gone.** `spellMotion`'s `coreIntensity` (the strobe's on/off, still asserted by
+   its test after the bolt stopped flickering) and `innerScale`, and `ENERGY_PROFILE`'s `coreScale` and
+   `coreIntensity`, had no reader after item 424; they go with their assertions, and the strobe's test asserts its live
+   lever instead, the bolt's scale snapping between two sizes. Four comments made stale by PR A say what the code does.
+434. **A killing blow shows no contact (it predates PR A; filed).** MobModel's dissolve branch returns before the look
+   is written, so the killing hit never flashes, and a mob killed mid-windup keeps its heated edge (#c32c0b on the
+   mounted model) through the dissolve. Row `REVIEW:w3a-pr-a:killing-blow-no-contact`, LOW, lane W3-A.
+435. **An ember elite costs about six more main-pass draws, measured.** Four zombies, then four ember-elite zombies,
+   staged 6 m out, draws counted at the GL context over three runs: Chromium +6 each time (13.5 to 19.5 per mob, then
+   22 to 28 twice), the crest's three boxes and their three ink hulls, the count the boxes predict (the per-mob figure
+   itself swings between runs with the frames that carry a shadow render). WebKit at the low tier read +10, +10 and +6
+   at 1180x820 and +5 each time at 820x1180, whose narrower view may drop the side mobs; the two +10 readings are not
+   explained by these runs. A captain's banner adds two boxes and two hulls more; an elite husk adds none of its own
+   (item 429). No elite box casts a shadow.
+436. **Bytes.** Index 649,228 B at this round's head, against main's 649,123 B (`3442443d`): PR A now nets +105 B,
+   this round +389 B (the seats and the tag height +, the cast's end and the two names, less the dead levers and
+   Nametags' copy of the hook). The ceiling (652,500 B) is unchanged.
+
+---
+
 ## 2026-10-31 (lane L13) — [LOOP] the stuck-in-solid remainder: a wall is not ground, rays see what was just placed, a dug spawn corner does not loop, a sunk capsule is stood clear, the resume hold is time
 
 Lane L13 (`fix/l13-stuck-in-solid`, from `eff58e9a`) took the rows the audit lanes left in the class Kevin's invisible box

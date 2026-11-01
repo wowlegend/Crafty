@@ -17,6 +17,7 @@ import { moveVector } from './locomotion.js';
 import { rampVelocity, ACCEL_RATE, DECEL_RATE } from './gameFeel.js';
 import { MOB_TYPES } from './mobTypes.js';
 import { chaseSpeedMult } from './mobMovement.js';
+import { MAX_FRAME_STEP_SEC } from './frameStep.js';
 
 describe('the stance caps, derived from the roster (Task 2)', () => {
   it('derives retreat 2.0 / strafe 6.5 / advance 6.5 from today\'s roster (husk 3.0 slowest, spider 6.0 fastest)', () => {
@@ -825,6 +826,33 @@ describe('the stance holds while the world is held, and lets go when the fight i
     engagedOn([g]);
     const up = seamAt([g], { x: 0, y: 120, z: 0 }, cam(0, 121.2, 0), 432, 1 / 60);
     expect([up.engaged, up.w], 'a vertical teleport kept the old fight').toEqual([false, 0]);
+  });
+
+  // REVIEW:w2b:stance-clocks-long-frame, CI's shape (PR #32, run 40750241581): engaged on a husk walking in from outside its
+  // strike reach, then ONE frame across which the world clock ran 3.5 s while every mover stepped MAX_FRAME_STEP_SEC
+  // (game/frameStep.js) and the husk's posted position lagged the worker, so it showed under 0.5 m of progress.
+  it('one 3.5 s frame that stepped 0.25 s keeps an engaged stance whose husk is still closing, and the stance clock still runs', () => {
+    resetStance();
+    const h = husk(-8, 0);
+    const dt = 1 / 60;
+    let ms = 0, st;
+    const frame = (worldMs, stepS, huskMoves) => { h.position.x += huskMoves; ms += worldMs; return seamAt([h], BODY, CAM, ms, stepS); };
+    for (let i = 0; i < 60; i++) st = frame(1000 * dt, dt, 3 * dt);
+    expect([st.engaged, st.w, st.threatId, -h.position.x > 3.5 + 1], 'SETUP: engaged at full weight on a husk outside its strike reach').toEqual([true, 1, h.id, true]);
+    let at = st.lastEngagedAt;
+    st = frame(3500, MAX_FRAME_STEP_SEC, 0.3);
+    expect([st.engaged, st.w, st.threatId], 'one long frame let go of a fight whose husk is still closing').toEqual([true, 1, h.id]);
+    expect(st.lastEngagedAt - at, 'the stance counted world time the frame did not step').toBeCloseTo(MAX_FRAME_STEP_SEC * 1000, 6);
+    // A frame whose step is longer than the world time it spans (a hitstop that ended inside it) counts the world's.
+    at = st.lastEngagedAt;
+    st = frame(20, 0.1, 0.3);
+    expect(st.lastEngagedAt - at, 'the stance counted a step the world clock did not run').toBeCloseTo(20, 6);
+    // The husk stops for good: its stall clock and then the calm run on stepped time, so the stance lets go after both.
+    let stepped = 0;
+    while (st.engaged && stepped < 10) { st = frame(1000 * dt, dt, 0); stepped += dt; }
+    expect(st.engaged, `a stranded husk held the stance for ${stepped.toFixed(2)} s of stepped time`).toBe(false);
+    expect(stepped, 'the stance let go before the calm had run').toBeGreaterThanOrEqual(CALM_MS / 1000);
+    expect(stepped, 'the stance let go later than a stall and a calm').toBeLessThanOrEqual((STALL_MS + CALM_MS) / 1000 + 2 * dt);
   });
 
   it('a long frame\'s honest step is not a teleport: 4.9 m after a 0.25 s frame keeps the fight, after a 1/60 s frame it does not', () => {

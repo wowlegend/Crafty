@@ -215,8 +215,9 @@ const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
  *           let swing (the plan's height-reference deviation). x and z are the body this frame, the point the frame's
  *           step starts from (stanceFrame builds it): the away vector and `gap` must be measured from there, not from
  *           the camera, which trails the body by about 1.2 frames.
- *   nowMs   the WORLD clock (game/worldClock.js worldNow): the calm and the stall clocks measure the fight, and a
- *           pause or a hitstop holds the fight, so neither may spend them.
+ *   nowMs   the fight's clock, in ms: the calm and the stall clocks measure the fight, and a pause or a hitstop holds
+ *           the fight, so neither may spend them. stanceFrame passes the stance's own clock (state.clockMs: each frame
+ *           the world clock's advance, at most the frame's step).
  *   dtS     the frame's seconds, for the blend: the controller's capped step (game/frameStep.js), 0 while the world
  *           is held (stanceFrame passes it so).
  * `atS` is the game time this frame's step starts at and `stepS` its length, so (playerX, playerZ) over atS is the body's
@@ -364,6 +365,9 @@ const _clamped = { x: 0, z: 0 };
  *   nowMs, frozen  the world clock and whether the world is held this frame; the controller passes neither, so the
  *           seam reads game/worldClock.js itself. A held world steps the stance by 0 s, so a pause or a hitstop spends
  *           neither the calm, the stall clocks, the blend nor the stance's game clock (atS).
+ * The calm and the stall clocks read the stance's own clock, which each frame adds the world clock's advance, but at most
+ * the frame's step: a frame longer than MAX_FRAME_STEP_SEC (game/frameStep.js) moves the world clock its whole length
+ * and every mover only the cap, so counting the whole of it spent the calm and stalled a husk that was still walking in.
  * A body further from where the last frame saw it than TELEPORT_SPEED_MPS covers in that frame's step, plus
  * TELEPORT_SLACK_M, was put there by a teleport, whoever made it: the stance is reset before the frame is stepped, so
  * a call site that moves the body without teleportPlayer cannot carry a fight to the new spot.
@@ -374,8 +378,11 @@ export function stanceFrame(mobs, body, dtS, nowMs = worldNow(), frozen = isWorl
     resetStance();
   }
   s.bodyX = body.x; s.bodyY = body.y; s.bodyZ = body.z; s.bodyStepS = dtS > 0 ? dtS : 0; s.bodySeen = true;
+  const stepS = frozen ? 0 : dtS;
+  if (s.worldSeenMs !== null) s.clockMs += Math.min(Math.max(0, nowMs - s.worldSeenMs), stepS > 0 ? stepS * 1000 : 0);
+  s.worldSeenMs = nowMs;
   mobSensePoint(body, _point);
-  return stanceStep(s, mobs, _point, nowMs, frozen ? 0 : dtS);
+  return stanceStep(s, mobs, _point, s.clockMs, stepS);
 }
 
 /**

@@ -49,12 +49,16 @@ export const spawnLootDrop = (item, xp, pos) => {
 };
 GameMethods.spawnLootDrop = spawnLootDrop;
 
-// Custom miniplex React hook for compatibility
+// A miniplex query as a React list, re-read on every membership change (SimplifiedNPCSystem's models, Nametags' tags).
+// miniplex 2.0.0 emits onEntityRemoved BEFORE it takes the entity out of query.entities (@miniplex/bucket remove), so
+// the entity the event names is filtered out: a snapshot taken at the event kept it, and its model stayed drawn until
+// the next spawn or removal. The first read in the effect catches an entity added between the render and the subscribe.
 export const useEntities = (query) => {
-  const [entities, setEntities] = useState([...query.entities]);
+  const [entities, setEntities] = useState(() => [...query.entities]);
   useEffect(() => {
-    const update = () => setEntities([...query.entities]);
-    const unsubAdded = query.onEntityAdded.subscribe(update);
+    const update = (gone) => setEntities(query.entities.filter((e) => e !== gone));
+    update();
+    const unsubAdded = query.onEntityAdded.subscribe(() => update());
     const unsubRemoved = query.onEntityRemoved.subscribe(update);
     return () => {
       unsubAdded();

@@ -179,15 +179,18 @@ function installStanceHelpers() {
     // Kill every hostile near, then wait for the stance to leave. That wait is a VERDICT, not a SETUP: a stance that
     // never leaves is mutant T4, and a SETUP here would score it COULD NOT CHECK. A dead threat with nothing else
     // qualifying ends the fight on the next frame; the waits are the upper bounds for a threat that is not dead yet:
-    // the calm is CALM_MS of world time from the last frame a threat qualified, and the exit blend EXIT_S of GAME time
-    // (the frame's capped step), which a stalled frame advances by at most 0.25 s. Only a page that stops advancing
-    // game time inside `wallMs` is SETUP.
+    // the calm is CALM_MS on the stance's own clock (readStance().clockMs: the world clock, at most each frame's capped
+    // step) from the last frame a threat qualified, and the exit blend EXIT_S of GAME time (the frame's capped step),
+    // which a stalled frame advances by at most 0.25 s. Only a page that stops advancing either clock inside `wallMs` is
+    // SETUP.
     async idle(medianMs, wallMs) {
       H.killHostiles(40);
       const t0 = performance.now();
-      const calmBy = 2000 + 300 + 2 * medianMs; // CALM_MS + a margin, plus two frames
+      const calmBy = 2000 + 300 + 2 * medianMs; // CALM_MS + a margin, plus two frames, on the stance's clock
       let st = call('readStance');
-      while (performance.now() - t0 < calmBy && st?.engaged) { await frame(); st = call('readStance'); }
+      const c0 = st?.clockMs;
+      while (st?.engaged && st.clockMs - c0 < calmBy && performance.now() - t0 < wallMs) { await frame(); st = call('readStance'); }
+      if (st?.engaged && st.clockMs - c0 < calmBy) return { w: st.w, engaged: true, ms: Math.round(performance.now() - t0), gameS: 0, stalled: true };
       if (st?.engaged) { await frame(); await frame(); st = call('readStance'); } // a frame begun before the deadline
       if (!st || st.engaged) return { w: st?.w, engaged: st?.engaged, ms: Math.round(performance.now() - t0), gameS: 0 };
       const g0 = st.atS + st.stepS;
