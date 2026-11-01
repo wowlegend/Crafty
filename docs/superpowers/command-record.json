@@ -4,8 +4,8 @@
     "stands": {
       "live": "Live",
       "green": "All green",
-      "alt": "The game's world is live for players, and every check is green. Work is paused, as you asked.",
-      "caption": "Live for everyone, every check green, and paused as you asked: 1 November 2026."
+      "alt": "The game's world is live for players, and every check is green. Work is pausing, as you asked, once our review tool's two runs on chunks 5 and 6 are done.",
+      "caption": "Live for everyone, every check green, and pausing as you asked: 1 November 2026."
     },
     "better": {
       "sub": "Since you handed over on 27 October.",
