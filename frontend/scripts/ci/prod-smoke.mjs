@@ -103,7 +103,7 @@ export function glVerdict(count, frames, ledger) {
 }
 
 /** The seam methods the probes call (scripts/visual/lookbook.mjs and media.mjs). */
-export const LOOKBOOK_SEAM_METHODS = Object.freeze(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+export const LOOKBOOK_SEAM_METHODS = Object.freeze(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stage', 'stand', 'unstage']);
 
 /**
  * PURE: the verdict on the lookbook seam in the production bundle. The lookbook judges looks on this bundle, through

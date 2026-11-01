@@ -32,6 +32,8 @@ import { setActive, getActiveSnapshot, resetInput } from '../../src/input/inputS
 import { cycleFraction } from '../../src/game/dayPhase.js';
 import { CYCLE_UNITS } from '../../src/game/dayNight.js';
 import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/render/glDiagnostics.js';
+import { windupRamp, WINDUP_MS } from '../../src/game/attackTelegraph.js';
+import { worldNow } from '../../src/game/worldClock.js';
 
 /**
  * THE LOOKBOOK SEAM (plan docs/superpowers/plans/2026-10-27-crafty-instruments.md, part a). The lookbook probe shoots
@@ -82,6 +84,13 @@ import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/
  *   S6 plausible-wrong: parseLookbookParam accepts any value present -> "parses only the exact value"
  *   S7 the seam's reset leaves the state module's pose in place -> the look(), stand(), form() and dragon() tests
  *   S8 the handPose verb never writes the held pose -> the hand-pose test;  L6 re-observed on the installer
+ * Added with stage() (W3-A PR A F0), each observed RED against the 48 tests, an identity mutant SURVIVED:
+ *   K0d the mob not turned to the eye (rotation = the turn alone) -> "windup: ..."
+ *   K0e the windup planted at the start of its ramp -> "windup: ..."
+ *   K0f the world not held -> "windup: ..."
+ *   K0g the hit stamp not renewed after its first frame -> "hit: ..."
+ *   K0h unstage() leaves the world held -> "windup: ..."
+ *   K0i plausible-wrong: the side step to the left -> "hit: ..."
  *
  * BLIND SPOT: that Components.jsx's Player useFrame applies the pose to the LIVE camera (and stops applying it on
  * clear), that the hands really hide, and that index.jsx installs the seam, are the e2e's
@@ -121,7 +130,7 @@ describe('the gate: ?lookbook=1 exactly, and nothing installed without it', () =
     expect(closed.__craftyLookbook).toBeUndefined();
     const open = fakeWin('?lookbook=1');
     expect(installLookbookSeam(open, deps())).toBe(true);
-    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stage', 'stand', 'unstage']);
     // Installing changes nothing by itself: no pose is set until a script asks.
     expect(lookbookPose()).toBeNull();
     expect(lookbookPinned()).toBe(false);
@@ -1104,5 +1113,84 @@ describe('the pass timer\'s whole-frame mode', () => {
     } finally {
       handle.uninstall();
     }
+  });
+});
+
+// THE COMBAT STAGE (feedback-grammar plan U0, M7; W3-A PR A F0): stage() puts a mob in front of the eye and HOLDS one
+// combat moment (a windup partway through, a hit, or the mob at rest) so the lookbook shoots danger and contact on the
+// shipped bundle. The hold is the world's own freeze (the store's triggerHitstop, released by unstage()), so the AI
+// worker neither moves the mob nor replaces its windup, and the game code reads only fields it already reads
+// (windupUntil, lastHit): no look code learns about the lookbook.
+describe('stage(): a mob held in one combat moment in front of the eye', () => {
+  const setup = ({ withMobs = true } = {}) => {
+    const world = new World();
+    const mobs = world.with('isMob', 'position', 'type');
+    const spawned = [];
+    const spawnMob = (x, z, type, y) => {
+      if (!['zombie', 'duskhound', 'skitterling'].includes(type)) return false;
+      spawned.push({ x, z, type, y });
+      world.add({ isMob: true, type, health: 100, passive: false, rotation: 0, position: { x, y: y + 0.5, z } });
+      return true;
+    };
+    const cam = new PerspectiveCamera(75, 1.6, 0.1, 500);
+    cam.position.set(10, 60, 10);
+    cam.rotation.set(0, yawForHeading(90), 0, 'YXZ'); // facing east, +X
+    cam.updateMatrixWorld();
+    useGameStore.setState({ gameCamera: cam, spawnMob, getMobFloor: () => 57, hitstopUntil: 0, hitstopStart: 0 });
+    const frames = [];
+    const w = { ...fakeWin('?lookbook=1'), requestAnimationFrame: (cb) => { frames.push(cb); return frames.length; } };
+    const tick = () => { for (const cb of frames.splice(0)) cb(performance.now()); };
+    installLookbookSeam(w, withMobs ? { ...deps(), hostiles: () => mobs.entities, removeEntity: (e) => world.remove(e), worldNow } : deps());
+    return { w, mobs, spawned, cam, tick };
+  };
+  afterEach(() => useGameStore.setState({ gameCamera: null, spawnMob: null, getMobFloor: null, hitstopUntil: 0, hitstopStart: 0 }));
+
+  it('windup: spawns through the store, along the eye forward, on the floor, facing the eye, the world held at 0.8 of the ramp', () => {
+    const { w, mobs, spawned } = setup();
+    const r = w.__craftyLookbook.stage({ type: 'zombie', distance: 4, moment: 'windup' });
+    expect(spawned, 'the denominator: one spawn through the store').toHaveLength(1);
+    expect(spawned[0].x).toBeCloseTo(14, 5); // 4 m east of the eye
+    expect(spawned[0].z).toBeCloseTo(10, 5);
+    expect(spawned[0].y).toBe(57);
+    const e = mobs.entities[0];
+    expect(r.id).toBe(e.id ?? null);
+    expect(e.rotation, 'a mob 4 m east faces west, toward the eye').toBeCloseTo(-Math.PI / 2, 5);
+    expect(e.snapSync, 'the held world takes no damp step, so the pose is copied').toBe(true);
+    expect(useGameStore.getState().hitstopUntil - performance.now(), 'the world is held').toBeGreaterThan(60000);
+    expect(windupRamp(worldNow(), e.windupUntil, WINDUP_MS)).toBeCloseTo(0.8, 1);
+    expect(w.__craftyLookbook.unstage(), 'unstage removes what it staged').toBe(1);
+    expect(mobs.entities).toHaveLength(0);
+    expect(useGameStore.getState().hitstopUntil, 'and lets the world go').toBeLessThanOrEqual(performance.now());
+  });
+
+  it('hit: the stamp is renewed every frame while staged, and stops with unstage(); a turn and a side step are honoured', () => {
+    const { w, mobs, tick } = setup();
+    w.__craftyLookbook.stage({ type: 'zombie', distance: 3, moment: 'hit', yawDeg: 45, side: 1 });
+    const e = mobs.entities[0];
+    expect(e.position.z, 'one metre to the right of an eye facing east is +Z').toBeCloseTo(11, 5);
+    // From the mob at (13, 11) the eye at (10, 10) lies along (-3, -1); the turn adds 45 degrees to facing it.
+    expect(e.rotation).toBeCloseTo(Math.atan2(-3, -1) + Math.PI / 4, 5);
+    for (let i = 0; i < 3; i++) {
+      e.lastHit = 0;
+      const before = performance.now();
+      tick();
+      expect(e.lastHit, `frame ${i} renewed the stamp`).toBeGreaterThanOrEqual(before);
+    }
+    w.__craftyLookbook.unstage();
+    const last = e.lastHit;
+    tick(); tick();
+    expect(e.lastHit, 'no stamp after unstage').toBe(last);
+  });
+
+  it('refuses an unknown moment, a type the spawner refuses, a bad distance, and a build without the mob query', () => {
+    const { w, mobs } = setup();
+    expect(() => w.__craftyLookbook.stage({ type: 'zombie', moment: 'flail' })).toThrow(/moment/);
+    expect(() => w.__craftyLookbook.stage({ type: 'dragon', moment: 'idle' })).toThrow(/dragon/);
+    expect(() => w.__craftyLookbook.stage({ type: 'zombie', distance: NaN })).toThrow(/distance/);
+    expect(mobs.entities, 'a refusal stages nothing').toHaveLength(0);
+    expect(useGameStore.getState().hitstopUntil, 'and holds nothing').toBe(0);
+    _resetLookbookForTest();
+    const bare = setup({ withMobs: false });
+    expect(() => bare.w.__craftyLookbook.stage({ type: 'zombie' })).toThrow(/mob query/);
   });
 });

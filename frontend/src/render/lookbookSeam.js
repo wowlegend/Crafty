@@ -4,8 +4,9 @@
 // judges looks on REAL-GPU, MOTION-ON frames of the SHIPPED bundle. The DEV test bridge and capture mode are compiled
 // out of that bundle, and capture is the wrong instrument anyway: it turns weather, mobs, NPCs, particles and spawning
 // off and pins the sun at noon. So the probe needs to pose the camera, stand the player and turn their head, set the
-// time of day, make input live, clear the hostiles in the player's face, list the mobs a frame could show and read GPU
-// time per post pass in the production build — and nothing else.
+// time of day, make input live, clear the hostiles in the player's face, list the mobs a frame could show, read GPU
+// time per post pass, and stage a mob held in one combat moment (a windup, a hit) with the world frozen around it
+// (stage(), for the feedback grammar's danger and contact frames) in the production build — and nothing else.
 //
 // TWO WAYS TO FRAME A SHOT. pose() pins the camera for an elevated hero shot (below). stand() and look() frame what a
 // player sees instead: they move the player's body and turn the camera the way mouse look does (input/pointerLook.js
@@ -39,8 +40,16 @@ import {
   parseLookbookParam, lookbookPose, setLookbookPose, setLookbookHandPose, setLookbookPassesOff, setLookbookDragonHold,
   lookbookHandPose, lookbookPassesOff, lookbookDragonHold, _resetLookbookStateForTest,
 } from './lookbookState.js';
+import { WINDUP_MS } from '../game/attackTelegraph.js';
 
 let _passTimer = null; // the page-wide handle from render/passTimer.js, once the probe asked for timings
+
+/** The moments stage() can hold a mob in: at rest, partway through its windup, and the instant of a hit. */
+export const STAGE_MOMENTS = Object.freeze(['idle', 'windup', 'hit']);
+const STAGE_WINDUP_RAMP = 0.8; // how far through its windup a staged mob is held (game/attackTelegraph.js windupRamp)
+const STAGE_HOLD_MS = 600000; // the world freeze's cap; unstage() ends it at once
+// What stage() put in the world: the mobs, whether the per-frame hit stamp runs, and whether the world is held for it.
+const _stage = { mobs: [], stamping: false, holding: false };
 
 /** The poses dragon() can hold the dragon in: at rest, each attack's tell partway through its windup (render/BossEntity.jsx
  *  draws its ground decal and its glow), and staggered. */
@@ -196,14 +205,16 @@ function finite(v, name) {
  *          glInfo: () => object|null, contextLosses: () => number, hostiles?: () => Iterable<object>,
  *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>,
  *          sunDir?: () => number[], handNodes?: () => number,
- *          spawnDragon?: (o: {position?: number[]}) => {position: number[], ground: number|null}}} deps  `hostiles`: the
+ *          spawnDragon?: (o: {position?: number[]}) => {position: number[], ground: number|null},
+ *          worldNow?: () => number}} deps  `hostiles`: the
  *          ECS mob query, every mob (the seam picks the hostiles out). `sunDir`: the sun's direction this frame
  *          (render/mood.js skyFrameRef). `handNodes`: the objects mounted in the viewmodel's hands group
  *          (render/viewmodel.js handNodeCount). `spawnDragon`: the boss system's lookbook spawn (world/bossSystem.js).
+ *          `worldNow`: the world clock (game/worldClock.js), which a staged windup is planted on.
  */
 export function installLookbookSeam(win, {
   store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir, handNodes,
-  spawnDragon,
+  spawnDragon, worldNow,
 }) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   const unposed = (verb) => {
@@ -330,6 +341,63 @@ export function installLookbookSeam(win, {
       setLookbookPassesOff(off);
       return [...off].sort();
     },
+    /** Put a `type` mob `distance` m along the eye's level forward (and `side` m to its right), on the floor, facing the
+     *  eye turned by `yawDeg`, and HOLD `moment` (STAGE_MOMENTS): the world is frozen through the store's own hitstop, so
+     *  the AI neither moves it nor replaces its windup; 'windup' plants windupUntil at 0.8 of the ramp, and 'hit' renews
+     *  lastHit every frame. Returns { id, position }. unstage() removes what was staged and lets the world go. */
+    stage: ({ type, distance = 3, moment = 'idle', yawDeg = 0, side = 0 } = {}) => {
+      if (!STAGE_MOMENTS.includes(moment)) {
+        throw new TypeError(`lookbook: stage moment must be one of ${STAGE_MOMENTS.join(', ')}, got ${JSON.stringify(moment)}`);
+      }
+      const d = finite(distance, 'distance');
+      const turn = finite(yawDeg, 'yawDeg') * DEG;
+      const s = finite(side, 'side');
+      if (!hostiles || !worldNow) throw new Error('lookbook: stage() needs the mob query and the world clock');
+      const st = store.getState();
+      const cam = camera();
+      if (!cam || !st.spawnMob) throw new Error('lookbook: stage() before the camera and the spawner exist');
+      const e = cam.matrixWorld.elements; // forward is -Z of the camera, levelled
+      const fl = Math.hypot(e[8], e[10]) || 1;
+      const fx = -e[8] / fl, fz = -e[10] / fl;
+      const x = cam.position.x + fx * d - fz * s;
+      const z = cam.position.z + fz * d + fx * s;
+      const y = st.getMobFloor?.(x, z, cam.position.y - 1.6);
+      if (!Number.isFinite(y)) throw new Error(`lookbook: stage() found no ground at ${x.toFixed(1)}, ${z.toFixed(1)}`);
+      const before = new Set(hostiles());
+      if (!st.spawnMob(x, z, type, y)) throw new TypeError(`lookbook: the spawner refused the type ${JSON.stringify(type)}`);
+      const mob = [...hostiles()].find((m) => !before.has(m));
+      if (!mob) throw new Error('lookbook: the spawner reported a spawn the mob query does not show');
+      mob.rotation = Math.atan2(cam.position.x - x, cam.position.z - z) + turn;
+      mob.snapSync = true; // a held world takes no damp step: copy the pose
+      if (!_stage.holding) { st.triggerHitstop(STAGE_HOLD_MS); _stage.holding = true; }
+      if (moment === 'windup') mob.windupUntil = worldNow() + (1 - STAGE_WINDUP_RAMP) * (mob.windupMs ?? WINDUP_MS);
+      if (moment === 'hit') mob.lookbookHit = true;
+      _stage.mobs.push(mob);
+      const raf = win.requestAnimationFrame ?? globalThis.requestAnimationFrame;
+      if (moment === 'hit' && !_stage.stamping && raf) {
+        _stage.stamping = true;
+        const stamp = () => {
+          if (!_stage.stamping) return;
+          for (const m of _stage.mobs) if (m.lookbookHit) m.lastHit = performance.now();
+          raf(stamp);
+        };
+        stamp();
+      }
+      return { id: mob.id ?? null, position: [mob.position.x, mob.position.y, mob.position.z] };
+    },
+    /** Remove every staged mob (no kill, XP or loot) and end the world's hold. Returns how many it removed. */
+    unstage: () => {
+      const n = _stage.mobs.length;
+      for (const m of _stage.mobs) removeEntity?.(m);
+      _stage.mobs = [];
+      _stage.stamping = false;
+      if (_stage.holding) {
+        const now = performance.now();
+        if (store.getState().hitstopUntil > now) store.setState({ hitstopUntil: now });
+        _stage.holding = false;
+      }
+      return n;
+    },
     /** What the probe records per shot. */
     info: () => {
       const s = store.getState();
@@ -381,4 +449,7 @@ export function installLookbookSeam(win, {
 export function _resetLookbookForTest() {
   _resetLookbookStateForTest();
   _passTimer = null;
+  _stage.mobs = [];
+  _stage.stamping = false;
+  _stage.holding = false;
 }

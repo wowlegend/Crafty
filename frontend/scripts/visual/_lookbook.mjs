@@ -1136,6 +1136,7 @@ export function contactSheetHtml(report) {
     const eye = (t.eye || []).map((s) => figure(s, `eye, facing ${s.heading}`, `eye level facing ${s.heading} at ${s.cycle}`)).join('\n');
     const material = (t.material || []).map((s) => figure(s, `${s.kind}, eye level`, `${s.kind} at eye level at ${s.cycle}`)).join('\n');
     const dragon = (t.dragon || []).map((s) => figure(s, `dragon, ${s.pose}`, `the dragon held ${s.pose} at ${s.cycle}`)).join('\n');
+    const combat = (t.combat || []).map((s) => figure(s, `combat, ${s.name}`, `${s.type} held at ${s.moment} at ${s.cycle}`)).join('\n');
     const clips = (t.clips || []).map((c) => {
       const src = `${esc(t.id)}/${esc(c.file)}`;
       const facts = [`cycle ${esc(c.cycle)}`, `facing ${esc(c.heading)}`, `walked ${esc(Number(c.movedM).toFixed(1))} m`, `${esc(c.frames)} frames`].join(' · ');
@@ -1146,7 +1147,7 @@ export function contactSheetHtml(report) {
     const sub = (title, body) => (body ? `<h3>${title}</h3><div class="grid">${body}</div>` : '');
     return `<section><h2>${esc(t.id)}</h2><p class="gl">${esc(t.engine)} · GL renderer: <code>${esc(t.renderer)}</code> (${esc(t.gpu)})` +
       `${t.launch ? ` · launch ${esc(t.launch)}` : ''}${t.entry ? ` · entered play by ${esc(t.entry)}` : ''}</p>${gpuNote}${notes}` +
-      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Material sights, eye level', material)}${sub('The dragon arena', dragon)}${sub('Walking, real input', clips)}</section>`;
+      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Material sights, eye level', material)}${sub('The dragon arena', dragon)}${sub('The combat stage, eye level', combat)}${sub('Walking, real input', clips)}</section>`;
   }).join('\n');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

@@ -38,6 +38,9 @@
  *   self   (opt-in) what the player sees of their own body: each beast form at the steady eye, the light string, the
  *          cast and the heavy charge held at their apex by the seam, and the hands beside the Hearth's brazier at
  *          midnight (shootSelf).
+ *   combat (opt-in) the feedback grammar's danger and contact (shootCombat): a mob staged by the seam in front of the eye
+ *          and held at rest, partway through its windup (three archetypes, head-on and turned 45 degrees, near and at
+ *          14 m) or at a hit, at COMBAT_CYCLES, then GL draws per frame with none and with four zombies staged.
  * Every eye shot also records its CHROME footprint (_lookbook.mjs chromeFootprint): on a page held still, the pixels
  * the HUD's own elements change (against a twin with them hidden), the touch layer's apart, and the colour count as a
  * second column. A frame with a toast up is not at rest and is set aside (_lookbook.mjs atRest).
@@ -119,6 +122,7 @@ import {
 import { PNG } from 'pngjs';
 import { shootHudSet } from './_lookbookHud.mjs';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
+import { drawCounterSource, summariseDraws } from './_glDrawCounter.mjs';
 
 const PORT = probePort(import.meta.url);
 const arg = (k, d) => {
@@ -149,7 +153,7 @@ const HEADED = flag('--headed');
 const FIRST_SESSION = flag('--first-session');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
-const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud', 'self', 'dragon'];
+const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud', 'self', 'dragon', 'combat'];
 const SETS = arg('--sets', 'hero,eye,clips').split(',');
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
@@ -367,6 +371,79 @@ const BRAZIER_STAND_XZ = Object.freeze([1.0, 1.0]);
 const BRAZIER_HEADINGS = Object.freeze([110, 45, 345]);
 const BRAZIER_CYCLE = 0.75;
 
+/** The combat stage (--sets combat; feedback-grammar plan M7): at eye level from the Hearth, a mob staged by the seam in
+ *  front of the eye and held in one moment (stage(): the world frozen, a windup at 0.8 of its ramp, or a hit renewed
+ *  every frame), at each COMBAT_CYCLES time; then the GL draws per frame with none and with four zombies staged, so a
+ *  unit that changes what a mob draws states its per-mob cost. */
+const COMBAT_CYCLES = [0.3, 0.75];
+const COMBAT_HEADING = 120;
+const COMBAT_PITCH = -8;
+const COMBAT_SHOTS = Object.freeze([
+  { name: 'idle-zombie', type: 'zombie', moment: 'idle', distance: 3.5 },
+  { name: 'windup-zombie', type: 'zombie', moment: 'windup', distance: 3.5 },
+  { name: 'windup-zombie-45', type: 'zombie', moment: 'windup', distance: 3.5, yawDeg: 45 },
+  { name: 'windup-duskhound', type: 'duskhound', moment: 'windup', distance: 3.5 },
+  { name: 'windup-skitterling', type: 'skitterling', moment: 'windup', distance: 3.5 },
+  { name: 'hit-zombie', type: 'zombie', moment: 'hit', distance: 3.5 },
+  { name: 'windup-zombie-far', type: 'zombie', moment: 'windup', distance: 14 },
+]);
+const COMBAT_DRAW_MS = 1500;
+
+async function shootCombat(page, report, dir, target, facts) {
+  const lb = (verb, a) => page.evaluate(([v, x]) => window.__craftyLookbook[v](x), [verb, a]);
+  const draws = async () => {
+    await page.evaluate(() => window.__glDraws?.reset());
+    await delay(COMBAT_DRAW_MS);
+    const frames = await page.evaluate(() => window.__glDraws?.frames ?? null);
+    return frames && frames.length ? summariseDraws(frames) : null;
+  };
+  // A touch target is the iPad: its tier is the boot tier selectTier gives a coarse pointer, 'low'. macOS WebKit reports a
+  // fine pointer and the tier governor inclines it within seconds, so the probe sets it through the store
+  // (window.useGameStore, published in every build) before each shot, and each shot records the tier it actually had.
+  const holdTier = () => (target.touch ? page.evaluate(() => window.useGameStore.getState().setQualityTier('low')) : null);
+  report.combatTier = target.touch ? 'low' : null;
+  for (const c of COMBAT_CYCLES) {
+    await respawnIfDead(page, report);
+    await lb('stand', { position: report.stand });
+    await lb('look', { heading: COMBAT_HEADING, pitch: COMBAT_PITCH });
+    await setCycle(page, c);
+    await delay(SETTLE_MS);
+    for (const shot of COMBAT_SHOTS) {
+      const t0 = Date.now();
+      await clearHostiles(page);
+      await play(page);
+      await holdTier();
+      await setCycle(page, c);
+      let staged = null;
+      try { staged = await lb('stage', { type: shot.type, distance: shot.distance, moment: shot.moment, yawDeg: shot.yawDeg ?? 0 }); }
+      catch (e) { report.notes.push(`combat ${shot.name} at ${c}: stage() refused: ${String(e.message).slice(0, 160)}`); continue; }
+      await passTimes(page, { reset: true });
+      await delay(700);
+      const file = `combat-${shot.name}-${c.toFixed(2)}.png`;
+      await page.screenshot({ path: join(dir, file) });
+      const after = await info(page);
+      const pt = await passTimes(page);
+      await lb('unstage');
+      const why = [after.active ? null : 'input not live', after.isAlive ? null : 'player dead'].filter(Boolean);
+      report.combat.push({ file, cycle: c, ...shot, staged, valid: why.length === 0, why, ...facts(after, t0, pt) });
+      console.log(`lookbook combat ${target.id} ${file}: ${why.length ? `INVALID ${why.join('; ')}` : 'valid'}`);
+    }
+    if (c === COMBAT_CYCLES[0]) {
+      await clearHostiles(page);
+      await holdTier();
+      const none = await draws();
+      for (const side of [-3, -1, 1, 3]) {
+        try { await lb('stage', { type: 'zombie', distance: 6, moment: 'idle', side }); } catch (e) { report.notes.push(`combat draws: ${String(e.message).slice(0, 120)}`); }
+      }
+      const four = await draws();
+      const n = await lb('unstage');
+      report.combatDraws = { none, four, staged: n, perMob: none && four && n ? (four.median - none.median) / n : null,
+        note: 'per frame at the GL context, nametags included (a hostile within 30 m is tagged)' };
+      console.log(`lookbook combat draws ${target.id}: none ${none?.median} four ${four?.median} per mob ${report.combatDraws.perMob}`);
+    }
+  }
+}
+
 async function shootSelf(page, report, dir, target) {
   const lb = (verb, arg) => page.evaluate(([v, a]) => window.__craftyLookbook[v](a), [verb, arg]);
   const shoot = async (file, extra) => {
@@ -510,7 +587,7 @@ async function shootDragon(page, report, dir, facts) {
 
 async function shootTarget(target, launchOpts, launchId) {
   const report = { id: target.id, engine: target.engine, launch: launchId, renderer: null, gpu: 'unknown', entry: null,
-    shots: [], eye: [], clips: [], material: [], handShots: [], self: [], dragon: [], pointBlank: null, sights: null, stand: null, hands: null, notes: [],
+    shots: [], eye: [], clips: [], material: [], handShots: [], self: [], dragon: [], combat: [], combatDraws: null, pointBlank: null, sights: null, stand: null, hands: null, notes: [],
     respawns: 0, console: {},
     pageErrors: [] };
   const dir = join(OUT, target.id);
@@ -532,6 +609,8 @@ async function shootTarget(target, launchOpts, launchId) {
       report.pageErrors.push(text);
     });
     await page.addInitScript(initScript, { touch: target.touch, firstSession: FIRST_SESSION });
+    // The combat set counts draws per frame at the GL context (_glDrawCounter.mjs); installed before the app's canvas.
+    if (SETS.includes('combat')) await page.addInitScript({ content: `(function (window) {${drawCounterSource()}})(window);` });
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     const hasSeam = await page.waitForFunction(() => !!window.__craftyLookbook, null, { timeout: 30000 }).then(() => true, () => false);
     if (!hasSeam) {
@@ -580,7 +659,7 @@ async function shootTarget(target, launchOpts, launchId) {
 
     // The eye set and the clips go first: after the hero set's night shots, the night's mobs crowd the player at the
     // Hearth and the eye frames show a mob at arm's length instead of the world.
-    if (SETS.includes('eye') || SETS.includes('material') || SETS.includes('hands') || SETS.includes('self') || (SETS.includes('clips') && target.engine === 'chromium')) {
+    if (SETS.includes('eye') || SETS.includes('material') || SETS.includes('hands') || SETS.includes('self') || SETS.includes('combat') || (SETS.includes('clips') && target.engine === 'chromium')) {
       report.hands = await handsBaseline(page);
       await respawnIfDead(page, report);
       report.stand = await restingBody(page);
@@ -749,6 +828,7 @@ async function shootTarget(target, launchOpts, launchId) {
     }
 
     if (SETS.includes('self') && report.stand) await shootSelf(page, report, dir, target);
+    if (SETS.includes('combat') && report.stand) await shootCombat(page, report, dir, target, facts);
 
     for (const clip of SETS.includes('clips') && target.engine === 'chromium' && report.stand ? clipPlan(CYCLES) : []) {
       await respawnIfDead(page, report);

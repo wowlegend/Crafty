@@ -60,6 +60,7 @@ import { glInfo, contextLossCount } from './render/glDiagnostics.js';
 import { ecs, mobsQuery } from './ecs/world.js';
 import { skyFrameRef } from './render/mood.js';
 import { handNodeCount } from './render/viewmodel.js';
+import { worldNow } from './game/worldClock.js';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
 
@@ -90,6 +91,7 @@ function boot(installLookbookSeam) {
       handNodes: handNodeCount,
       // The boss system installs this only on a ?lookbook=1 page; read at the call, after App has mounted it.
       spawnDragon: (o) => useGameStore.getState().lookbookSpawnDragon?.(o),
+      worldNow, // a staged windup is planted on the world clock
     });
   }
 
