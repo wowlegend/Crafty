@@ -15,11 +15,16 @@ import { rgb, oklch, displayed, stoneFaceUnder, aoOccludedStone, hazed, bytes, p
  *
  * DENOMINATORS, each asserted: continuity 3601 steps x 47 fields; B1 360 fractions (two faces each); B2b 89 fractions x
  * 5 samples; every key checked at its own anchor (6); G1 361 fractions of the sun-up half x 2 albedos; G2 242
- * fractions of the two twilight blends x 8 samples.
+ * fractions of the two twilight blends x 8 samples; G2b 621 fractions of the night half x 3 distances from the fire.
  *
  * BLIND SPOT: nothing here renders. The model is checked against the screen by the grey card (light-script.spec.js)
- * and the look by the real-GPU lookbook. The Hearth's fire is modelled as its point light on one pad patch (G2), not as
+ * and the look by the real-GPU lookbook. The Hearth's fire is modelled as its point light on the pad (G2, G2b), not as
  * the ember's bloom. This file cannot see whether anything CALLS sampleScript: that is the sky-frame gate and the e2e.
+ * G2b is green on the amber fire while the real-GPU pad by the brazier still reads maroon at midnight (the lookbook's
+ * self-brazier-110 frame: 46% of the pad left of the brazier, 48.5% with the old orange; 39% under a warm-white fire,
+ * 4.7% with the fire off): on screen, whatever the fire's colour, what it adds to the dark pad carries green at about a
+ * quarter of the light's own green-to-red ratio and almost no blue, which this model does not reproduce (registry
+ * REVIEW:light:midnight-brazier-maroon).
  */
 
 // The scalar fields a frame carries, flattened. `rising` and `f` are left out on purpose: `rising` flips at noon and
@@ -225,6 +230,12 @@ const GOLDEN_FLOOR = 0.374;
 // and one grey albedo (sRGB 112, the stone texture's), this model reproduces the patch's five real-GPU readings under
 // the previous keys (0.02, 0.25, 0.48, 0.50, 0.75) within L 0.007.
 const PAD_FIRE = pointLightOnUpFace(HEARTH_FIRE, HEARTH_FIRE.height, 1);
+// G2b reads the pad where the player stands by the brazier at night: at its foot, at the lookbook's patch, and at the
+// edge of the patch the light lane's raw frames read maroon (17.7 to 43.9% of it at midnight, registry
+// REVIEW:light:midnight-brazier-maroon).
+const PAD_RADII_M = [0.5, 1, 2];
+const PAD_MAROON_C = 0.025;
+const nearMaroonHue = ({ L, h }) => L < 0.5 && (h >= 310 || h < 50);
 
 describe('the ground through the day', () => {
   it('G1 while the sun is up the ground is never darker than under the midnight moon, and golden hour reads as day', () => {
@@ -265,6 +276,30 @@ describe('the ground through the day', () => {
       }
     }
     expect(n).toBe(2 * 121 * 8);
+  });
+
+  it('G2b the pad by the fire stays near grey wherever it would display maroon: terrain stone 0.5, 1 and 2 m from the brazier, f 0.44 to 1.06', () => {
+    // The real-GPU pad by the brazier reads 10 to 20 deg redder than this model (DECISIONS 2026-10-28 item 20 (d)), so a
+    // model hue within 20 deg of maroon's band (330 to 30) displays in it: the band here is widened to 310 to 50. Inside
+    // it the pad may carry at most PAD_MAROON_C of chroma, the design margin the twilight keys were chosen for, and it is
+    // read on the stone the screen was calibrated on, from sunset through the night keys (f 0.574, 0.926) to sunrise.
+    let n = 0, inBand = 0;
+    for (const r of PAD_RADII_M) {
+      const fire = pointLightOnUpFace(HEARTH_FIRE, HEARTH_FIRE.height, r);
+      for (let i = 0; i <= 620; i++) {
+        const f = (0.44 + i * 0.001) % 1, fr = sampleMood(0, f);
+        const c = stoneFaceUnder(fr, { normal: UP, keyDir: fr.keyDir, extra: fire, albedo: TERRAIN_STONE }), d = D(fr, c);
+        if (nearMaroonHue(d)) {
+          inBand++;
+          expect(d.C, `the pad ${r} m from the fire at f ${f.toFixed(3)}: ${say(fr, c)}`).toBeLessThanOrEqual(PAD_MAROON_C);
+        }
+        n++;
+      }
+    }
+    expect(n).toBe(3 * 621);
+    // The night pad's hue is the mix of the cool night light and the fire, so the band holds most of the night: a band
+    // that no sample entered would pass any fire.
+    expect(inBand, 'no sample of the pad fell in the widened maroon band, so the chroma bound judged nothing').toBeGreaterThan(300);
   });
 });
 

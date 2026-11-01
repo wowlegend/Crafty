@@ -20,9 +20,11 @@ const STONE = 3;                  // existing block id (no new blocks in M1 — 
 /**
  * The brazier's point light (world/Terrain.jsx HomeAnchorRender), with `height` its height above the pad's top. The
  * colour gates light the pad with these same values (tests/gates/colour-script-gates.test.js), because the fire's
- * orange on the pad is what turns a violet twilight maroon.
+ * colour on the pad, mixed with the cool night and twilight light, is what reads maroon. It is amber, not orange: an
+ * orange fire's red, added to the night light's violet, lands on magenta-red by the brazier, while amber's mix passes
+ * nearer grey (gate G2b).
  */
-export const HEARTH_FIRE = Object.freeze({ color: '#FF8A2A', intensity: 1.6, distance: 9, height: 1.6 });
+export const HEARTH_FIRE = Object.freeze({ color: '#FFB050', intensity: 1.6, distance: 9, height: 1.6 });
 
 // The 4 origin chunks the plinth touches: cx,cz in {-1,0} (world [-16,16) spans the corner quad).
 export function isHearthChunk(cx, cz) {
