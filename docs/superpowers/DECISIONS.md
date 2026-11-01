@@ -28,15 +28,18 @@ is below.
 536. **A lane never runs `kill-test-procs.sh`; the command session runs it from its main thread after each lane
    returns, never while another lane runs heavy work** (the command decision of 17:35Z on AB Command's answer,
    session-truth st-8c04899eede7). *Why:* AB's subagent signal guard (Q203; `hooks/_lib/agent_contract_guard.py` in
-   Agentic-Brain, its strict kill allowlist since `77038133`) lets a subagent signal only processes it started, and it
-   walks into a shell script the command runs as a file. The sweep's `kill "-$1" "$pid"` signals pids read in a loop
-   (`frontend/scripts/dev/kill-test-procs.sh:85-86`), so the guard denies it to every subagent. AB Command measured
-   that on 2026-11-01, literal-signal variants included, and will not whitelist the script or have it rewritten to
-   slip past the walk. The rule said every run ends with the sweep, so lanes since 2026-10-27 reported the sweep blocked
-   and checked by hand, and the briefs carried a workaround ("check your ports by hand and say so") where the rule
-   should have been (the command session's whole-session reflection of
-   2026-11-01; its refuter confirmed the block and saw at least four distinct reports). Now the rule says what a lane
-   can do: kill what it launched, which the guard allows, then report its processes and listening ports read-only
+   Agentic-Brain, its strict kill allowlist since `77038133`) allows a subagent's `kill` only in some shapes (one
+   literal signal; each pid a literal number, `$!` or a plain variable) and denies the rest, among them a signal
+   written `-$1` and a pid from a loop variable it cannot read; it walks into a shell script the command runs as a
+   file. It reads shapes, not owners: a literal pid is allowed whoever started that process (the guard's own limits,
+   `agent_contract_guard.py:111-112`). The sweep's `kill "-$1" "$pid"` signals pids read in a loop
+   (`frontend/scripts/dev/kill-test-procs.sh:85-86`), both denied shapes, so the guard denies it to every subagent.
+   AB Command measured that on 2026-11-01, literal-signal variants included, and will not whitelist the script or have
+   it rewritten to slip past the walk. The rule said every run ends with the sweep, so lanes since 2026-10-27 reported
+   the sweep blocked and checked by hand, and the briefs carried a workaround ("check your ports by hand and say so")
+   where the rule should have been (the command session's whole-session reflection of 2026-11-01; its refuter
+   confirmed the block and saw at least four distinct reports). Now the rule says what a lane can do: kill what it
+   launched by its pid or `$!`, a shape the guard allows, then report its processes and listening ports read-only
    (`pgrep`, `lsof`), naming any it did not start. The command session sweeps from the main thread, where the guard
    does not walk into a script file, and not while another lane runs heavy work, because a sweep beside a live run
    has cost that run before (AB episode :745). *Where:* `CLAUDE.md` "Browser and test-process hygiene" and
