@@ -11,7 +11,7 @@ import { useGameStore } from '../../src/store/useGameStore';
 
 /**
  * A LAZY CHUNK BRINGS ITS OWN VOICES AND STRINGS (W3-A task script, unit U1; DECISIONS 2026-11-01 (W3-A PR C) item 498).
- * The night's code loads after the world is built (src/night/index.js), so the sound bank and the string tables take
+ * The night's code loads after the world is built (src/night/night.js), so the sound bank and the string tables take
  * additions at run time:
  *   - registerVoices (SoundManager.jsx): a voice added while the provider is up is synthesised into its bank at once and
  *     plays through playSound; one added before the provider mounts is built when it does; a name the bank already holds
@@ -88,18 +88,22 @@ describe('registerVoices', () => {
     expect(started.filter((b) => b?.tag === 'late').length, 'playSound did not start the added voice').toBe(1);
   });
 
+  // Registers its own added voice first, so it holds on its own (-t) or shuffled: the module's added voices outlive a test.
   it('refuses a name the bank already holds, so a chunk cannot replace a shipped voice', () => {
     render(createElement(SoundProvider, null, createElement(Probe)));
     const shipped = Object.keys(VOICES)[0];
     const before = bank.sounds[shipped];
     expect(before, 'SETUP: the shipped voice has no buffer').toBeTruthy();
-    const usurper = maker('usurper');
     let added;
-    act(() => { added = registerVoices({ [shipped]: usurper, gateLateVoice: maker('again') }); });
+    act(() => { added = registerVoices({ gateHeldVoice: maker('held') }); });
+    expect(added, 'SETUP: the first registration of a new name was refused').toEqual(['gateHeldVoice']);
+    const usurper = maker('usurper');
+    const again = maker('again');
+    act(() => { added = registerVoices({ [shipped]: usurper, gateHeldVoice: again }); });
     expect(added, 'a name the bank holds was taken').toEqual([]);
-    expect(usurper.builtOn.length, 'the refused voice was built').toBe(0);
+    expect([usurper.builtOn.length, again.builtOn.length], 'a refused voice was built').toEqual([0, 0]);
     expect(bank.sounds[shipped], 'a shipped voice was replaced').toBe(before);
-    expect(bank.sounds.gateLateVoice?.tag, 'an added voice was replaced by a second registration').toBe('late');
+    expect(bank.sounds.gateHeldVoice?.tag, 'an added voice was replaced by a second registration').toBe('held');
   });
 });
 
@@ -122,10 +126,10 @@ describe('mergeStrings', () => {
     expect('gate.only.zh' in STRINGS['zh-CN'], 'the refused table left a key behind').toBe(false);
     expect('gate.only.en' in STRINGS.en, 'the refused table left a key behind').toBe(false);
     expect(() => mergeStrings({ en: { [one]: 'replaced' }, 'zh-CN': { [one]: STRINGS['zh-CN'][one] } }), 'a shipped string was replaced')
-      .toThrow(new RegExp(one.replace(/\./g, '\\.')));
+      .toThrow(one);
     expect(STRINGS.en[one], 'the refused text replaced the shipped one').not.toBe('replaced');
     expect(() => mergeStrings({ en: { [one]: STRINGS.en[one] }, 'zh-CN': { [one]: 'replaced' } }), 'a shipped zh-CN string was replaced')
-      .toThrow(new RegExp(one.replace(/\./g, '\\.')));
+      .toThrow(one);
     expect(STRINGS['zh-CN'][one], 'the refused text replaced the shipped zh-CN one').not.toBe('replaced');
   });
 
