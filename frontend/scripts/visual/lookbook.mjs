@@ -40,7 +40,8 @@
  *          midnight (shootSelf).
  *   combat (opt-in) the feedback grammar's danger and contact (shootCombat): a mob staged by the seam in front of the eye
  *          and held at rest, partway through its windup (three archetypes, head-on and turned 45 degrees, near and at
- *          14 m) or at a hit, at COMBAT_CYCLES, then GL draws per frame with none and with four zombies staged.
+ *          14 m) or at a hit, and each element's spell held in flight with its impact beyond, at COMBAT_CYCLES, then
+ *          GL draws per frame with none and with four zombies staged.
  * Every eye shot also records its CHROME footprint (_lookbook.mjs chromeFootprint): on a page held still, the pixels
  * the HUD's own elements change (against a twin with them hidden), the touch layer's apart, and the colour count as a
  * second column. A frame with a toast up is not at rest and is set aside (_lookbook.mjs atRest).
@@ -386,6 +387,8 @@ const COMBAT_SHOTS = Object.freeze([
   { name: 'windup-skitterling', type: 'skitterling', moment: 'windup', distance: 3.5 },
   { name: 'hit-zombie', type: 'zombie', moment: 'hit', distance: 3.5 },
   { name: 'windup-zombie-far', type: 'zombie', moment: 'windup', distance: 14 },
+  // A spell held in flight 4 m out with its impact 3 m beyond (the seam's 'cast': the spell system's deterministic cast).
+  ...['fireball', 'iceball', 'lightning', 'arcane'].map((el) => ({ name: `cast-${el}`, type: el, moment: 'cast', distance: 4 })),
 ]);
 const COMBAT_DRAW_MS = 1500;
 

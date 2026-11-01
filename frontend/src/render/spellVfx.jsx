@@ -1,6 +1,8 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Outlines } from '@react-three/drei';
 import * as THREE from 'three';
+import { OUTLINE } from './characterStyle';
 import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisualProfiles';
 import { computeSpellMotion } from '../game/spellMotion';
 import { buildFireTeardrop, buildIceShards, seededUnit } from './spellGeometry';
@@ -151,7 +153,6 @@ const EnhancedSpellProjectile = React.memo(({ projectile }) => {
 // regression frame holds the projectile at a pleasing, slightly-alive pose — never a flat
 // rest scale, never a clock/Math.random read.
 const SpellProjectileCore = React.memo(({ projectile }) => {
-  const innerRef = useRef();
   const outerRef = useRef();
   const meshRef = useRef();
   const profile = ENERGY_PROFILE[projectile.type] || _defaultEnergy;
@@ -175,11 +176,6 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
         meshRef.current.rotation.z += m.shapeSpin[2];
       }
     }
-    if (innerRef.current) {
-      innerRef.current.scale.setScalar(m.innerScale);
-      // strobe lever: lightning flickers the hot core on/off (coreIntensity<1); others stay at full 0.85.
-      if (innerRef.current.material) innerRef.current.material.opacity = 0.85 * m.coreIntensity;
-    }
     if (outerRef.current) {
       // v7-S3.3 glowShape 'conform' (fire): elongate the halo vertically so it licks like a flame,
       // not a round ball. Other shapes use the motion outerScale as-is. (lightning 'none' renders no
@@ -189,10 +185,9 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
     }
   });
 
-  // W2-T4: shared saturated-element silhouette material (the shape is the HERO — emissive
-  // boosted to profile.glowIntensity, opacity 1.0 so the colored form reads first; the
-  // additive white core still paints over it as a small bloom spec). renderOrder 0 +
-  // depthWrite off so the hot core/glow always paint OVER the shape (no pink wash).
+  // THE SOLID CORE (feedback-grammar plan M5): the silhouette is the spell's core, saturated, opaque and depth-written,
+  // so it reads against a noon sky and nothing paints it pale; the mobs' ink line rings it. One additive glow shell
+  // (below) is the spell's only additive layer beside its trail.
   const shapeMat = (
     <meshStandardMaterial
       color={profile.glowColor}
@@ -201,11 +196,9 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
       roughness={0.25}
       metalness={0.0}
       toneMapped={false}
-      transparent
-      opacity={1.0}
-      depthWrite={false}
     />
   );
+  const ink = <Outlines thickness={OUTLINE.prop.thickness} color={OUTLINE.color} />;
 
   // Per-element silhouette geometry for the colored shape layer (the recognizable form:
   // round roiling fireball / crystalline ice shard / jagged forking bolt / rotating sigil
@@ -232,6 +225,7 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
                 depthWrite
                 toneMapped
               />
+              {ink}
             </mesh>
             <mesh geometry={ICE_SHARDS} scale={1.08} renderOrder={1}>
               <meshBasicMaterial
@@ -258,20 +252,14 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
             {BOLT_SEGMENTS.map((s, i) => (
               <mesh key={`seg-${i}`} position={[s.lateral * size, s.y * size * 1.7, 0]} rotation={[0, 0, s.tilt]}>
                 <cylinderGeometry args={[size * 0.045, size * 0.018, size * 0.78, 5]} />
-                <meshBasicMaterial color={profile.glowColor} transparent opacity={1.0} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
+                <meshBasicMaterial color={profile.glowColor} toneMapped={false} />
+                {ink}
               </mesh>
             ))}
             {BOLT_FORKS.map((f, i) => (
               <mesh key={`fork-${i}`} position={[f.lateral * size, f.y * size * 1.7, 0]} rotation={[0, 0, f.tilt]}>
                 <cylinderGeometry args={[size * 0.022, size * 0.006, size * f.len, 4]} />
-                <meshBasicMaterial color={profile.glowColor} transparent opacity={0.95} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
-              </mesh>
-            ))}
-            {/* bright thin WHITE core filament down the bolt axis (the hot electric heart) */}
-            {BOLT_SEGMENTS.map((s, i) => (
-              <mesh key={`core-${i}`} position={[s.lateral * size, s.y * size * 1.7, 0]} rotation={[0, 0, s.tilt]}>
-                <cylinderGeometry args={[size * 0.016, size * 0.005, size * 0.80, 4]} />
-                <meshBasicMaterial color="#FFFFFF" transparent opacity={0.9} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+                <meshBasicMaterial color={profile.glowColor} toneMapped={false} />
               </mesh>
             ))}
           </group>
@@ -284,52 +272,23 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
           <group renderOrder={0}>
             <mesh>
               <torusGeometry args={[size * 0.42, size * 0.10, 8, 24]} />
-              <meshStandardMaterial
-                color={profile.glowColor}
-                emissive={profile.glowColor}
-                emissiveIntensity={profile.glowIntensity}
-                roughness={0.25}
-                metalness={0.0}
-                toneMapped={false}
-                transparent
-                opacity={1.0}
-                depthWrite={false}
-              />
+              {shapeMat}
+              {ink}
             </mesh>
             {/* rune-glyph cross: a horizontal + a vertical slim bar inside the ring */}
             <mesh>
               <boxGeometry args={[size * 0.66, size * 0.06, size * 0.06]} />
-              <meshStandardMaterial
-                color={profile.glowColor}
-                emissive={profile.glowColor}
-                emissiveIntensity={profile.glowIntensity}
-                roughness={0.25}
-                metalness={0.0}
-                toneMapped={false}
-                transparent
-                opacity={1.0}
-                depthWrite={false}
-              />
+              {shapeMat}
             </mesh>
             <mesh>
               <boxGeometry args={[size * 0.06, size * 0.66, size * 0.06]} />
-              <meshStandardMaterial
-                color={profile.glowColor}
-                emissive={profile.glowColor}
-                emissiveIntensity={profile.glowIntensity}
-                roughness={0.25}
-                metalness={0.0}
-                toneMapped={false}
-                transparent
-                opacity={1.0}
-                depthWrite={false}
-              />
+              {shapeMat}
             </mesh>
             {/* v7-S3.7: a SECOND smaller concentric ring in the cyan ACCENT (midColor) -> the only
                 DUOTONE element (magenta wheel + cyan accent), reading as a layered rune mechanism. */}
             <mesh>
               <torusGeometry args={[size * 0.26, size * 0.05, 8, 20]} />
-              <meshBasicMaterial color={profile.midColor} transparent opacity={0.9} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
+              <meshBasicMaterial color={profile.midColor} toneMapped={false} />
             </mesh>
             {/* v7-S3.7: orbiting glyph MOTES (cyan) at seeded angles around the wheel -> secondary
                 motion / "intelligent mechanism" read (they ride the orbit spin; frozen in capture). */}
@@ -339,7 +298,7 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
               return (
                 <mesh key={`mote-${i}`} position={[Math.cos(a) * r, Math.sin(a) * r, 0]}>
                   <octahedronGeometry args={[size * 0.05, 0]} />
-                  <meshBasicMaterial color={profile.midColor} transparent opacity={0.95} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
+                  <meshBasicMaterial color={profile.midColor} toneMapped={false} />
                 </mesh>
               );
             })}
@@ -348,12 +307,12 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
       case 'teardrop':
         // v7-S3.4: upward fiery teardrop (taller than wide, pointed tip) with a baked blackbody
         // vertexColor ramp (white-hot tip -> gold -> orange base). meshBasic + vertexColors +
-        // toneMapped=false so the ramp shows + blooms at the bright tip; NormalBlending (default) so
-        // it reads as a SOLID fiery form over the bright sky, not an additive pink wash. The additive
-        // hot core + conform glow (renderOrder 1-3) still paint the hot heart over it.
+        // toneMapped=false so the ramp shows + blooms at the bright tip; opaque and depth-written, so
+        // it reads as a SOLID fiery form over the bright sky, not an additive pink wash.
         return (
           <mesh geometry={FIRE_TEARDROP} scale={size} renderOrder={0}>
-            <meshBasicMaterial vertexColors transparent opacity={1.0} depthWrite={false} toneMapped={false} />
+            <meshBasicMaterial vertexColors toneMapped={false} />
+            {ink}
           </mesh>
         );
       case 'sphere':
@@ -363,6 +322,7 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
           <mesh renderOrder={0}>
             <icosahedronGeometry args={[size * 0.5, 1]} />
             {shapeMat}
+            {ink}
           </mesh>
         );
     }
@@ -370,46 +330,14 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
 
   return (
     <group>
-      {/* (1) per-element silhouette shape — saturated element color, emissive + bloomable,
-          NOW THE HERO (opacity 1.0, emissive boosted to glowIntensity). renderOrder 0 +
-          depthWrite off so the additive core/glow always paint OVER it (otherwise the
-          opaque colored shape occludes the hot white heart -> pink wash). The pulse +
-          rotation animate the whole silhouette group (multi-mesh bolt/sigil ride along). */}
+      {/* (1) per-element silhouette: the solid core, saturated and emissive, ringed in ink. The pulse and rotation
+          animate the whole silhouette group (the multi-mesh bolt and sigil ride along). The two additive white-hot
+          spheres that sat on it with depthTest off are gone: they painted the core pale and showed through walls. */}
       <group ref={meshRef}>
         {renderSilhouette()}
       </group>
 
-      {/* (2) hot inner core — near-white heart that bloom blows out into glowing light.
-          renderOrder 2/3 (paints last, over the colored shape) so the white heart
-          dominates. A tight white-hot HOTSPOT nested in the tinted core guarantees the
-          center clips past the bloom threshold (0.65) and blooms as a glowing point of
-          light — the same recipe that makes the impact flash read premium. */}
-      <mesh ref={innerRef} renderOrder={2}>
-        <sphereGeometry args={[size * profile.coreScale, 16, 16]} />
-        <meshBasicMaterial
-          color={profile.coreColor}
-          toneMapped={false}
-          transparent
-          opacity={0.85}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          depthTest={false}
-        />
-        <mesh renderOrder={3}>
-          <sphereGeometry args={[size * profile.coreScale * 0.55, 12, 12]} />
-          <meshBasicMaterial
-            color="#FFFFFF"
-            toneMapped={false}
-            transparent
-            opacity={1.0}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            depthTest={false}
-          />
-        </mesh>
-      </mesh>
-
-      {/* (3) soft outer glow shell — saturated element halo giving volume + bloom. v7-S3.3:
+      {/* (2) soft outer glow shell — saturated element halo giving volume + bloom. v7-S3.3:
           glowShape 'none' (lightning) OMITS this round shell entirely so the bolt reads as a hot
           WIRE, not a ball; 'conform' (fire) keeps it but the useFrame elongates it vertically. */}
       {profile.glowShape !== 'none' && (

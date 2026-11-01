@@ -58,13 +58,14 @@ describe('v7-S3.5 ice solid shard cluster', () => {
   });
 });
 
-// v7-S3.6: lightning is a THIN hot ADDITIVE wire (not fat lit cylinders) + a white core filament.
-describe('v7-S3.6 lightning thin additive wire', () => {
-  it('the bolt segments use additive meshBasic (a hot wire), not lit meshStandard', () => {
+// v7-S3.6: lightning is a THIN hot wire (not fat lit cylinders). Since W3-A PR A F4 the wire is SOLID (an unlit, opaque
+// core ringed in ink, the spell grammar: tests/gates/spell-grammar-gates.test.jsx), not additive.
+describe('v7-S3.6 lightning thin wire', () => {
+  it('the bolt segments use solid meshBasic (a hot wire), not lit meshStandard and not additive', () => {
     const boltIdx = SRC.indexOf("case 'bolt'");
     const window = SRC.slice(boltIdx, boltIdx + 1200);
     expect(window).toMatch(/meshBasicMaterial/);
-    expect(window).toMatch(/AdditiveBlending/);
+    expect(window).not.toMatch(/AdditiveBlending/);
     // the bolt no longer uses the fat lit standard material for its segments
     expect(window).not.toMatch(/emissiveIntensity=\{profile\.glowIntensity\}/);
   });

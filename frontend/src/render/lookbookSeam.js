@@ -44,8 +44,9 @@ import { WINDUP_MS } from '../game/attackTelegraph.js';
 
 let _passTimer = null; // the page-wide handle from render/passTimer.js, once the probe asked for timings
 
-/** The moments stage() can hold a mob in: at rest, partway through its windup, and the instant of a hit. */
-export const STAGE_MOMENTS = Object.freeze(['idle', 'windup', 'hit']);
+/** The moments stage() can hold: a mob at rest, partway through its windup, or at the instant of a hit; or a spell
+ *  ('cast', `type` its element) in flight with its impact beyond it. */
+export const STAGE_MOMENTS = Object.freeze(['idle', 'windup', 'hit', 'cast']);
 const STAGE_WINDUP_RAMP = 0.8; // how far through its windup a staged mob is held (game/attackTelegraph.js windupRamp)
 const STAGE_HOLD_MS = 600000; // the world freeze's cap; unstage() ends it at once
 // What stage() put in the world: the mobs, whether the per-frame hit stamp runs, and whether the world is held for it.
@@ -363,6 +364,23 @@ export function installLookbookSeam(win, {
       const z = cam.position.z + fz * d + fx * s;
       const y = st.getMobFloor?.(x, z, cam.position.y - 1.6);
       if (!Number.isFinite(y)) throw new Error(`lookbook: stage() found no ground at ${x.toFixed(1)}, ${z.toFixed(1)}`);
+      if (moment === 'cast') {
+        // `type` is the element: the spell system's deterministic cast (EnhancedMagicSystem spawnDeterministicCast),
+        // its projectile `distance` m along the eye's forward at eye height and its impact 3 m beyond, on the floor.
+        if (!st.spawnDeterministicCast) throw new Error('lookbook: stage() cast before the spell system exists');
+        const [ix, iz] = [cam.position.x + fx * (d + 3), cam.position.z + fz * (d + 3)];
+        const iy = st.getMobFloor?.(ix, iz, cam.position.y - 1.6);
+        const at = [x, cam.position.y - 0.2, z];
+        st.spawnDeterministicCast({
+          spellType: type,
+          muzzle: [cam.position.x + fx, cam.position.y - 0.3, cam.position.z + fz],
+          projectile: at,
+          impact: [ix, (Number.isFinite(iy) ? iy : y) + 0.1, iz],
+          direction: [fx, -0.05, fz],
+        });
+        if (!_stage.holding) { st.triggerHitstop(STAGE_HOLD_MS); _stage.holding = true; }
+        return { id: null, position: at };
+      }
       const before = new Set(hostiles());
       if (!st.spawnMob(x, z, type, y)) throw new TypeError(`lookbook: the spawner refused the type ${JSON.stringify(type)}`);
       const mob = [...hostiles()].find((m) => !before.has(m));

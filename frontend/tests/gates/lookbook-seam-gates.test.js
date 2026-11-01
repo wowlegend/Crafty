@@ -91,6 +91,8 @@ import { worldNow } from '../../src/game/worldClock.js';
  *   K0g the hit stamp not renewed after its first frame -> "hit: ..."
  *   K0h unstage() leaves the world held -> "windup: ..."
  *   K0i plausible-wrong: the side step to the left -> "hit: ..."
+ *   K4a the cast's impact at the projectile, not beyond it -> "cast: ..."
+ *   K4b a cast without the world held -> "cast: ..."
  *
  * BLIND SPOT: that Components.jsx's Player useFrame applies the pose to the LIVE camera (and stops applying it on
  * clear), that the hands really hide, and that index.jsx installs the seam, are the e2e's
@@ -1180,6 +1182,26 @@ describe('stage(): a mob held in one combat moment in front of the eye', () => {
     const last = e.lastHit;
     tick(); tick();
     expect(e.lastHit, 'no stamp after unstage').toBe(last);
+  });
+
+  it('cast: the spell system\'s deterministic cast, its projectile along the eye forward and its impact beyond, the world held', () => {
+    const { w, spawned } = setup();
+    const casts = [];
+    useGameStore.setState({ spawnDeterministicCast: (o) => casts.push(o) });
+    const r = w.__craftyLookbook.stage({ type: 'iceball', distance: 4, moment: 'cast' });
+    expect(casts, 'the denominator: one cast through the spell system').toHaveLength(1);
+    expect(spawned, 'a cast spawns no mob').toHaveLength(0);
+    expect(casts[0].spellType).toBe('iceball');
+    expect(casts[0].projectile[0]).toBeCloseTo(14, 5); // 4 m east of the eye at (10, 60, 10)
+    expect(casts[0].projectile[2]).toBeCloseTo(10, 5);
+    expect(casts[0].impact[0]).toBeCloseTo(17, 5); // 3 m beyond, on the floor
+    expect(casts[0].impact[1]).toBeCloseTo(57.1, 5);
+    expect(r.position).toEqual(casts[0].projectile);
+    expect(useGameStore.getState().hitstopUntil - performance.now(), 'the world is held').toBeGreaterThan(60000);
+    w.__craftyLookbook.unstage();
+    expect(useGameStore.getState().hitstopUntil, 'and let go').toBeLessThanOrEqual(performance.now());
+    useGameStore.setState({ spawnDeterministicCast: null });
+    expect(() => w.__craftyLookbook.stage({ type: 'iceball', moment: 'cast' })).toThrow(/spell system/);
   });
 
   it('refuses an unknown moment, a type the spawner refuses, a bad distance, and a build without the mob query', () => {
