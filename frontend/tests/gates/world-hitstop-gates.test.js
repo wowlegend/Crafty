@@ -88,8 +88,10 @@ describe('the store is the ONE writer, and it caps', () => {
   });
 
   it('no other source file assigns hitstopUntil — every producer goes through triggerHitstop', () => {
+    // One exception, and it only ENDS a hold: the lookbook seam's unstage() lets go of the freeze its stage() opened through
+    // triggerHitstop (the release tests/e2e/_worldHold.js performs), on a ?lookbook=1 page only (W3-A PR A F0).
     const writers = carriersOf(/hitstopUntil\s*:/);
-    expect(writers).toEqual(['store/useGameStore.jsx']);
+    expect(writers.sort()).toEqual(['render/lookbookSeam.js', 'store/useGameStore.jsx']);
   });
 
   it('ONE definition of frozen: only worldDelta and the player controller read the scale (weak, structural)', () => {

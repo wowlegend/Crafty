@@ -1,3 +1,4 @@
+import { HOSTILE_EYE } from '../../src/render/mobTones.js';
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -70,6 +71,9 @@ describe('W1 — hostile eyes, as a truth table rather than a token search', () 
     expect(src, 'MobModel no longer calls hasHostileEyes — it has its own copy of the rule').toMatch(
       /\{hasHostileEyes\(entity,\s*mobConfig\)\s*&&/,
     );
-    expect(src, 'the red eye meshes were deleted wholesale').toContain('#ff0000');
+    // Since W3-A PR A F3 the eye colour is render/mobTones.js HOSTILE_EYE, red lifted past the bloom threshold.
+    expect(src, 'the red eye meshes were deleted wholesale').toMatch(/\{hasHostileEyes\(entity,\s*mobConfig\)\s*&&[\s\S]{0,600}color=\{HOSTILE_EYE\}/);
+    expect([HOSTILE_EYE.g, HOSTILE_EYE.b], 'and the colour is pure red').toEqual([0, 0]);
+    expect(HOSTILE_EYE.r).toBeGreaterThan(1);
   });
 });
