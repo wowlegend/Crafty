@@ -299,7 +299,12 @@ ceiling.
    kill's fourth is the dying entity (`CombatSystem` `damageMob`), so the siege can match its captain by id.
    Gated: `night-bus-gates` drives the three producers through the real store, `CombatSystem` and `AIWorkerSystem` (its
    worker stubbed and its reply handed in): 3 of 3 red on the base, 8 mutants red, the identity survived;
-   `kill-attribution-gates`' emit shape now names the entity (its mutant red).
+   `kill-attribution-gates`' emit shape now names the entity (its mutant red). The store's new import of the bus made
+   the store's import graph read `import.meta.env` at load (`game/isolatedEffects.js`), and Playwright's runner loads that
+   graph in Node (`tests/e2e/forge.spec.js` imports `input/talk.js`, which reaches the store), where it is undefined: every
+   e2e shard of PR #83's first two runs failed before running a test. The line now tests `window` first, which Node does
+   not have; `npx playwright test --list` loads all 67 spec files with it and fails with it reversed, and the boot chunk
+   keeps no trace of the DEV-only counter (646,229 B either way).
 
 498. **U1, the night's chunk and its doors: the loader in the boot chunk, the root and the string merge in the night
    chunk, the voice registry in SoundManager.** `night/nightLoader.js` (boot chunk) fetches the night once the store's

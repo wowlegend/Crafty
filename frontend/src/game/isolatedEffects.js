@@ -16,8 +16,9 @@
 
 let failureCount = 0;
 // Published at load, not at the first failure: a counter that exists only after a failure cannot tell a page with none
-// from a page that never had the instrument.
-if (import.meta.env.DEV && typeof window !== 'undefined') window.__isolatedFailures = { count: 0, last: '' };
+// from a page that never had the instrument. The window test comes first: Playwright's runner loads this module in Node
+// (a spec importing a src module that reaches the store, which emits on the bus), where import.meta.env is undefined.
+if (typeof window !== 'undefined' && import.meta.env.DEV) window.__isolatedFailures = { count: 0, last: '' };
 
 /**
  * Say that an isolated reactor or effect threw: a console.error naming where, which an e2e test collects across every
