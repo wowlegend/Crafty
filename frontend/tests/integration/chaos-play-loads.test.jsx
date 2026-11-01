@@ -20,7 +20,7 @@ import { TERMINAL_VELOCITY } from '../../src/game/locomotion.js';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
   makeSession, tick, writeSave, loadSave, deepestSolid, escape, enterForm, finishSession, mulberry32, LOAD_RELEASE_FRAMES,
-  DEEP_SEABED, LAND_TOP, voidFall,
+  DEEP_SEABED, LAND_TOP, voidFall, solidAt, STONE,
 } from './chaosPlay/harness.js';
 
 const RUNS = [{ hz: 60, lag: 2 }, { hz: 120, lag: 4 }, { hz: 120, lag: 0 }];
@@ -140,6 +140,32 @@ describe('chaos play, loads: a save stands the player near where it was made, in
         expect(r.counts, `the load left the player in solid or far from the save (phase ${r.phase}) ${JSON.stringify(r)}`).toEqual(clean);
         expect(r.free, `the player cannot walk away from the load (phase ${r.phase})`).toBe(true);
       }
+    });
+
+    // A save from before the invisible-box fix can hold a block in the eye's cell. In the two-high tunnel nothing within
+    // the near search's 0.6 m clears it (the block is cleared 0.92 m along the tunnel), so the fit's wider search, along
+    // open cells (game/formFit.js LOAD_WIDE), stands the player in the tunnel beside it, not on the column's top through
+    // the roof. The random sessions never reach that branch (the static review of lane L13 part 2's round 2, its N4).
+    it(`a save holding a block in the eye's cell in the two-high tunnel stands the player in the tunnel beside it (${hz} Hz, lag ${lag})`, () => {
+      const S = makeSession({ spot: 'cave', rnd: mulberry32(21), hz, lag, tol: TOL });
+      const t = S.p.body.translation();
+      S.p.body.setTranslation({ x: -5.5, y: t.y, z: -9.5 }, true);
+      for (let i = 0; i < 10; i++) tick(S, { yaw: 0, forward: false });
+      const save = writeSave(S, 'manual');
+      const p = save.player_data.position;
+      const eye = [-6, LAND_TOP + 1, -10];
+      expect([Math.floor(p.x), Math.floor(p.y + 0.67), Math.floor(p.z)], `SETUP: the save's eye is not in the cell the block goes in ${JSON.stringify(p)}`).toEqual(eye);
+      expect([solidAt(S, -6, LAND_TOP + 2, -10), solidAt(S, -6, LAND_TOP, -10)], 'SETUP: the tunnel has no roof over the eye\'s cell, or its own cell is not open').toEqual([true, false]);
+      save.world_data.blocks.push([eye.join('_'), STONE]);
+      const r = loadAndPlay(S, save);
+      expect(solidAt(S, ...eye), 'SETUP: the load did not put the block in the eye\'s cell').toBe(true);
+      const away = Math.hypot(r.at.x - p.x, r.at.z - p.z);
+      expect({ I1: r.counts.I1, I2: r.counts.I2, I5: r.counts.I5 }, `the load left the player in solid ${JSON.stringify(r)}`).toEqual({ I1: 0, I2: 0, I5: 0 });
+      expect(r.at.y, `the player was not stood in the tunnel, under its roof ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+      expect(away, `the player was not stood past the near search's reach, by the wider one ${JSON.stringify(r)}`).toBeGreaterThan(0.6);
+      expect(away, `the player was stood further off than the wider search reaches ${JSON.stringify(r)}`).toBeLessThanOrEqual(1.4 + 0.05);
+      expect(S.stats.loadsPlaced_near, `the load was not placed by the fit's search ${JSON.stringify(S.stats)}`).toBe(1);
+      expect(escape(S).free, 'the player cannot walk away from the load').toBe(true);
     });
 
     // A save made in a form: the comet and the hawk are narrower than the base and stand closer to a wall, the comet and
