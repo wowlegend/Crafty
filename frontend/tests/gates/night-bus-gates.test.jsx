@@ -6,12 +6,14 @@ import { render, cleanup } from '@testing-library/react';
 /**
  * THE FIRST NIGHT'S MOMENTS ON THE EVENT BUS (W3-A task script, unit U1; DECISIONS 2026-11-01 (W3-A PR C) item 497). The
  * night's units react to moments other systems know, so each producer is driven here through the real system:
- *   - nightfall and dawn: setGameTime's crossings (the store), each once, and never a load, a clock jump or a direct
- *     nightCount write (the same rule lastNightfall keeps, tests/store/night-seams.test.js);
+ *   - nightfall and dawn: setGameTime's crossings (the store), each once, after the write (a subscriber reads the store
+ *     already across), and never a load, a clock jump or a direct nightCount write (the same rule lastNightfall keeps,
+ *     tests/store/night-seams.test.js);
  *   - the kill bus's fourth argument: the dying entity itself, from systems/CombatSystem.jsx damageMob, so the siege can
  *     tell its captain by id;
  *   - windupStart: systems/AIWorkerSystem.jsx, on a worker reply whose windup is new (its Web Worker stubbed, the reply
- *     handed to it), once per windup, at the mob, and not for a windup a perfect dodge's stagger cancels.
+ *     handed to it), once per windup, at the mob's position after the reply's ground snap (a floor stubbed under it),
+ *     and not for a windup a perfect dodge's stagger cancels.
  * siegeWave and siegeBroken are named for their units (N5, N6a), which emit them; only their names are pinned here.
  *
  * Mutation-Proof: via scripts/dev/mutate.sh; the mutants and their reds are in the commit that adds this file.
@@ -61,6 +63,9 @@ describe('nightfall and dawn', () => {
     const falls = heard(EVENTS.nightfall, 2);
     const dawns = heard(EVENTS.dawn, 2);
     const s = () => useGameStore.getState();
+    // What a reactor reads of the store when it is told: emitted after the write, it reads the store already across.
+    const seen = [];
+    for (const name of [EVENTS.nightfall, EVENTS.dawn]) offs.push(on(name, () => seen.push([name, s().isDay, s().nightCount])));
     const night = buildSaveData(INITIAL, { position: { x: 0, y: 18, z: 0 } });
     night.game_state.gameTime = HALF_CYCLE_UNITS + 50;
     s().loadWorldData(night);
@@ -79,6 +84,8 @@ describe('nightfall and dawn', () => {
     s().setGameTime(2 * HALF_CYCLE_UNITS + 3);
     expect(dawns, 'the crossing into day was not heard once, with the night it ended and its time').toEqual([[2, 2 * HALF_CYCLE_UNITS + 2]]);
     expect(falls).toHaveLength(1);
+    expect(seen, 'a reactor told of the crossing read the store before it (the emit is not after the write)')
+      .toEqual([[EVENTS.nightfall, false, 2], [EVENTS.dawn, true, 2]]);
   });
 });
 
@@ -104,6 +111,9 @@ describe('windupStart', () => {
   }] } });
 
   it('is emitted once when a windup begins, at the mob, and not for a windup held, ended, or cancelled by a stagger', async () => {
+    // A floor at y 4 under every column, so the reply's ground snap moves the mob down from y 10 and the voice's place
+    // tells a position read after the snap from one read before it.
+    useGameStore.setState({ getMobFloor: () => 4, getMobGroundLevel: () => 4 });
     r = await mountR3F(<AIWorkerSystem />);
     expect(worker.live, 'SETUP: the AI system made no worker').not.toBeNull();
     const ups = heard(EVENTS.windupStart, 3);
@@ -115,8 +125,9 @@ describe('windupStart', () => {
     const t = worldNow() + 380;
     worker.live.onmessage(reply(mob, t));
     expect(mob.windupUntil, 'SETUP: the reply was not applied to the mob').toBe(t);
-    expect(ups.map(([type, at, e]) => [type, at, e === mob]), 'a new windup was not heard once, by type and place, with its mob')
-      .toEqual([['duskhound', [5, 10, -3], true]]);
+    expect(mob.position.y, 'SETUP: the snap did not stand the mob on its floor').toBe(4.5);
+    expect(ups.map(([type, at, e]) => [type, at, e === mob]), 'a new windup was not heard once, by type and its snapped place, with its mob')
+      .toEqual([['duskhound', [5, 4.5, -3], true]]);
     worker.live.onmessage(reply(mob, t));
     expect(ups.length, 'a windup still winding was heard again').toBe(1);
     worker.live.onmessage(reply(mob, 0));
