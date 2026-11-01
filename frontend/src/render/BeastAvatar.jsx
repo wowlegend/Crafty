@@ -209,7 +209,8 @@ export function BeastAvatar() {
 
       {parts && (
         <group ref={groupRef} position={[0, FEET_OFFSET, 0]}>
-          <group ref={partsRef} position={[0, formLift(element), 0]}>
+          {/* the parts at the form's own feet: the frame sets their lift with the entrance's scale */}
+          <group ref={partsRef}>
             {/* (1) SILHOUETTE — dark-ink toon body + element rim (toneMapped, crisp) */}
             {parts.boxes.map((b, i) => (
               <mesh key={i} ref={(m) => { boxRefs.current[i] = m; }} position={b.pos} rotation={b.rot} castShadow>
