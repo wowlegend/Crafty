@@ -22,6 +22,9 @@ export const SPAWN_PROBE_MAX_SEC = 6;
 export const SPAWN_FALLBACK_Y = 60;      // if the probe never resolves
 export const SPAWN_EYE_OFFSET = 1.2;     // player center this far above ground (instant land)
 const PROBE_MIN_Y = 15;                  // physicsY <= this is rejected (origin chunks still streaming)
+// A wait's frame steps summed in floating point fall a hair short of the seconds they add up to: 360 steps of 1/60 s make
+// 5.99999..., and the 6 s fallback came a frame late at 60 Hz, on the 361st (tests/gates/player-placement-gates.test.jsx).
+const EPS = 1e-9;
 
 // THE VOID LINE IS THE WORLD'S. Its cells run from y 0 up (world/chunkLayout.js), so no floor lies lower than the top of
 // the cells at y 0, at 1: a body standing anywhere in the world, on the deep seabed (world/oceanProfile.js DEEP_FLOOR, 6)
@@ -75,7 +78,7 @@ export function resolveSpawnGround(blockGroundY, physicsY, waitedSec, probeAvail
   if (!probeAvailable) return { groundY: SPAWN_FALLBACK_Y, retry: false, incFails: false };
   const invalid = physicsY == null || Number.isNaN(physicsY) || physicsY <= PROBE_MIN_Y;
   if (!invalid) return { groundY: physicsY, retry: false, incFails: false };
-  if (waitedSec + stepSec < SPAWN_PROBE_MAX_SEC) return { groundY: null, retry: true, incFails: true };
+  if (waitedSec + stepSec < SPAWN_PROBE_MAX_SEC - EPS) return { groundY: null, retry: true, incFails: true };
   return { groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true, blind: true };
 }
 
@@ -252,6 +255,6 @@ export function resolveResumeSpawn(resume, physicsY, waitedSec, stepSec = 0, bes
   const loaded = Number.isFinite(physicsY);
   if (loaded) return { place: { x: resume.x, y: resume.y, z: resume.z }, hold: false };
   if (beside) return { place: { x: beside.x, y: beside.y, z: beside.z }, hold: false };
-  if (waitedSec + stepSec < RESUME_PROBE_MAX_SEC) return { place: null, hold: true };
+  if (waitedSec + stepSec < RESUME_PROBE_MAX_SEC - EPS) return { place: null, hold: true };
   return { place: null, hold: false };
 }

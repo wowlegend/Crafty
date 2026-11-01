@@ -65,7 +65,7 @@ const { Player } = await import('../../src/Components.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore.jsx');
 const { buildSaveData } = await import('../../src/game/saveSchema.js');
 const { BASE_CAPSULE, BEAST_FORMS } = await import('../../src/game/beasts.js');
-const { spawnTargetY, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } = await import('../../src/game/spawnPlacement.js');
+const { spawnTargetY, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC, SPAWN_FALLBACK_Y, RESUME_PROBE_MAX_SEC } = await import('../../src/game/spawnPlacement.js');
 const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
 const { setIntent, setActive, resetInput } = await import('../../src/input/inputState.js');
 const { generateMesh } = await import('../../src/world/mesher.js');
@@ -307,6 +307,9 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
       while (useGameStore.getState().resumeSpawn && frames < 60 * hz) { frame(hz); frames++; }
       expect(useGameStore.getState().resumeSpawn, `SETUP: the hold never gave up at ${hz} Hz`).toBeNull();
       held[hz] = +(frames / hz).toFixed(3);
+      // The hold ends on the frame whose step reaches its bound, counted from the load's first frame (the two the wipe
+      // holds count too): not a frame later, which the Player handing the decision no step made.
+      expect(2 + frames, `the hold gave up on frame ${2 + frames} of the load at ${hz} Hz`).toBe(Math.round(RESUME_PROBE_MAX_SEC * hz));
       for (let i = 0; i < 2 * hz && !(h.body.translation().y < LAND_TOP + 2); i++) frame(hz);
       expect(at(), `the player was not sent to the origin spawn at ${hz} Hz once the hold gave up`).toMatchObject({ x: 0, z: 0 });
     }
@@ -634,6 +637,24 @@ describe('the void guard fires under the world, never in it, and it and the resp
     for (let i = 0; i < 10; i++) frame(hz);
     expect(at().y, 'the player was not stood on the origin\'s ground once it streamed in').toBeCloseTo(LAND_TOP + 0.95, 1);
   });
+
+  // The fallback comes on the frame whose step reaches the wait's bound (game/spawnPlacement.js resolveSpawnGround), so
+  // the wait is SPAWN_PROBE_MAX_SEC at any frame rate, not a frame more (registry REVIEW:l4:gate-reach-round1: the Player
+  // handing the decision no step put the fallback a frame late, and every gate passed).
+  for (const hz of [60, 120]) {
+    it(`the spawn's wait over a corner that never answers drops the player on the frame its step reaches ${SPAWN_PROBE_MAX_SEC} s (${hz} Hz)`, () => {
+      useGameStore.setState({ getMobGroundLevel: () => null });
+      render(<Player isWorldBuilt />);
+      let dropOn = null;
+      for (let i = 1; i <= (SPAWN_PROBE_MAX_SEC + 1) * hz && dropOn === null; i++) {
+        frame(hz);
+        if (Math.abs(h.body.translation().y - SPAWN_FREEZE_Y) > 1e-3) dropOn = i;
+      }
+      expect(dropOn, 'SETUP: the wait never dropped the player').not.toBeNull();
+      expect(h.body.translation().y, 'SETUP: the drop is not the fallback\'s, from SPAWN_FALLBACK_Y').toBeCloseTo(spawnTargetY(SPAWN_FALLBACK_Y), 3);
+      expect(dropOn, `the fallback came on frame ${dropOn} of the wait, ${(dropOn / hz).toFixed(4)} s on`).toBe(Math.round(SPAWN_PROBE_MAX_SEC * hz));
+    });
+  }
 
   // Chunk streaming asks for two chunks every 150 ms in rows across the box round the camera (world/Terrain.jsx), so after a
   // respawn the last of the spawn corner's four chunks is asked for 3.15 s on at the top tier (render distance 4). Here the
