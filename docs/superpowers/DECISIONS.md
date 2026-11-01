@@ -336,6 +336,31 @@ ceiling.
    listed module (red with `night/night.js` importing the lights; its scan of dynamic imports and its exclusion of test
    files each shown by a mutant). Index: 0 B (646,343 B before and after).
 
+520. **N4: the siege director's rules, pure, in the night chunk.** `night/siegeDirector.js` (item 495's numbering
+   resumes here: lane L13 part 2 holds 500 to 519). Waves at 0, 180 and 380 units into the night (0, 72 and 152 s at
+   2.5 units a second); sizes `min(10, base[k] + floor(n * growth[k]))` with night 1 fixed at 2, 2 and 3, one captain
+   FIRST in wave 3's list (an ember husk to zone tier 1, a moss brute from tier 2) at x1.6 health on night 1 and x2.4
+   after, and ember elites, `min(3, floor((n - 1) / 2))`, on the first members of waves 2 and 3. Eight compass
+   bearings scored by three probes 32, 40 and 48 m out above the sea, the best land first with a tie-break seeded by
+   the world's seed and the night, and from night 3 a second bearing at least 90 degrees off ("never within 90" read as
+   less than 90 apart). The task script asked whether the main thread can reach the generator's height: it can
+   (`world/climate.js surfaceBlockAt`, seeded per world by every load), so `landScoreFrom` scores the generator's world,
+   not the streamed chunks, and a reload picks the same bearing. Wave members are drawn by `MOB_TYPES` weight from the
+   husks on night 1 and from every hostile but the moss brute after; N1's encounter table replaces that pick. The horn's
+   room (`hornClearance`): the farthest mobs the player is not fighting (not static, aggro or of the siege, beyond 30 m)
+   until the night's members fit, for N5 to retire through the dissolve. A marcher that moves under 1.5 m in 6 s of
+   world time sidesteps 8 m square to its line, alternating sides, for 4 s; stuck again after two, it hunts the player;
+   progress clears the count. **The task script's two claims, measured:** a whole night of every member placed under
+   the cap with no kill, from the day cap's carried population (the hub's four NPCs, the rest between 20 and 90 m, a
+   third passive, some already hunting), for nights 1 to 12 at tiers 0 to 4, 60 of 60, the captain within 2 s of wave 3;
+   without the horn's room night 1 starves first (3 of its 7 never placed, cap 20 against 16 carried). And the night-1
+   captain (152 HP) falls to a level-2 beast's uncritted swings (23 damage with no weapon, through `solveMeleeDamage`,
+   `resolveFormMelee` and each form's swing cadence) in 1.2 to 1.9 s, far inside the held roar's 14 s less 4: the
+   bound only bites near x8 (a mutant at 8 goes red), so it guards the scale against a large error, not a tuning.
+   Red first: `src/night/siegeDirector.test.js` red on the missing module; 22 mutants red, the identity survived. Like
+   the lights, nothing the game runs imports it until N5, so it is listed out of production knip beside them (item 499's
+   check fails once N5 imports it and the line stays). Index: 0 B.
+
 ---
 
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
