@@ -19,6 +19,73 @@
 
 ---
 
+## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
+
+The 2026-11-01 W3-A task script's "PR B" (it lives on branch `feat/w3a-first-night` until that lane lands), branch
+`feat/w3a-small-fixes` from `3442443d`, PR #80. Each gate went red before its fix: the unit and jsdom gates locally, the
+two e2e cases (I1, U2) on CI first (run 41287676192 at `e0b8a5cb`: hud-at-rest "the ember bar does not mark the five
+unlocked prices ... []" at every layout; build-placement "held Q did not turn the right click on a chest into a
+placement", the control's interact seen first). The looks were shot on the M3 Max: the lookbook's self set on the
+production build (D1), and throwaway probes on the dev server with a real key or the store's own hit (F6, U2, B2),
+deleted after; the frames are in `docs/superpowers/masterpiece-2026-10/evidence/w3a-small-fixes/`.
+
+440. **The pad by the Hearth's fire is gated through the night on the terrain stone, and the brazier's light is amber;
+   the midnight maroon on screen is not fixed by it.** `colour-script-gates` G2b: the pad lit by `HEARTH_FIRE` at 0.5, 1
+   and 2 m, terrain stone, f 0.44 to 1.06, chroma at most 0.025 wherever the model's hue lies within 20 deg of maroon's
+   band (the screen reads 10 to 20 deg redder: DECISIONS 2026-10-28, the landing lifecycle entry, item 21 (d)). Red on
+   the orange `#FF8A2A`; green on amber `#FFB050` (worst 0.0221); a lavender twilight that every other case passes is red
+   here. On screen (the lookbook's `self-brazier-110` at midnight, the pad left of the brazier on the maroon rule): 48.5%
+   before, 45.9% after; throwaway builds: the fire off 4.7%, a warm white `#FFE2A8` 39.4%, amber at 2.6 56.6%. Whatever
+   its colour, what the fire adds to the dark pad on screen carries green at about a quarter of the light's own
+   green-to-red ratio and almost no blue, so any warm light on the violet night pad reads magenta-red; the model does not
+   reproduce that. `REVIEW:light:g2-pad-coverage` closes (its acceptance is the gate); `REVIEW:light:midnight-brazier-maroon`
+   stays open with the numbers. Amber ships because the gate needs a fire it passes and the screen moves the right way, a
+   little; the night key and the display's dark end are the light lane's next question, not a small fix. Commit `f88147b1`.
+441. **The stance keeps its own clock: each frame adds the world clock's advance, at most the frame's step.** A frame
+   longer than `MAX_FRAME_STEP_SEC` moves the world clock its whole length and every mover the cap; counted whole, one
+   3.5 s CI hitch stalled a husk still walking in and spent the calm (`REVIEW:w2b:stance-clocks-long-frame`). The two
+   e2e idles that waited out the calm on the wall clock wait on the stance's clock. Commit `7fc0224b`.
+442. **Being hit kicks the camera away from the blow.** `game/cameraKick.js` `hurtKick(angle)` turns the hurt profile's
+   back push by the store's `lastHitDir.angle` (a hit from the right throws the view left; from behind, forward; with no
+   source, back as before), same size. The look, in the running game through `damagePlayer` with a source position: a
+   hit from the left moved the camera +0.079 m along its right on the frame after, a hit from the right -0.072 m, both
+   gone in about 0.25 s, beside the edge glow on the hit side. Subtle by design, as the hurt kick was. `OPEN_ITEMS:OI-37`.
+   Commit `1aad531a`.
+443. **Held C with a right click places where the click would open a chest or cast at a mob; Alt is not used.** The row
+   named Alt. Under a pointer lock on Windows, Chromium released the lock when Alt was pressed and released (Chromium
+   commit 560e652, bug 40734020, suppressed from main@{#1577353}, 2026-01-30); Firefox on Windows raises its menu bar on
+   Alt (bugzilla 1574057); Alt+D takes the address bar on Windows and Linux. Ctrl+W closes the tab and Shift is the
+   dodge. Q, the first pick, is a panel key item 96 (2026-10-29) retired, which `keyMap.test.js` and `taught-keys-gates`
+   hold unbound. C is bound to nothing. The intent `forcePlace` is set by the keydown and cleared by the keyup and on
+   blur; the router places on the right button with the hands free wherever the build ray met terrain in reach. Touch is
+   desktop only: the cast button fires on the lift, so a long press would turn a held cast into a placement, and
+   real-device feel is Kevin's. `QUEUE:Q26/b`. Commits `bf412b84` (the e2e, red first on Q), `d4b22d9d`.
+444. **The ember bar marks each unlocked Aspect verb's price and lights the ones it pays for; the dusk warning names the
+   roar once it is unlocked.** Grab 25, imbue 30, snare 35, fuse 50, roar 100, from KEY_MAP's verb rows (the fuse rides
+   the snare's talent); "A full ember bar wakes the beast (R)." in en and zh-CN. Judged on frames at 1280x800 and
+   390x844: the notches read as lit and dim at a glance, but the three cheap prices sit within about 6 px of each other
+   on the slim track beside its label, so which verb a notch is cannot be read from the bar; the keys are taught in the
+   controls panel. `REVIEW:w2f:ember-bar-no-readiness`. Commits `e0b8a5cb` (the e2e, red first), `d2c066f7`.
+445. **Each beast form stands on the floor its own capsule rests on, from the entrance's first frame.** The parts hang in
+   an inner group at `formLift(element, scale)`: the lowest point of the boxes (each turned by its rotation) on the
+   floor that halfHeight + radius + `CONTROLLER_OFFSET` puts under the centre, at every scale of the entrance. The outer
+   group stays `FEET_OFFSET` under the centre, so the first-person test and the DEV hook `frameBeastReveal` read as
+   before and `devtest/devBridge.js` (in flight in PR A) is untouched. The gate's reference is real Rapier's rest height
+   (0.77, 1.12, 0.97, 1.25 m). In the running game, a real roar on R: before, the bull's and the golem's lowest boxes
+   stood 0.21 and 0.35 m over the ground under the body; after, 0.000 for all four. From the reveal's hold, above and
+   behind, a gap of that size is hard to see by eye: the measurement carries it. `REVIEW:w2e-follow:beast-feet-per-form`.
+   Commit `0f9c9b4c`.
+446. **PR B nets +2,311 B of index against about 400 B of shares; the ceiling is not raised.** Main was 649,123 B at
+   `3442443d` (1,366 B over the plan's 647,757), and PR B leaves 651,434 B: V1 +146, F6 +112, D1 0, I1 +410 (the KEY_MAP
+   row and two strings), U2 +1,037 (two sentences of about 220 B, the marks and the helpers), B2 +606 (the rotated
+   lowest point and the per-frame lift). That leaves 1,066 B under 652,500 for PR C, whose C0 must free correspondingly
+   more before its index units land.
+447. **A flake row for input-live.spec.js:72's victory case** (`REVIEW:e2e-flakes:input-live-victory-scrim-intercepts`,
+   LANE:flakes): CI run 41282171902 (PR #77 at `3442443d`), shard 5/8, attempt 1 timed out clicking Keep exploring
+   because the victory overlay's own `z-modal` scrim intercepted the pointer; retry #1 passed. First sighting. The same
+   run's light-pool.spec.js first-attempt failure (programs 97 to 98, the point lights held at 5) is a sighting in
+   `REVIEW:w2f:light-pool-first-attempt-programs`.
+
 ## 2026-10-31 (lane L13) — [LOOP] the stuck-in-solid remainder: a wall is not ground, rays see what was just placed, a dug spawn corner does not loop, a sunk capsule is stood clear, the resume hold is time
 
 Lane L13 (`fix/l13-stuck-in-solid`, from `eff58e9a`) took the rows the audit lanes left in the class Kevin's invisible box
