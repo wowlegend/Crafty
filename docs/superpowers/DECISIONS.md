@@ -63,9 +63,10 @@ deleted after; the frames are in `docs/superpowers/masterpiece-2026-10/evidence/
 444. **The ember bar marks each unlocked Aspect verb's price and lights the ones it pays for; the dusk warning names the
    roar once it is unlocked.** Grab 25, imbue 30, snare 35, fuse 50, roar 100, from KEY_MAP's verb rows (the fuse rides
    the snare's talent); "A full ember bar wakes the beast (R)." in en and zh-CN. Judged on frames at 1280x800 and
-   390x844: the notches read as lit and dim at a glance, but the three cheap prices sit within about 6 px of each other
-   on the slim track beside its label, so which verb a notch is cannot be read from the bar; the keys are taught in the
-   controls panel. `REVIEW:w2f:ember-bar-no-readiness`. Commits `e0b8a5cb` (the e2e, red first), `d2c066f7`.
+   390x844: the notches read as lit and dim at a glance, but the slim track beside its label is 78 px wide on the
+   desktops and iPads and 30 px on phones (hud-at-rest, CI run 41289153753), so the three cheap prices sit within 8 and
+   3 px of each other and which verb a notch is cannot be read from the bar; the keys are taught in the controls panel.
+   `REVIEW:w2f:ember-bar-no-readiness`. Commits `e0b8a5cb` (the e2e, red first), `d2c066f7`.
 445. **Each beast form stands on the floor its own capsule rests on, from the entrance's first frame.** The parts hang in
    an inner group at `formLift(element, scale)`: the lowest point of the boxes (each turned by its rotation) on the
    floor that halfHeight + radius + `CONTROLLER_OFFSET` puts under the centre, at every scale of the entrance. The outer
@@ -75,16 +76,19 @@ deleted after; the frames are in `docs/superpowers/masterpiece-2026-10/evidence/
    stood 0.21 and 0.35 m over the ground under the body; after, 0.000 for all four. From the reveal's hold, above and
    behind, a gap of that size is hard to see by eye: the measurement carries it. `REVIEW:w2e-follow:beast-feet-per-form`.
    Commit `0f9c9b4c`.
-446. **PR B nets +2,311 B of index against about 400 B of shares; the ceiling is not raised.** Main was 649,123 B at
-   `3442443d` (1,366 B over the plan's 647,757), and PR B leaves 651,434 B: V1 +146, F6 +112, D1 0, I1 +410 (the KEY_MAP
-   row and two strings), U2 +1,037 (two sentences of about 220 B, the marks and the helpers), B2 +606 (the rotated
-   lowest point and the per-frame lift). That leaves 1,066 B under 652,500 for PR C, whose C0 must free correspondingly
+446. **PR B nets +2,290 B of index against about 400 B of shares; the ceiling is not raised.** Main was 649,123 B at
+   `3442443d` (1,366 B over the plan's 647,757), and PR B leaves 651,413 B: V1 +146, F6 +112, D1 0, I1 +410 (the KEY_MAP
+   row and two strings), U2 +1,037 (two sentences of about 220 B, the marks and the helpers), B2 +585 (the rotated
+   lowest point and the per-frame lift). That leaves 1,087 B under 652,500 for PR C, whose C0 must free correspondingly
    more before its index units land.
 447. **A flake row for input-live.spec.js:72's victory case** (`REVIEW:e2e-flakes:input-live-victory-scrim-intercepts`,
    LANE:flakes): CI run 41282171902 (PR #77 at `3442443d`), shard 5/8, attempt 1 timed out clicking Keep exploring
    because the victory overlay's own `z-modal` scrim intercepted the pointer; retry #1 passed. First sighting. The same
    run's light-pool.spec.js first-attempt failure (programs 97 to 98, the point lights held at 5) is a sighting in
-   `REVIEW:w2f:light-pool-first-attempt-programs`.
+   `REVIEW:w2f:light-pool-first-attempt-programs`. PR B's own green run (41289153753, `d2c066f7`) retried four cases on
+   code it does not touch: three known rows take the sighting (heavy-melee's release, combat-touch's spawn race,
+   quest-text's held world), and music-bus.spec.js:74's Mute All wait gets a row of its own
+   (`REVIEW:e2e-flakes:music-bus-mute-all-wait`).
 
 ## 2026-10-31 (lane L13) — [LOOP] the stuck-in-solid remainder: a wall is not ground, rays see what was just placed, a dug spawn corner does not loop, a sunk capsule is stood clear, the resume hold is time
 
