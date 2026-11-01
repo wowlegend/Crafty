@@ -14,9 +14,9 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // walks out on real W, A, S and D. Last, a block is written around the camera the way a save from before the fix brings
 // one back (the worker's edit and the store's record, as a load delivers them): the centre and the lowest point are in
 // the open cell under it, so the stuck-in-rock watch reads the capsule itself (game/stuckInRock.js) and stands the player
-// clear of it within CLEAR_FRAMES drawn frames, and the player walks out, a metre each way within WALK_FRAMES. (A left
-// click from inside such a block takes it: tests/integration/place-clear-of-player-rapier.test.jsx; the player is no
-// longer left inside one to make it.)
+// clear of it within CLEAR_FRAMES drawn frames, and the player walks out, a metre each way but into the block within
+// WALK_FRAMES. (A left click from inside such a block takes it: tests/integration/place-clear-of-player-rapier.test.jsx;
+// the player is no longer left inside one to make it.)
 //
 // THE PRESENCE BEFORE THE ABSENCE. The same four walks run on the same spot before the burst, and each must cover a metre
 // there, or the spot cannot show a trap (SETUP). The burst must aim at least one right-click whose cell lies inside the
@@ -59,6 +59,7 @@ const WALK_MIN_M = 1;
 // drawn frames are at least half a second of play at any rate up to 120 Hz.
 const CLEAR_FRAMES = 60;
 const KEYS = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
+const WALK_DIRS = { KeyW: [0, -1], KeyA: [-1, 0], KeyS: [0, 1], KeyD: [1, 0] }; // x, z of each key's walk, facing -z
 
 /** In node: beach columns near Kevin's spot, nearest first and 8 m apart. Land one block above the sea with water on one
  *  side, and the beach flat for two blocks either way along the other axis (the pillar is built along it). "Water on one
@@ -439,7 +440,14 @@ test.describe('placing beside the player at the shore', () => {
     expect(clearOn, `the block written around the camera still held the player ${CLEAR_FRAMES} frames after the release (${JSON.stringify(clear)})`).not.toBeNull();
     expect(clear.inBody, `a placed block is still inside the body once it was stood clear (${JSON.stringify(clear)})`).toEqual([]);
     const freed = { x: clear.body[0], y: clear.body[1], z: clear.body[2] };
-    for (const code of Object.keys(KEYS)) {
+    // Stood beside the block, the player walks a metre every way but into it: the block the save holds is a block, and it
+    // bars its own column (the walks face -z: W goes -z, S +z, A -x, D +x). Stood on its top, every way is open.
+    const [bx, , bz] = boxed.cell.split('_').map(Number);
+    const toBlock = [bx + 0.5 - freed.x, bz + 0.5 - freed.z];
+    const ways = Object.keys(KEYS).filter((code) => WALK_DIRS[code][0] * toBlock[0] + WALK_DIRS[code][1] * toBlock[1] < 0.5);
+    console.log(`[place-clear] stood clear ${JSON.stringify(toBlock)} from the block's middle: walking ${ways.join(', ')}`);
+    expect(ways.length, `SETUP: more than the one way into the block is barred from the spot stood clear (${JSON.stringify({ freed, toBlock })})`).toBeGreaterThanOrEqual(3);
+    for (const code of ways) {
       const m = await walk(page, code, freed);
       expect(m, `stood clear of the block, ${code} walked ${m} m: the player is held (${JSON.stringify(await page.evaluate(readHold))})`).toBeGreaterThanOrEqual(WALK_MIN_M);
     }
