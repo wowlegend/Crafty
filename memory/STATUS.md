@@ -24,6 +24,9 @@
 
 ## 1. Where Crafty actually is (re-measured 2026-07-27)
 
+> **2026-11-01:** where Crafty stands now is the first block of §3 below; this section is the 2026-07-27 measure,
+> kept as history. Repo counts come from `node frontend/scripts/ci/measure.mjs`, never from this text.
+
 Crafty is a **mature, deployed, internally-coherent R3F voxel action-RPG** (**306 source files / 34,447 LOC** (re-measured 2026-08-13; `node frontend/scripts/ci/measure.mjs` is the single authority — do not hand-type this)
 excluding tests, auto-deploying to crafty-sand.vercel.app). **The masterplan's spine is complete.**
 
@@ -1469,6 +1472,20 @@ As of 2026-10-28 ~05:30Z, compiled from session-truth (st- ids, `.state/session-
 ---
 
 ## 3. What's next (the cursor)
+
+**2026-11-01 — Crafty is paused, by Kevin's order.** He asked that what was in flight land, that the ongoing work be
+wrapped up, and that Crafty then take a natural pause (`memory/ACTIVE_PLAN.md` quotes him). Main is `39786876`, live
+in production, `ci ok` green on it. What landed on 2026-11-01, all as PRs fast-forwarded onto main: the registry's S6
+merge fix (#75); a Start clicked before the world is built shows a still caption (#76); lane L13's stuck-in-solid
+remainder in two parts (#77, #82); W3-A PR A, one feedback grammar (#79); W3-A PR B, six small fixes (#80); W3-A PR C,
+the First Night's phase 1 (#81: room in the boot chunk, the eight-beat play-through red first, harness profiles) and
+phase 2a (#83: the store, bus and night-chunk seams, the lights and the siege director, pure); and, as direct records
+landings, the ultrareview chunks 4-6 records (`cf815ac4`) and the review tabs' re-checks archived
+(`3a2c1534`, under `docs/superpowers/audits/2026-11-01-ultrareview/`).
+
+What is open is the registry (`memory/registry.jsonl`; `npm run orient` prints its counts). What resumes first, and
+from where, is the cursor's "Paused" block: W3-A at N5, the one L13 row left, and the sovereign review tool's runs on
+chunks 5 and 6, whose findings land on their own. The rest of this section below is history from August.
 
 **⚠️ 2026-08-05 — THE COMPOSITOR IS INTERMITTENT.** It came back on its own after nine dead iterations (no
 reboot, uptime 8d 23h), stayed up for roughly ONE HOUR (~03:11-04:00), and was dead again by ~04:20 with
