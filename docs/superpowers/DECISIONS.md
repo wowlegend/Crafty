@@ -281,8 +281,8 @@ ceiling.
    full. No setter for `hearthLit`, `siege` or `hearthFlame`: their units write them, and `store-setters-called` bars a
    setter nothing calls (a first `setHearthFlame`, which stored the quarter the flame is still within, went red there in
    the full suite and was cut; H1, which drains the flame, writes the quarter steps). Red first:
-   `tests/store/night-seams.test.js`, 7 of 7 red on the base; 13 mutants red, the identity survived (two more killed the
-   cut setter).
+   `tests/store/night-seams.test.js`, 7 of 7 red on the base at `d42e2520`, and 6 of 6 since the cut setter's case left
+   with it (`1375a868`; corrected in item 527); 13 mutants red, the identity survived (two more killed the cut setter).
    `preCutSave`'s round trip now expects the lit Hearth a pre-field save gains. **Beat (a)'s third red is rewritten**
    (item 482's rule for a unit that moves a beat's red): with the store lit by default, "the store says lit after G"
    passed on a Hearth nothing kindled, so the check now asks the store for cold before the press and lit after, and its
@@ -326,10 +326,11 @@ ceiling.
    which keeps `aspect-sfx-gates`' loop of the one registry (a spread of both into one object went red there). **U1's
    bytes:** 644,426 B before U1 and 646,229 B after, +1,803 B against its 900 B share (the store +828, the bus +347, these
    doors +628: the loader with its import about 350, the voice registry about 210),
-   against 652,500 B, which was not raised. The room of item 495 covers it today. PR #82 (lane L13 part 2) was estimated
-   to leave about 157 B before item 495, so about 3,660 B of its own: with it, about 2,600 B remain for PR C's later index
-   units, which hold about 3.35 KB of shares (L1's 0.3 KB among them, once the lights move to the boot chunk), so the
-   next room is taken before those units build (the controls card and hint, item 495), or the shares are cut. **The
+   against 652,500 B, which was not raised. The room of item 495 covers it today. With PR #82 (lane L13 part 2), as
+   measured in round 2 (item 535; this item first estimated about 3,660 B for it and about 2,600 B left): this branch's
+   head merged with PR #82's builds a 647,459 B index, so that PR costs 1,230 B here and 5,041 B remain for PR C's later
+   index units, which hold about 3.35 KB of shares (L1's 0.3 KB among them, once the lights move to the boot chunk), so
+   no room is taken now. **The
    run that checked item 496's rewritten record:** beat (a) alone with `FIRST_NIGHT_AWAITING=1`, locally (Chromium, the
    Playwright-managed dev server on 4179, started at a load of 27.9), on this phase's N4 commit: 1 passed in 1.5 minutes,
    3 of 3 reds as recorded (the brazier lit at Start, intensity 1.6; G lit no cold brazier, 1.6 before and after;
@@ -374,6 +375,97 @@ ceiling.
    Red first: `src/night/siegeDirector.test.js` red on the missing module; 22 mutants red, the identity survived. Like
    the lights, nothing the game runs imports it until N5, so it is listed out of production knip beside them (item 499's
    check fails once N5 imports it and the line stays). Index: 0 B.
+
+**Phase 2a, round 2: the fixes after its two reviews** (items 526 to 535; lane L13 part 2 holds 500 to 525). Each change
+went red first and each new or changed assertion was killed by mutants through `scripts/dev/mutate.sh`, with an identity
+mutant surviving in every batch; the mutants are in each commit's `Mutation-Proof:` trailer.
+
+526. **CodeQL's two high alerts on `92943d89` are fixed at their cause.** Both were js/incomplete-sanitization at
+   `night-voices-strings-gates.test.jsx:125` and `:128`: the clash cases built a RegExp from a string key with only its
+   dots escaped. They pass the key itself to `toThrow`, which matches it as a substring of the message, so no pattern is
+   built from data, as item 458 (W3-A PR B) fixed the same class. `ci ok` does not read CodeQL, so round 1's report of a
+   green head was true of `ci ok` only (the dynamic review's F1); this round's head is checked on both.
+
+527. **The voices gate holds on its own, and three records are corrected.** The refusal case re-registered a name the
+   case before it had added, and the module's added voices outlive a test, so run alone (`-t`) it failed ("a name the
+   bank holds was taken", reproduced on the old file; the static review's F4); it now registers its own name first.
+   The file's header named `night/index.js`, which item 498 renamed `night/night.js` (static F5, dynamic F4). Item 496's
+   "7 of 7 red on the base" was true at `d42e2520`; `1375a868` cut the setter's case, so it is 6 of 6 since, corrected
+   in place (dynamic F4).
+
+528. **Item 497's two claims are gated.** "Emitted after its write" and "at the mob's snapped position" were true on
+   `92943d89` and held by nothing (the dynamic review's F2 and F3: an emit moved inside the `set` updater, or above
+   `snapMob`, left every gate green). `night-bus-gates` now subscribes a reactor that reads `isDay` and `nightCount`
+   when told, expecting `[nightfall, false, 2]` then `[dawn, true, 2]`, and stubs a floor at y 4 so the reply's snap
+   moves the mob from y 10 to 4.5 and the voice is expected at the snapped place. Both of the reviewer's mutants are red,
+   and a third, only dawn emitted inside the write, is red too.
+
+529. **The siege's bearings are chosen as a set, judged whole.** Greedy picking (the best bearing, then the next one 90
+   degrees off whatever its land) broke the plan's rule that a siege never comes out of the sea while land exists: with
+   land at 180, 225 and 270 degrees only, a tie that put 225 first rejected both ends and took a sea bearing in 162 of
+   500 nights (the static review's F1, its probe A reproduced). Every set of bearings pairwise at least 90 degrees apart
+   is scored: the most land bearings, then the most land in all, then the seeded tie; the set comes back richest first,
+   so waves 1 and 3 (the captain's) take its richer bearing. A key for the poorest bearing's land was drafted and cut:
+   it decides only between two all-land sets of equal land (3 and 1 against 2 and 2, at 45 and 225 degrees against 0
+   and 90), where neither comes from the sea, so the seeded tie is left to choose there. On seed 12345's
+   shipped world all eight bearings score 3, so nothing a player meets changes; the probe reads 0 of 500.
+
+530. **A bearing with no land is a widened sector, flagged for the spawn log.** The plan's rule for a siege with no land
+   pair is "waves come from land, or from a widened sector, logged" (encounters-siege plan, Review Focus 2; Unit 6 step
+   5 widens once to PI/3 and logs the fallback). `chooseBearings` returns sectors, `{ bearing, halfAngle, fallback }`:
+   PI/6 on land, and PI/3 with `fallback` set for a bearing whose probes found none (`SECTOR_HALF`), which happens only
+   when no land pair 90 degrees apart exists, or no land at all. Among sets with as many land bearings, one whose sea
+   bearing lies within PI/3 of a land bearing wins, so the widened sector reaches land instead of looking out to sea.
+   `planNight` carries `sectors` in place of `bearings`. The module is pure and nothing it does can log: N5 searches a
+   flagged sector wide from the first try and keeps the flag in its placement record, N2's `logSpawn` writes it, and
+   `siege.bearings` (read as angles by U3 and beat (b)) is the sectors' angles; the tasks file's N5 section says so.
+
+531. **A marcher that has reached its objective holds there.** `marchStep` had no arrival case, so a marcher stopped
+   beside the brazier read as stuck, sidestepped 8 m out and walked back about every 16 s, and one standing on its anchor
+   took a zero-length sidestep and hunted the player after about 26 s (the static review's F3; probe B read four
+   sidesteps a minute). Within `ARRIVED_M`, 3 m, the reach H1's flame drains from, a marcher holds on its objective and
+   its stuck window restarts each tick, so it leaves with a fresh window when the objective moves (a doused Hearth hands
+   the march to the player). It was small, so it is fixed here rather than owed to N5; probe B reads 61 marches of 61.
+
+532. **The ember elites split between waves 2 and 3; the horn's comment says what 30 m buys.** The elites went on wave
+   2's first members while it had room, and from night 2 it always holds 3 or more, so wave 3 never carried one, against
+   the plan's "placed in waves 2 and 3" and item 520's own words (the static review's F7). Wave 2 takes the odd one,
+   each wave's on its first wave members (after wave 3's captain): nights 3 and 4 give 1 and 0, nights 5 and 6 give 1
+   and 1, night 7 on 2 and 1. Sizes, counts and the captain are unchanged, and N1's table replaces this pick. The
+   comment on `CLEAR_BEYOND_M` claimed a cleared mob is never one the player sees go, which 30 m does not promise with
+   the cull at 100 m (static F6); it now says the rule takes the day's population least in play, farthest first, and that
+   a mob at 30 m can still be seen leave, which is why it goes through the dissolve.
+
+533. **The night's lines sit beside their merge, and the key gate reads the merged table.** The night's strings join
+   `STRINGS` at run time, and `tests/i18n/key-resolution.test.js` read only the static table, so the first unit to speak
+   a line from `night/night.js`'s table would have turned it red and been pushed to copy the line into the boot chunk or
+   hide the key behind a dynamic call (the static review's F2, scenario 1). `NIGHT_STRINGS` moves into
+   `night/nightStrings.js` (still the night chunk, no boot byte), and the gate merges it through `mergeStrings` before it
+   reads anything, so a night key resolves, is classified like any other (a night line nobody speaks reads dead), and a
+   clash with a shipped line throws there as in the game; a new case asserts every night line reached the table read.
+   The gate was extended rather than a new one written, since the table it reads is the subject. Red first on a fixture
+   (a night-only key called through `t()` in `night/night.js`, applied and restored, never committed): the old gate red,
+   the new one green. Scenario 2, a line a player needs before the chunk arrives (D2's Pike at Start), is said in the
+   table's own docblock and in the tasks file's D2: it goes in `i18n/strings.js`. R1's landing probe reads `strings.js`,
+   and R1's line goes in `NIGHT_STRINGS`, so R1 moves the probe in its landing commit; N5's horn notice goes in the night
+   table too.
+
+534. **`startDawnRush` has its caller named, N6a.** `store-setters-called` matches only `set*` names, so item 496's
+   "bars a setter nothing calls" did not reach it (the static review's F8). Widening the check to `start*` now would go
+   red on an action the task script schedules and force U1's seam out before its unit; instead the tasks file's N6a says
+   that its captain break calls `store.startDawnRush()` and that N6a's red-first hitstop break is the check that it is
+   called.
+
+535. **The boot chunk's room, recomputed on measured numbers** (the command ruling of 2026-11-01 16:40Z, session-truth
+   `st-3a0388ac9a11`). Item 498 carried an estimate of about 3,660 B for PR #82; L13 part 2 measured about 804 B against
+   main. Measured here: this round's head builds a 646,229 B index (unchanged from `92943d89`: every change this round is
+   tests, the night chunk or a module nothing imports yet), and the same head merged with PR #82's head `e0dd84d4`
+   (`git merge-tree`, built outside any checkout) builds 647,459 B, so that PR costs 1,230 B on this branch and 5,041 B
+   remain under 652,500 B, which was not raised. PR C's later index units hold about 3.35 KB of shares (3,430 B if
+   counted in KiB), so no shortfall remains and no room is taken now; item 498's arithmetic is corrected in place. The
+   margin is about 1.6 KB, and U1 came in at twice its share, so each later unit still puts its index bytes in its commit,
+   and the unit that would cross takes the next room first: code no player needs before the world is built, and the
+   first-run controls card and H hint only last, with their weight measured. Player-facing shares are not cut.
 
 ---
 
