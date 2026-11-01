@@ -40,10 +40,12 @@ code changed. Items 460 to 468.
    | 5-render | 57 | 7,688 | render, post FX, spell VFX, mobs, boss, ocean, sky, quality tiers | `2cad929` / `fc048c5` | `session_01PyjBK9NcSj1Nf3w8t5mNDq` |
    | 6-audio-scene-rest | 40 | 7,170 | audio, SoundManager, GameScene, atmosphere, weather, devtest, lookbook, grass, NPC | `57fc230` / `9d319b8` | `session_01PyjBK9n5bKqvTbjkWkGuFY` |
 
-461. **Counters and delivered counts.** At each run's last progress line (found / verified / refuted): 4-ui 36 / 28 / 25,
-   5-render 30 / 25 / 19, 6-audio-scene-rest 29 / 30 / 13. Each run delivered exactly 10 findings: 4 normal and 6 nit
-   (4-ui), 2 and 8 (5-render), 3 and 7 (6-audio-scene-rest). The counters tally verdicts, not unique bugs: the last run
-   shows more verified (30) than found (29), so how many unique verified bugs stood behind the 10 is unknown.
+461. **Counters and delivered counts.** At each run's last progress line (found / verified / refuted): 4-ui 36 / 28 /
+   25, 5-render 30 / 25 / 19, 6-audio-scene-rest 29 / 30 / 13. Each run delivered exactly 10 findings: 4 normal and 6
+   nit (4-ui), 2 and 8 (5-render), 3 and 7 (6-audio-scene-rest), by the cloud's own severity field; the verification
+   text inside 5-render finding 2 and 6-audio-scene-rest finding 2 says nit, and their rows give the field's value. The
+   counters tally verdicts, not unique bugs: the last run shows more verified (30) than found (29), so how many unique
+   verified bugs stood behind the 10 is unknown.
 
 462. **Our verification, and what was filed.** One repro verifier per delivered finding (30 in all) read the code in a
    `cp -c -R` throwaway of the review repository, `node_modules` symlinked and no browser, built a control and tried to
@@ -55,8 +57,11 @@ code changed. Items 460 to 468.
    `AUDIT:ultra-1101:<chunk>-<n>`, n being the finding's 1-based place in that run's list (so `6-audio-scene-rest-6` has
    no row), and the two history-comment findings (5-render finding 10, 6-audio-scene-rest finding 10) as a line appended
    to REVIEW:l12:history-comments-ledger, which they match: 15 receipts and six past-tense comments that its ratchet's
-   markers do not count. A NONE-harm finding is a LOW debt row. Our verifiers corrected several cloud claims (cited lines
-   that do not exist in 5-render findings 4, 5 and 9; the refuted 'shading seam' in finding 3), recorded in the rows.
+   markers do not count. A NONE-harm finding is a LOW debt row, and so is a LOW-harm finding whose cost has no visible
+   symptom: AUDIT:ultra-1101:4-ui-9 and 6-audio-scene-rest-9, and AUDIT:replica-1101:4-ui-11 from the replica (of the 14
+   LOW-harm cloud findings, 12 are LOW bugs and those two are debt). Our verifiers corrected several cloud claims (cited
+   lines that do not exist in 5-render findings 4, 5 and 9; the refuted 'shading seam' in finding 3), recorded in the
+   rows.
 
 463. **The replica of chunk 4-ui.** To learn what the cloud leaves out, the same chunk was hunted locally: five hunters,
    each on a player-facing lens, produced 49 raw candidates, merged by root cause into 32; each got three independent
@@ -80,17 +85,19 @@ code changed. Items 460 to 468.
    code (4-ui-7 and 4-ui-8, both latent because no player can switch to zh-CN) and never found two (4-ui-6, the
    classifier's ternary; 4-ui-9, DebugOverlay's boot-time GL context), both outside its five lenses. The cloud delivered
    6 of the replica's 28 survivors (21%): 6 of 22 normal-severity, 2 of the 9 with MED harm (4-ui-1 and 4-ui-3) and none
-   of the 6 nits. **16 normal-severity defects the replica confirmed are absent from the cloud's 10, and 7 of them are
-   MED harm:** AUDIT:replica-1101:4-ui-10 (no player can switch to zh-CN), -1 (the Settings panel off-screen), -13 (the
-   chest panel's close off-screen), -15 (the portrait phone Inventory), -18 (the Build tray's ghost click), -20 (the
-   hotbar's numbers) and -21 (keyboard copy on touch). Why is unknown: the cloud's fixed 10 cut them, or the cloud never
-   found them. A severity-first cutoff would not fill six of ten slots with nits while dropping normal bugs, which points
-   to a recall gap or a ranking that is not severity-first, but the data cannot separate the two; the test is an ultra
-   rerun of the chunk with `--max-findings all`, which is Kevin's (AUDIT:ultra-1101:cap-question). Before the replica
-   runs again (AUDIT:replica-1101:chunks-5-6) it takes the changes this comparison asks for: two more lenses (what the
-   production bundle runs; tools that ship in src); a vote split into mechanism and harm, where a refutation carries a
-   proof command and a latent defect stays harm NONE rather than being killed; dedupe by root cause with parent links and
-   kept sub-claims; a harm-ranked top 10 beside the full list; and the per-finding probe on every MED survivor.
+   of the 6 nits. **16 normal-severity defects that survived the replica's votes are absent from the cloud's 10 (15 drew
+   at least two CONFIRMED votes of three; AUDIT:replica-1101:4-ui-16 drew PLAUSIBLE three times), and 7 of them are MED
+   harm, all among the 15:** AUDIT:replica-1101:4-ui-10 (no player can switch to zh-CN), -1 (the Settings panel
+   off-screen), -13 (the chest panel's close off-screen), -15 (the portrait phone Inventory), -18 (the Build tray's
+   ghost click), -20 (the hotbar's numbers) and -21 (keyboard copy on touch). Why is unknown: the cloud's fixed 10 cut
+   them, or the cloud never found them. A severity-first cutoff would not fill six of ten slots with nits while dropping
+   normal bugs, which points to a recall gap or a ranking that is not severity-first, but the data cannot separate the
+   two; the test is an ultra rerun of the chunk with `--max-findings all`, which is Kevin's
+   (AUDIT:ultra-1101:cap-question). Before the replica runs again (AUDIT:replica-1101:chunks-5-6) it takes the changes
+   this comparison asks for: two more lenses (what the production bundle runs; tools that ship in src); a vote split
+   into mechanism and harm, where a refutation carries a proof command and a latent defect stays harm NONE rather than
+   being killed; dedupe by root cause with parent links and kept sub-claims; a harm-ranked top 10 beside the full list;
+   and the per-finding probe on every MED survivor.
 
 465. **What the binary showed, and what the data cannot.** A reading of the installed `claude` binary during this work
    found no cap of its own on the number of findings the client prints, so a cap, if there is one, is applied on the
@@ -98,28 +105,32 @@ code changed. Items 460 to 468.
    the session ids in item 460 are a record, not links that open. Neither fact was re-measured for this entry. Whether a cut at 10 hid bugs the cloud
    had found stays open (item 464).
 
-466. **Cost.** The three cloud runs spent no usage credits: they were account 2's free runs. Verifying the 30 findings and
-   running the replica on one chunk took 133 agents and 18.7M subagent tokens. A further ultrareview costs usage credits
-   (typically $5 to $25 a run, DECISIONS 2026-10-27), which is Kevin's to spend.
+466. **Cost.** The three cloud runs spent no usage credits: they were account 2's free runs. Verifying the 30 findings
+   and running the replica on one chunk took 133 agents and 18.7M subagent tokens (the work's own totals, carried and
+   not re-measured for this entry). A further ultrareview costs usage credits (typically $5 to $25 a run, DECISIONS
+   2026-10-27), which is Kevin's to spend.
 
 467. **The rows.** 50 rows added, 2 lines appended, 1 row closed; every new row is open in an open lane. By lane:
    LANE:W3-C 7 (the first minute on touch and keyboard: AUDIT:ultra-1101:4-ui-1, 4-ui-3 and 4-ui-9;
-   AUDIT:replica-1101:4-ui-1, -16, -20 and -21), LANE:W3-B 3 (the dragon: AUDIT:ultra-1101:5-render-1, 5-render-2 and
-   5-render-5), LANE:W3-E 2 (AUDIT:ultra-1101:5-render-3, the fireball's lathe seam, and 6-audio-scene-rest-3, the shadow
-   frustum on the iPad low tier), LANE:backlog 37 and LANE:kevin 1. By kind: 36 bugs (11 MED, 25 LOW), 12 debt rows (LOW)
-   and 2 instrument rows. The MED bugs: AUDIT:ultra-1101:4-ui-1, 4-ui-3, 5-render-1 and 6-audio-scene-rest-3, and
-   AUDIT:replica-1101:4-ui-1, -10, -13, -15, -18, -20 and -21. Two instrument rows record deferrals this entry leaves:
-   AUDIT:ultra-1101:cap-question (LANE:kevin: whether the cut at 10 hid bugs) and AUDIT:replica-1101:chunks-5-6 (the
-   replica has run on one chunk of three; MED). The evidence line of every row says whether the cloud, our probe or the
-   replica's votes carry it. Appended instead of filed: REVIEW:l12:history-comments-ledger (two cloud findings) and
-   STATUS:G-ledger:35 (one replica candidate).
+   AUDIT:replica-1101:4-ui-1, -16, -20 and -21; the plan's W3-C row names Unit 0, the hint strip, the title's Hearth and
+   the first click after Start, so 4-ui-3, replica -16, -20 and -21 and 4-ui-9 tie to it by touch input, hint copy and
+   Unit 0, while AUDIT:ultra-1101:4-ui-1 (a starting potion's tile) and AUDIT:replica-1101:4-ui-1 (the Esc Settings
+   panel) are first-minute reaches it does not name, and their notes say the lane may hand them to backlog), LANE:W3-B 3
+   (the dragon: AUDIT:ultra-1101:5-render-1, 5-render-2 and 5-render-5), LANE:W3-E 2 (AUDIT:ultra-1101:5-render-3, the
+   fireball's lathe seam, and 6-audio-scene-rest-3, the shadow frustum on the iPad low tier), LANE:backlog 37 and
+   LANE:kevin 1. By kind: 36 bugs (11 MED, 25 LOW), 12 debt rows (LOW) and 2 instrument rows. The MED bugs:
+   AUDIT:ultra-1101:4-ui-1, 4-ui-3, 5-render-1 and 6-audio-scene-rest-3, and AUDIT:replica-1101:4-ui-1, -10, -13, -15,
+   -18, -20 and -21. Two instrument rows record deferrals this entry leaves: AUDIT:ultra-1101:cap-question (LANE:kevin:
+   whether the cut at 10 hid bugs) and AUDIT:replica-1101:chunks-5-6 (the replica has run on one chunk of three; MED).
+   The evidence line of every row says whether the cloud, our probe or the replica's votes carry it. Appended instead of
+   filed: REVIEW:l12:history-comments-ledger (two cloud findings) and STATUS:G-ledger:35 (one replica candidate).
 
-468. **AUDIT:critic:coverage-gaps/ultra closes done.** Its acceptance asked for `/code-review ultra` on chunks 4, 5 and 6,
-   the findings filed as rows, and the run ids and session links recorded in a DECISIONS item. Kevin provided account
-   2's three free runs, as the row's note records; the runs, the findings as rows and the session ids are items 460 to
-   467 and the rows above (the links do not open, item 465, so the ids are the record). Kevin keeps any further
-   ultrareview, which costs credits, and the cap question. The sibling AUDIT:critic:coverage-gaps/hunt (subsystems no
-   hunter read) stays open.
+468. **AUDIT:critic:coverage-gaps/ultra closes done.** Its acceptance asked for `/code-review ultra` on chunks 4, 5 and
+   6, the findings filed as rows, and the run ids and session links recorded in a DECISIONS item. Kevin provided account
+   2's three free runs, as the row's note records; the runs, the findings as rows (27 rows, 2 appended lines and 1
+   refuted, item 462) and the session ids are items 460 to 467 and the rows above (the links do not open, item 465, so
+   the ids are the record). Kevin keeps any further ultrareview, which costs credits, and the cap question. The sibling
+   AUDIT:critic:coverage-gaps/hunt (subsystems no hunter read) stays open.
 
 ---
 
