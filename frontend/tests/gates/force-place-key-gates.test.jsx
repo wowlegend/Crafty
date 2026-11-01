@@ -114,7 +114,7 @@ describe('held C through the real Player', () => {
   // On macOS a key let go while Cmd is down sends no keyup (Mozilla bug 1299553; Chromium issue 40880986), so a C held
   // into Cmd+C, or pressed as Cmd+C, would hold forcePlace until C was pressed again. Each way out is driven here,
   // each from a held C the same events show set.
-  it('C cannot stay held: Cmd+C and Ctrl+C set nothing, and the Cmd keyup, a C keyup with a modifier, a blur and a hidden tab each let go', () => {
+  it('C cannot stay held: Cmd+C and Ctrl+C set nothing, and a Cmd or Ctrl keydown, a C keyup with a modifier, a blur and a hidden tab each let go', () => {
     render(<Player isWorldBuilt />);
     for (let i = 0; i < 10; i++) frame();
     setActive(true);
@@ -134,8 +134,14 @@ describe('held C through the real Player', () => {
 
     holdC('Cmd pressed while C is held');
     ev('keydown', 'MetaLeft', { metaKey: true });
+    expect(getInput().forcePlace, 'Cmd pressed with C held did not let go of C, whose keyup macOS will not send').toBe(false);
     ev('keyup', 'MetaLeft');
-    expect(getInput().forcePlace, 'C let go under Cmd (no C keyup on macOS) stayed held after the Cmd keyup').toBe(false);
+    expect(getInput().forcePlace, 'the Cmd keyup set C again').toBe(false);
+
+    holdC('Ctrl pressed while C is held');
+    ev('keydown', 'ControlLeft', { ctrlKey: true });
+    expect(getInput().forcePlace, 'Ctrl pressed with C held did not let go of C').toBe(false);
+    ev('keyup', 'ControlLeft');
 
     holdC('a C keyup with a modifier');
     ev('keyup', 'KeyC', { metaKey: true, shiftKey: true });

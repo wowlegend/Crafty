@@ -466,9 +466,10 @@ export const Player = ({ isWorldBuilt }) => {
 
       // Held C: a right click places where it would open a chest or cast at a mob (input/verbRouter.js). C, not Alt: on
       // Windows an Alt press and release dropped the pointer lock in Chromium before main@{#1577353} (bug 40734020), and
-      // Firefox raises its menu bar on Alt. A C pressed with Cmd or Ctrl is copy, not the place key; on macOS its keyup
-      // never arrives while Cmd is down (Mozilla bug 1299553), so the keyup below lets go of C on the Cmd keyup too.
-      if (e.code === 'KeyC' && !e.metaKey && !e.ctrlKey) setIntent('forcePlace', true);
+      // Firefox raises its menu bar on Alt. On macOS a key let go while Cmd is down sends no keyup (Mozilla bug 1299553),
+      // so any keydown with Cmd or Ctrl down, the modifier's own included, lets go of C: a C pressed with one is copy.
+      if (e.metaKey || e.ctrlKey) setIntent('forcePlace', false);
+      else if (e.code === 'KeyC') setIntent('forcePlace', true);
 
       // 2026-06-28 (Kevin): magic spells are the marquee feature -> the prime F key CASTS the
       // selected spell; melee moves to T. Both gate on input being live, inside the router, like every other live verb.
@@ -508,7 +509,7 @@ export const Player = ({ isWorldBuilt }) => {
         setIntent('imbue', false);
       }
 
-      if (e.code === 'KeyC' || e.code === 'MetaLeft' || e.code === 'MetaRight') setIntent('forcePlace', false);
+      if (e.code === 'KeyC') setIntent('forcePlace', false);
 
       // Shift was the ONE held key with no release branch. Releasing it must clear the intent even if the
       // press was refused above, so a Shift held across a panel open/close cannot arrive as a queued roll.
