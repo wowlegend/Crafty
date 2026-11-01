@@ -60,6 +60,7 @@ import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingOrigin.js';
 import { moveKinematic, placeBody } from './game/kinematicMove.js';
+import { supportedGround, MAX_SLOPE_CLIMB_RAD } from './game/grounding.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
 import { isInputLive } from './input/inputLive.js';
@@ -139,7 +140,7 @@ export const Player = ({ isWorldBuilt }) => {
       const c = world.createCharacterController(offset);
       c.enableAutostep(1.05, 0.2, true); // Step-up height of 1.05m
       c.enableSnapToGround(0.5); // snap to ground when descending slopes
-      c.setMaxSlopeClimbAngle(Math.PI / 4); // 45 degrees
+      c.setMaxSlopeClimbAngle(MAX_SLOPE_CLIMB_RAD); // 45 degrees: what game/grounding.js calls walkable
       controllerRef.current = c;
       return () => {
         world.removeCharacterController(c);
@@ -1263,8 +1264,11 @@ export const Player = ({ isWorldBuilt }) => {
       return !parent || parent.handle !== playerHandle;
     };
 
-    // Kinematic ground check from Rapier character controller
-    const isGrounded = controllerRef.current ? controllerRef.current.computedGrounded() : false;
+    // Ground from the controller's last sweep, kept only where a walkable face bears the capsule (game/grounding.js): the
+    // controller's own flag counts a wall, and every reader below (the jump, the coyote time, the glue) takes this one.
+    const isGrounded = controllerRef.current
+      ? supportedGround(controllerRef.current, world, rigidBodyRef.current, rigidBodyRef.current.collider(0), filterPredicate, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC)
+      : false;
 
     // W4 game-feel: maintain coyote + jump-buffer timestamps (seconds; pure refs, no React state).
     const nowSec = performance.now() / 1000;
