@@ -79,7 +79,7 @@ Beside them: `CLAUDE.md` (the one instruction file), `memory/ARCHITECTURE.md` (t
 | `docs/superpowers/registry-v2-dispositions.jsonl`, `docs/superpowers/registry-v2-landing.jsonl` | Every registry row's v2 disposition with its proof and verdict, and the landing's fields for rows added after the snapshot: `frontend/scripts/ci/registry-migrate.mjs` reads them, so the migration is reproducible (DECISIONS 2026-10-31 (registry v2) item 368) |
 | `docs/superpowers/upstream-750-reply-draft.md` | The text of an open item, Kevin's to send (registry `QUEUE:Q08`) |
 | `docs/superpowers/masterpiece-2026-10/` | The reset plan's survey, refutes and upside, and the evidence frames DECISIONS and the registry cite |
-| `docs/superpowers/audits/` | The dated whole-game audits: the 18-domain review (2026-07-13) and the deep audit of the invisible-box class (2026-10-30), whose `AUDIT:*` registry rows and lanes cite it |
+| `docs/superpowers/audits/` | The dated whole-game audits: the 18-domain review (2026-07-13) and the deep audit of the invisible-box class (2026-10-30), whose `AUDIT:*` registry rows and lanes cite it, and `2026-11-01-ultrareview/` (the cloud review's delivered findings for the ui, render and audio-and-scene chunks, with each review tab's re-check; its README is the entry point) |
 | The other dated audits and research, `memory/*AUDIT*`, `memory/S2B*`, `memory/STATE-REVIEW-2026-06-10.md` | STATUS, SOTA-INITIATIVE, ARCHITECTURE, ROADMAP, the inbox, a live plan or source cites each; history, not status |
 | `docs/archive/2026-Q2/plans/` | Two archived plans that ARCHITECTURE and the inbox still cite |
 | `docs/PERF-PROTOCOL.md` | The real-device frame-rate protocol; no run is recorded yet |
