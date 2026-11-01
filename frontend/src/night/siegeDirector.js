@@ -57,6 +57,11 @@ export function landScoreFrom(surfaceAt, cx = 0, cz = 0) {
 
 const angleApart = (a, b) => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
 
+/** A siege sector's half-angle about its bearing: PI/6 where the bearing's probes found land, PI/3 where they found none,
+ *  so the placement searches wide from the start and logs the wave as a fallback (encounters-siege plan, Unit 6 step 5:
+ *  "widens once to PI/3, logs fallback"). */
+export const SECTOR_HALF = Object.freeze({ land: Math.PI / 6, widened: Math.PI / 3 });
+
 /** Higher wins at the first place two values differ; equal is not better. */
 const outranks = (a, b) => {
   const i = a.findIndex((x, k) => x !== b[k]);
@@ -67,13 +72,18 @@ const outranks = (a, b) => {
  * `count` siege bearings among the eight compass points, pairwise at least 90 degrees apart so two waves never come from
  * one side, the best land first. A set is judged whole, never one bearing at a time: a land arc of three octants holds its
  * pair at its two ends, 45 degrees from its middle, so a pick that took the middle first would take the second bearing
- * from the sea. The set with the most land bearings wins, then the most land in all; among equals the seeded tie decides.
+ * from the sea. The set with the most land bearings wins, then the one with the most bearings whose widened sector
+ * reaches a land bearing (so a sea bearing taken when no land pair exists sits beside land, not across the water from
+ * it), then the most land in all; among equals the seeded tie decides. Returns the sectors, richest first:
+ * { bearing, halfAngle, fallback }, where `fallback` marks a bearing with no land of its own, widened to
+ * SECTOR_HALF.widened, which the spawn log records.
  */
 export function chooseBearings({ night, seed = 0, count = bearingCount(night), landScore }) {
   const rng = rngFor(seed, night);
   const ranked = Array.from({ length: 8 }, (_, k) => ({ b: (k * Math.PI) / 4, score: landScore((k * Math.PI) / 4), tie: rng() }))
     .sort((p, q) => q.score - p.score || p.tie - q.tie);
-  const value = (set) => [set.filter((c) => c.score > 0).length, set.reduce((s, c) => s + c.score, 0)];
+  const reaches = (c) => c.score > 0 || ranked.some((o) => o.score > 0 && angleApart(o.b, c.b) <= SECTOR_HALF.widened + 1e-9);
+  const value = (set) => [set.filter((c) => c.score > 0).length, set.filter(reaches).length, set.reduce((s, c) => s + c.score, 0)];
   let best = null;
   let bestValue = null;
   const visit = (from, set) => {
@@ -87,7 +97,9 @@ export function chooseBearings({ night, seed = 0, count = bearingCount(night), l
     }
   };
   visit(0, []);
-  return (best || []).map((c) => c.b);
+  return (best || []).map((c) => (c.score > 0
+    ? { bearing: c.b, halfAngle: SECTOR_HALF.land, fallback: false }
+    : { bearing: c.b, halfAngle: SECTOR_HALF.widened, fallback: true }));
 }
 
 // The night's hostiles a wave draws from, by MOB_TYPES weight: night 1's husks only, and from night 2 every hostile
@@ -103,14 +115,15 @@ function pickType(rng, night) {
 }
 
 /**
- * The siege of night `night`: its bearings and its three waves, each { index, atUnit, bearingIndex, members }, a
+ * The siege of night `night`: its sectors (chooseBearings) and its three waves, each { index, atUnit, bearingIndex,
+ * members } with `bearingIndex` into the sectors, a
  * member { type, role: 'wave' | 'captain', elite: null | 'ember' | 'captain', scale }. Wave 3 carries one captain,
  * FIRST in its list so the drain places it first: an ember husk at zone tier 1 or less, a moss brute from tier 2.
  * Ember elites ride on the first members of waves 2 and 3. `total` is every member of the night.
  */
 export function planNight({ night, zoneTier = 0, seed = 0, landScore = () => 0 }) {
   const rng = rngFor(seed, night);
-  const bearings = chooseBearings({ night, seed, landScore });
+  const sectors = chooseBearings({ night, seed, landScore });
   let elites = eliteCount(night);
   const waves = waveSizes(night).map((size, index) => {
     const members = [];
@@ -123,9 +136,9 @@ export function planNight({ night, zoneTier = 0, seed = 0, landScore = () => 0 }
       if (elite) elites -= 1;
       members.push({ type: pickType(rng, night), role: 'wave', elite, scale: 1 });
     }
-    return { index, atUnit: WAVE_UNITS[index], bearingIndex: index % bearings.length, members };
+    return { index, atUnit: WAVE_UNITS[index], bearingIndex: index % sectors.length, members };
   });
-  return { night, bearings, waves, total: waves.reduce((s, w) => s + w.members.length, 0) };
+  return { night, sectors, waves, total: waves.reduce((s, w) => s + w.members.length, 0) };
 }
 
 /** The waves of `plan` that launch as the night moves from `prevUnits` to `nowUnits`: each once, a jump launching

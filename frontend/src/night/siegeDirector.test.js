@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  WAVE_UNITS, WAVE_CAP, HUB_SLOTS, CAPTAIN_SCALE, CLEAR_BEYOND_M, STUCK,
+  WAVE_UNITS, WAVE_CAP, HUB_SLOTS, CAPTAIN_SCALE, CLEAR_BEYOND_M, STUCK, SECTOR_HALF,
   unitsIntoNight, waveSizes, eliteCount, planNight, chooseBearings, landScoreFrom, waveLaunchesBetween, hornClearance,
   marchStep, rngFor,
 } from './siegeDirector.js';
@@ -53,7 +53,7 @@ describe('the waves', () => {
 
   it('are gentle on night 1: one bearing, 2, 2 and 3, no ember elite, the captain at x1.6', () => {
     const plan = planNight({ night: 1, landScore: LAND });
-    expect(plan.bearings).toHaveLength(1);
+    expect(plan.sectors).toHaveLength(1);
     expect(plan.waves.map((w) => w.members.length)).toEqual([2, 2, 3]);
     expect(plan.waves.flatMap((w) => w.members).filter((m) => m.elite === 'ember'), 'night 1 carries an ember elite').toEqual([]);
     expect(plan.waves[2].members[0]).toMatchObject({ role: 'captain', type: 'emberhusk', scale: CAPTAIN_SCALE.firstNight });
@@ -97,32 +97,33 @@ describe('the waves', () => {
 });
 
 describe('the bearings', () => {
+  const angles = (args) => chooseBearings(args).map((sector) => sector.bearing);
   it('are two from night 3, never within 90 degrees, and the same for the same world and night', () => {
     const ok = (bs) => bs.length < 2 || Math.abs(((bs[0] - bs[1] + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) >= Math.PI / 2 - 1e-9;
     let pairs = 0;
     for (let night = 1; night <= 12; night++) {
       for (const seed of [1, 12345, 99]) {
-        const bs = chooseBearings({ night, seed, landScore: LAND });
+        const bs = angles({ night, seed, landScore: LAND });
         expect(bs.length).toBe(night >= 3 ? 2 : 1);
         expect(ok(bs), `night ${night} seed ${seed}: two bearings within 90 degrees (${bs})`).toBe(true);
-        expect(chooseBearings({ night, seed, landScore: LAND }), 'a reload chose another bearing').toEqual(bs);
+        expect(angles({ night, seed, landScore: LAND }), 'a reload chose another bearing').toEqual(bs);
         if (bs.length === 2) pairs += 1;
       }
     }
     expect(pairs).toBe(30);
-    const spread = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((night) => chooseBearings({ night, seed: 7, landScore: LAND })[0]));
+    const spread = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((night) => angles({ night, seed: 7, landScore: LAND })[0]));
     expect(spread.size, 'equal land always picks the same bearing: the tie-break is not seeded').toBeGreaterThan(2);
   });
 
   it('never come out of the sea while a land bearing exists, and prefer the most land', () => {
     const seaEast = (b) => (Math.sin(b) > 0.1 ? 0 : 3); // every bearing with an eastward part is sea
     for (let night = 1; night <= 12; night++) {
-      for (const b of chooseBearings({ night, seed: 3, landScore: seaEast })) {
+      for (const b of angles({ night, seed: 3, landScore: seaEast })) {
         expect(Math.sin(b) > 0.1, `night ${night}: a sea bearing ${b} was chosen`).toBe(false);
       }
     }
     const one = (b) => (Math.abs(b - Math.PI) < 1e-9 ? 3 : 1);
-    expect(chooseBearings({ night: 1, seed: 3, landScore: one }), 'the bearing with the most land lost').toEqual([Math.PI]);
+    expect(angles({ night: 1, seed: 3, landScore: one }), 'the bearing with the most land lost').toEqual([Math.PI]);
   });
 
   // The static review's F1 (round 2 of phase 2a): picked one at a time, the best bearing first, a land arc of three
@@ -134,7 +135,7 @@ describe('the bearings', () => {
     const sea = [];
     for (let night = 3; night <= 12; night++) {
       for (let seed = 1; seed <= 50; seed++) {
-        const degrees = chooseBearings({ night, seed, landScore: arc }).map((b) => octant(b) * 45).sort((a, b) => a - b);
+        const degrees = angles({ night, seed, landScore: arc }).map((b) => octant(b) * 45).sort((a, b) => a - b);
         if (degrees.join() !== '180,270') sea.push({ night, seed, degrees });
         cases += 1;
       }
@@ -144,7 +145,7 @@ describe('the bearings', () => {
     // The best single bearing (225, all land) loses to a weaker pair that is all land: a pair is judged whole.
     const peak = (b) => ({ 4: 1, 5: 3, 6: 1 })[octant(b)] ?? 0;
     for (const seed of [1, 2, 3, 12345]) {
-      expect(chooseBearings({ night: 5, seed, landScore: peak }).map((b) => octant(b) * 45).sort((a, b) => a - b),
+      expect(angles({ night: 5, seed, landScore: peak }).map((b) => octant(b) * 45).sort((a, b) => a - b),
         `seed ${seed}: the best single bearing took a sea one beside it`).toEqual([180, 270]);
     }
     // Two all-land pairs: 0 and 90 degrees hold 5 between them, 45 and 225 hold 4. Where the tie ranks 45 first, its
@@ -152,11 +153,40 @@ describe('the bearings', () => {
     const rich = (b) => ({ 0: 3, 1: 3, 2: 2, 5: 1 })[octant(b)] ?? 0;
     let middleFirst = 0;
     for (let seed = 1; seed <= 40; seed++) {
-      expect(chooseBearings({ night: 4, seed, landScore: rich }).map((b) => octant(b) * 45),
+      expect(angles({ night: 4, seed, landScore: rich }).map((b) => octant(b) * 45),
         `seed ${seed}: the pair with less land won, or its richer bearing (waves 1 and 3) is not first`).toEqual([0, 90]);
-      if (octant(chooseBearings({ night: 4, seed, count: 1, landScore: rich })[0]) === 1) middleFirst += 1;
+      if (octant(angles({ night: 4, seed, count: 1, landScore: rich })[0]) === 1) middleFirst += 1;
     }
     expect(middleFirst, 'SETUP: no seed ranks 45 degrees before 0, so the sum is never what decides').toBeGreaterThan(0);
+  });
+
+  // The plan's sea rule (encounters-siege plan, Review Focus 2): waves come from land, or from a widened sector, logged.
+  it('widen a bearing with no land to PI/3 and flag it for the spawn log, only when no land pair 90 degrees apart exists', () => {
+    const octant = (b) => ((Math.round(b / (Math.PI / 4)) % 8) + 8) % 8;
+    const apart = (a, b) => Math.abs(((a - b + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+    expect(SECTOR_HALF).toEqual({ land: Math.PI / 6, widened: Math.PI / 3 });
+    const pairless = (b) => ([4, 5].includes(octant(b)) ? 3 : 0); // land at 180 and 225 only, 45 degrees apart
+    let cases = 0;
+    for (let night = 3; night <= 12; night++) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const [land, sea] = chooseBearings({ night, seed, landScore: pairless });
+        expect([land.fallback, land.halfAngle], `night ${night} seed ${seed}: the land bearing was widened`).toEqual([false, SECTOR_HALF.land]);
+        expect([sea.fallback, sea.halfAngle], `night ${night} seed ${seed}: the sea bearing was not widened and flagged`).toEqual([true, SECTOR_HALF.widened]);
+        expect([4, 5].some((k) => apart(sea.bearing, (k * Math.PI) / 4) <= SECTOR_HALF.widened),
+          `night ${night} seed ${seed}: the widened sector at ${octant(sea.bearing) * 45} degrees reaches no land`).toBe(true);
+        cases += 1;
+      }
+    }
+    expect(cases).toBe(200);
+    for (let night = 1; night <= 12; night++) {
+      for (const [name, landScore] of [['full', LAND], ['one probe of three', () => 1]]) {
+        expect(chooseBearings({ night, seed: 5, landScore }).filter((s) => s.fallback || s.halfAngle !== SECTOR_HALF.land),
+          `night ${night}: a sector was widened with land (${name}) on every bearing`).toEqual([]);
+      }
+    }
+    expect(chooseBearings({ night: 4, seed: 5, landScore: () => 0 }).map((s) => [s.fallback, s.halfAngle]), 'an all-sea ring was not widened')
+      .toEqual([[true, SECTOR_HALF.widened], [true, SECTOR_HALF.widened]]);
+    expect(planNight({ night: 4, seed: 9, landScore: pairless }).sectors.map((s) => s.fallback), 'the plan dropped the flag').toEqual([false, true]);
   });
 
   it('score a bearing by three probes from the anchor, 32 to 48 m out, above the sea', () => {
