@@ -17,7 +17,9 @@ import RAPIER from '@dimforge/rapier3d-compat';
  * button make.
  *
  * PRESENCE: without C the same click opens the chest. BLIND SPOT: the real mouse pair, the real ray and the worker's
- * placement are the e2e's (tests/e2e/build-placement.spec.js, "hold C with a right click").
+ * placement are the e2e's (tests/e2e/build-placement.spec.js, "hold C with a right click"). The held-C escapes are
+ * driven as the event sequence a Mac delivers (no C keyup under Cmd); that a given browser delivers exactly that is a
+ * device fact, cited, not measured here.
  */
 
 const h = vi.hoisted(() => ({ frame: null, camera: null, body: null, world: null }));
@@ -107,5 +109,51 @@ describe('held C through the real Player', () => {
     key('keyup', 'KeyC');
     expect(getInput().forcePlace, 'the window\'s C keyup did not clear forcePlace').toBe(false);
     expect(click(), 'after C was let go the click still placed').toBe('interact');
+  });
+
+  // On macOS a key let go while Cmd is down sends no keyup (Mozilla bug 1299553; Chromium issue 40880986), so a C held
+  // into Cmd+C, or pressed as Cmd+C, would hold forcePlace until C was pressed again. Each way out is driven here,
+  // each from a held C the same events show set.
+  it('C cannot stay held: Cmd+C and Ctrl+C set nothing, and the Cmd keyup, a C keyup with a modifier, a blur and a hidden tab each let go', () => {
+    render(<Player isWorldBuilt />);
+    for (let i = 0; i < 10; i++) frame();
+    setActive(true);
+    const ev = (type, code, mods = {}) => window.dispatchEvent(new KeyboardEvent(type, { code, bubbles: true, ...mods }));
+    const holdC = (how) => {
+      ev('keydown', 'KeyC');
+      expect(getInput().forcePlace, `SETUP (${how}): a plain C keydown did not set forcePlace`).toBe(true);
+    };
+
+    ev('keydown', 'MetaLeft', { metaKey: true });
+    ev('keydown', 'KeyC', { metaKey: true });
+    expect(getInput().forcePlace, 'Cmd+C (copy) set forcePlace, and its C keyup never comes on macOS').toBe(false);
+    ev('keyup', 'MetaLeft');
+    ev('keydown', 'KeyC', { ctrlKey: true });
+    expect(getInput().forcePlace, 'Ctrl+C (copy) set forcePlace').toBe(false);
+    ev('keyup', 'KeyC', { ctrlKey: true });
+
+    holdC('Cmd pressed while C is held');
+    ev('keydown', 'MetaLeft', { metaKey: true });
+    ev('keyup', 'MetaLeft');
+    expect(getInput().forcePlace, 'C let go under Cmd (no C keyup on macOS) stayed held after the Cmd keyup').toBe(false);
+
+    holdC('a C keyup with a modifier');
+    ev('keyup', 'KeyC', { metaKey: true, shiftKey: true });
+    expect(getInput().forcePlace, 'a C keyup carrying a modifier did not let go').toBe(false);
+
+    holdC('a window blur');
+    window.dispatchEvent(new Event('blur'));
+    expect(getInput().forcePlace, 'a window blur did not let go of C').toBe(false);
+
+    holdC('a hidden tab');
+    const vis = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    try {
+      document.dispatchEvent(new Event('visibilitychange'));
+    } finally {
+      if (vis) Object.defineProperty(document, 'visibilityState', vis);
+      else delete document.visibilityState;
+    }
+    expect(getInput().forcePlace, 'a hidden tab did not let go of C').toBe(false);
   });
 });
