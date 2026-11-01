@@ -9,8 +9,57 @@ Before 2026-10-28 lanes did not land through pull requests: the merges into main
 commits of July to October are in `git log`, and the hand-written history to 2026-10-29 is
 `git show records/2026-10-29:memory/CHANGELOG.md`.
 
+## 2026-11-01
+
+- feat(w3a): the First Night, phase 2a: room in index, the store, bus and night-chunk seams, the lights and the siege director, pure (W3-A PR C) (#83, 39786876)
+- Lane L13 part 2: a save in a dug column, the world's floor, rock reached sideways, the waits to the frame, and the gate holes beside them (#82, e0dd84d4)
+- feat(w3a): the First Night, phase 1: room in index, the eight beats red first, harness profiles (W3-A PR C) (#81, 229722e6)
+- origin/main (3a2c1534: the Command Record's refresh 16, the ultrareview tab re-checks, DECISIONS item 469) into lane W3-A PR C (267e29fd)
+- origin/main (84a04099: W3-A PR B landed, DECISIONS items 440-458) into lane W3-A PR C (a7ec7ed4)
+- fix(w3a): six small fixes beside the First Night (W3-A PR B) (#80, 84a04099)
+- origin/main (cf815ac4: W3-A PR A, lanes L13 and start-stall, the ultrareview records) into lane W3-A PR C (6a8f4189)
+- feat(w3a): one feedback grammar: danger at the edge, contact on the lit band, magic as a solid core (W3-A PR A) (#79, e5e1f745)
+- fix(physics): lane L13, the stuck-in-solid remainder: a wall is not ground, rays see just-placed cells, a dug spawn corner does not loop, a sunk capsule is stood clear, the resume hold is time (#77, 3442443d)
+- fix(app): a Start clicked before the world is built: the stall named, the world-building screen a still caption (#76, dae1afb4)
+- fix(registry): S6 accepts a sha main added while a merge of main is unfinished (#75, eff58e9a)
+
+## 2026-10-31
+
+- origin/main (d76c342c: the command record brought up to 5510db64) into the S6 lane (bc63eeeb)
+- Registry v2: one list of open work, cleaned and kept clean (schema, lanes as rows, closed is final, S0-S11 and R1-R4) (#74, 5510db64)
+- origin/main (bd06dacf: lane L12, instruments that can see, DECISIONS items 310-317 and 350-364) into registry v2 (44e95ce6)
+- L12: instruments that can see (isolated failures reported, 8 shards' reach merged with a must-reach set, ratchets for capture guards, history comments and dead setters) (#71, bd06dacf)
+- origin/main (341531d1: lane L8, the save slot lifecycle) into registry v2 (ceec3b6c)
+- L8: the save slot lifecycle (a refresh is no heal, a hidden tab writes nothing, a failed save says so, empty worlds pruned, a deleted world stays deleted) (#73, 341531d1)
+- L10: Apple audio recovers after iOS stops it, and the soundtrack plays and mutes through Web Audio (#70, 61696120)
+- origin/main (a150a93a: lane L7, credit from the effect, DECISIONS items 320-336) into lane L10 (5435b2ed)
+- L7: credit from the effect, not the click (mine credit, debris, chest identity, dragon craters, potions, XP tokens, stale strikes) (#72, a150a93a)
+- origin/main (f20ddb68: the Command Record refreshed as of 7250aa22) into lane L10 (f0c027e6)
+- origin/main (7250aa22: lane L3, the store owns per-world state, DECISIONS items 290-296) into lane L10 (74b9902e)
+- L3: the store owns per-world state (dragon fight, quest log, squad, shrines), and a save the resume wiped gets its slain dragon back (#69, 7250aa22)
+- L6: build tools that do what they say (#68, a05bf328)
+- origin/main (86f6b5dc: the Command Record's glance and terse record) into lane L6 (4be3e177)
+- origin/main (feb456e3: lane L9 and the Command Record's eli5 page) into lane L6 (56481041)
+- L9: pools with lifetimes: the chest board follows the player, pickups have a lifetime and a bound, zones evict the soonest expiry (#67, 971f0ef2)
+- origin/main (8579918e: lane L2, every world switch is a boot, and its round 2) into lane L6 (9f277902)
+- L2: every world switch is a boot, and the title continues the player's world (#65, 8579918e)
+- fix(void, spawn): the void line is the world's floor, one way back to the spawn, and the spawn waits in seconds (lane L4) (#66, 0670a825)
+- origin/main (64b621b1: lane L11 and its rounds, the Command Record's version 11) into fix/l4-void-line (5c31714e)
+- origin/main (449ce3ea: lane L5 and its round 2) into fix/l4-void-line (7fcee633)
+- L11 one fact, one predicate: sea line, landmark, sight line, kill tier, cooldown, move basis (#64, f87f2324)
+- fix(input): one predicate for input is live (lane L5) (#63, 449ce3ea)
+
 ## 2026-10-30
 
+- Chaos-play gate: the player can always leave; four traps it found, fixed (#61, 5f00f246)
+- origin/main (1a3910e7: lane L1 and the deep audit) into feat/chaos-play-gate (54e5bd51)
+- L1 quick wins: iOS death crash, touch Show Stats, juice dial, canvas-only lock, touch Settings gear (#62, 1a3910e7)
+- docs(command-record): version 10 published in place, stamped and synced as of c6571e11 (b48ec9f1)
+- W2-L: m under one strict LazyMotion provider, index -47,557 B (#60, c6571e11)
+- Fix the invisible box: a right-click never fills the player's own body (#59, 62159bc1)
+- W3-B dragon, PR A: the dragon is a lazy chunk, and a lookbook place (#56, b8d8fdcd)
+- W2-G platform first steps: one event bus, a world seed, the DEV bridge out of App, autosave from PERSISTED_KEYS, production knip (#57, 676ca366)
+- docs(close): the cursor's new tasks take T19-T21 (T16 and T18 name closed rows) and each has a registry row (4a01607b)
 - W2-D PR A: the HUD at rest, the compass, one notification channel, no mob mirror (#53, 80238889)
 - W2-J phase 3: closed records behind a records tag, a generated CHANGELOG, a decluttered root (#55, 5d301533)
 
