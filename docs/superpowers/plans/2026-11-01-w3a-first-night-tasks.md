@@ -65,13 +65,19 @@ First-minute D11, pulled forward. `tests/e2e/_fixtures.js` seeds a returning pro
 
 **Red first.** `lastNightfall` stays null through a night-save load, `setTimeOfDay(0.75)` and a direct `nightCount` write, and a 1-unit tick across the boundary sets it. A frozen world holds `lastHurtAt`. The lantern index survives place, mine and load (a mutant that skips the rebuild on load goes red). `siege`, `dawnRush` and `hearthFlame` are absent from the saved keys. The marker check is red until the stub exists. **Check:** unit, plus `the-cut.spec.js` and `save-load.spec.js` in CI. **Index:** at most 900 B.
 
+**As built (phase 2a, DECISIONS 2026-11-01 (W3-A PR C) items 496-498).** The chunk's root is `src/night/night.js`, not `index.js`: a lazy `index.js` names its chunk `index-<hash>.js`, which the bundle budget cannot tell from the boot chunk. `installNight()` there merges the night's strings and registers its voices, from two tables that are empty until D2, R1, D3 and S1 fill them. `mergeStrings` lives in `night/nightStrings.js`, in the night chunk (its only caller). There is no `hearthFlame` setter until H1 calls one, because `store-setters-called` bars a setter nothing uses. U1 measured +1,803 B against this share, so the next room comes before N5's index units (item 498). **For R1:** its landing probe (`tests/e2e/_firstNightAwaits.js` `LANDED.R1`) reads `STRINGS.en` from a static `i18n/strings.js`, but R1's line will live in `night/night.js`'s table, which is merged at run time, so R1 moves that probe when it lands.
+
 ## L1. Lights, pure
 
 `game/lights.js`: `litLights(state)` (the Hearth when lit with its flame above 0, the lanterns, and a `shrines` input W3-B fills from `litShrines`), `isWarded(x, z, lights, R = 16)`, `nearestLit(x, z, lights)`, `objectiveFor(player, lights, 32)`. Red first: 15.9 m is warded and 16.1 m is not; two lights ward their union; an unlit or doused Hearth wards nothing; with no lights, the objective is the player. Mutant: compare against `R`, not `R*R`. **Index:** 0.3 KB.
 
+**As built (item 499).** No game code imports it yet, so `.knip.json` leaves it out of production knip's project. The first of D2, N2 and N8 to import it deletes that line, and `tests/scripts/knip-production-exclusions.test.js` fails until it does. The Hearth's position is `world/homeAnchor.js` `HEARTH_BRAZIER`; D2 points Terrain's brazier group at it and drops its `@internal`.
+
 ## N4. The siege director, pure
 
 `night/siegeDirector.js` (Move C): waves at 0, 180 and 380 of the night's 600 units; size `min(10, base[k] + floor(n*growth[k]))`, night 1 fixed at [2, 2, 3] with its captain at 1.6x; eight land-scored bearings, none within 90 degrees of another, seeded by `nightCount` so a reload picks the same one (score the generator's height if the main thread can reach it; otherwise score streamed chunks and record that a reload may move the bearing); horn clearance by dissolve; the captain first in wave 3's queue; a mob stuck under 1.5 m in 6 s sidesteps, then hunts. Red first: a cumulative test seeded with a carried population at the 480 s day (`dayNight.js:24`) places every member within the cap for n = 1..12, z = 0..4 (a no-clearance mutant starves n = 1); a level-2 beast's swings over 14 s kill the night-1 captain with 4 s or more to spare (pure, from `solveMeleeDamage`, `resolveFormMelee` and the swing cadence), or night 1's captain scale comes down. **Index:** 0.
+
+**As built (item 520).** `src/night/siegeDirector.js`. The main thread can reach the generator's height (`world/climate.js` `surfaceBlockAt`), so `landScoreFrom` scores the generated world and a reload keeps the bearing. Wave members are drawn by `MOB_TYPES` weight until N1's table replaces that pick. N5 imports the module and deletes its `.knip.json` production exclusion in the same commit (item 499's check fails until it does).
 
 ## N5. The siege runs, marches and is heard
 
