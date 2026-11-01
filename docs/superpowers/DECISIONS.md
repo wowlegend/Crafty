@@ -286,6 +286,66 @@ code changed. Items 460 to 468.
 
 ---
 
+## 2026-11-01 (ultrareview tab re-checks) — [LOOP] the interactive review tabs re-checked the delivered findings with their own model: what they added, the one finding the two verdicts split on, and where it is kept
+
+Records and archive only: no code changed. It follows items 460 to 468, which filed the cloud's deliveries. Item 469.
+
+469. **The tabs' re-checks.** After each cloud run delivered its 10 findings, the interactive review tab that launched
+   it (4-ui, 5-render, 6-audio-scene-rest) re-checked the same 10 itself, with the session's own model (Opus at xhigh),
+   against `dae1afb4` and changed nothing in its repository. The re-checks are archived in
+   `docs/superpowers/audits/2026-11-01-ultrareview/` with the three findings files and a README (the cloud session ids,
+   what each file is, and that the scratch originals get reaped; two machine paths in the re-checks are rewritten so the
+   public repo carries no home path). The tabs' tables are in their own order, not the cloud's, for 5-render and
+   6-audio-scene-rest; the README says to match by file and line.
+
+   What each tab found. 4-ui: all 10 hold; one correction (below); read and computed, not run on a device. 5-render: all
+   10 mechanisms hold in the code, 2 matter in play and 8 are nits; nothing was run. 6-audio-scene-rest: all 10 hold,
+   none refuted, 3 narrowed (the wind bed's loudness, the place sound's occlusion, the game-loop rule), and 1 new bug;
+   it also ran what the verifiers could not, Chromium 156 for the gain ramps and three's real shadow matrix for the
+   frustum.
+
+   What the tabs added here:
+   - **One new row for the new bug,** `AUDIT:ultra-1101:6-audio-scene-rest-tab-1`: the wind bed's gain at
+     `SoundManager.jsx:235` keeps the volume from when the pad started, and the volume effect updates only the pad's own
+     gain. The tab did not reproduce it with a probe, and nor did this entry. Read at `267110a4`, the step callback does
+     close over that render's volume, but no shipped UI calls `setVolume` (its only caller is
+     `event-sound-gates.test.jsx:112`), so nothing is audible today: filed as LOW debt, not a bug, by item 462's rule for
+     harm NONE, in LANE:backlog beside the other bed rows (the plan gives LANE:W2-M the sample bank and the night's voices,
+     not the beds).
+   - **Corrections appended to eight rows,** one line each, dated and sourced: `4-ui-1` (the cloud's "no hover ever
+     shows on touch" is too strong: Tailwind is `^3.2.7` with no `hoverOnlyWhenSupported`, so touch depends on the
+     device and stays Kevin's; a keyboard player is blocked either way), `5-render-4` (the lookbook never enters
+     capture, which the row already said; the line adds that specs and gates still do), `5-render-5` (a design gap: the
+     spec scales phase damage only), `6-audio-scene-rest-1` (narrowed: the peak is about -52 dBFS, and reusing stormBed's
+     flat buffer would be 33 dB louder RMS), `-2` (confirmed in Chromium 156; WebKit still unrun), `-3` (confirmed with
+     three's real matrix; `snapShadowCentre` snaps only x and z, and capture pins the high tier, so the fix needs a
+     low-tier check), `-5` (narrowed: the rule breaks are real, the `setProjectiles` consequence is unmeasured) and `-9`
+     (`startSynthPad` also owns the wind bed, so an early return would kill the bed). Nothing was appended to
+     `5-render-2`: the tab's "wider" finding, `EnemyProjectileSystem.jsx:48`, is already in the row from W3-A PR B's
+     round-2 review, and the tab's cause (`useGameStore.jsx:1033` keeps the old angle) described `dae1afb4`, before item
+     448 made an unsourced hit stamp a null angle, which the row already says.
+   - **The disagreement, filed.** 6-audio-scene-rest finding 6 (a placed block muffles its own sound): our repro verifier
+     REFUTED it (item 462: every line-level claim is true, but the place sound never reaches the spatial path in
+     GameScene's mount order, so nothing is heard; no row was filed). The tab NARROWED it with a model on the real Rapier
+     engine and the same march: 5 walls in 31% of 20,000 modelled top-face placements, 3 or more hits (350 Hz) in 55%,
+     none in 16%, the voice lasting 0.1 s. The two measure different things (whether the sound reaches the march, and how
+     muffled it is when it does), and the tab's summary reports no reachability check, so both may hold; the tab's
+     numbers are a model of placements, not the game. Filed as `AUDIT:ultra-1101:6-audio-scene-rest-6` (bug, LOW,
+     LANE:backlog) with both verdicts in its evidence and note; its acceptance is the tie-break, a probe in the real
+     mount order that either closes it false-positive or shows the muffle. Item 462's "has no row" is superseded here;
+     its counts were true when written and are not rewritten.
+   - **Two ranking differences, left as the rows have them.** The 4-ui tab would fix 4-ui-1, 4-ui-3 and 4-ui-4 first,
+     because the heartbeat under the death screen plays on every death; 4-ui-4 stays LOW by the harm call of item 462 and
+     the lane owner may re-rank it. The 5-render tab kept finding 2 at `normal` for misdirecting the player in combat;
+     the row stays LOW.
+   - **The cap question is unchanged.** The 5-render tab could not tell whether the 25 verified reports sit inside the
+     10 delivered, which fits item 461's count caveat and does not answer `AUDIT:ultra-1101:cap-question` (Kevin's).
+
+   Rows: 2 added, 8 notes appended, 0 closed. Gates: registry-harvest, registry-dedupe, registry-append-only over
+   `origin/main..HEAD`, doc-currency, opsec-scan and lint, run on the branch before the push.
+
+---
+
 ## 2026-11-01 (W3-A PR A) — [LOOP] one feedback grammar: danger at the edge, contact on the lit band, magic as a solid core
 
 The W3-A task script's PR A (F0-F5), a re-cut at `eff58e9a` of the feedback-grammar plan
