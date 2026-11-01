@@ -26,16 +26,20 @@ asked whether S6 should read MERGE_HEAD. This amends item 364 (registry v2), who
 ancestor of HEAD".
 
 369. **S6 counts a sha main added while a merge of main is unfinished, and nothing wider.** The way `CLAUDE.md`
-   "Landing" takes main into a lane is a merge commit, and its pre-commit hook runs `registry-harvest.test.js` on the
-   staged registry while HEAD is still the lane's own tip. S6 read `git rev-list HEAD`, so every `closedBy` sha main had
-   added read "not an ancestor of HEAD" (18 of 37 tests red on that lane, `49f36423` among them) and the only way
-   through was `--no-verify`, a bright line: no lane could take main in. `liveReferences` now reads one `git rev-list
-   HEAD MERGE_HEAD` when `git rev-parse -q --verify MERGE_HEAD` resolves, so a sha counts when HEAD reaches it or the
-   commit being merged does. It is not "any sha that exists": a sha on a branch the merge does not take in, a sha on no
-   branch, and every sha after `git merge --abort` are still refused, and once the merge commits HEAD itself reaches the
-   main-only shas. Its message names MERGE_HEAD when one was looked at. A squash merge writes no MERGE_HEAD and an
-   octopus merge reads only its first merged commit (both checked in a scratch repo); neither is how this repo takes
-   main in. S6 still proves ancestry, not that a sha fixed its row.
+   "Landing" takes main into a lane is a merge commit. A merge that stops, on a conflict or with `--no-commit`, is
+   finished with `git commit`, and that commit's pre-commit hook runs the unit tests that import a staged file, among
+   them `registry-harvest.test.js` when a staged `frontend/` file is one it imports. Those tests read the registry in
+   the working tree while HEAD is still the lane's own tip. S6 read `git rev-list HEAD`, so every `closedBy` sha main
+   had added read "not an ancestor of HEAD" (18 of 37 tests red on that lane, `49f36423` among them) and the only way
+   through was `--no-verify`, a bright line: no lane could take main in that way. `liveReferences` now reads one
+   `git rev-list HEAD MERGE_HEAD` when the merge-state file exists (`git rev-parse --git-path MERGE_HEAD`, the test
+   `changelog.mjs` uses) and `git rev-parse -q --verify MERGE_HEAD` then resolves, so a sha counts when HEAD reaches it
+   or the commit being merged does. It is not "any sha that exists": a sha on a branch the merge does not take in, a sha
+   on no branch, and every sha after `git merge --abort` are still refused, and once the merge commits HEAD itself
+   reaches the main-only shas. A branch or tag that is merely named `MERGE_HEAD` gives no allowance: the name lookup
+   would resolve it, so the file is read first. Its message names MERGE_HEAD when one was looked at. A squash merge
+   writes no MERGE_HEAD and an octopus merge reads only its first merged commit (both checked in a scratch repo);
+   neither is how this repo takes main in. S6 still proves ancestry, not that a sha fixed its row.
    *Proof.* `tests/scripts/registry-harvest.test.js` builds throwaway repositories where `mainOnly` (on main, not the
    lane) and `stray` (on a third branch nothing merges) are known by construction: before a merge, mid-merge, after
    `--abort`, after the merge commit, and in a linked worktree. Against 5510db64's rule 3 of the 5 cases are red (the
@@ -43,15 +47,30 @@ ancestor of HEAD".
    run through `scripts/dev/mutate.sh`: dropping the MERGE_HEAD root, `rev-list --all` (any branch), `--all` only while
    merging, "the object exists" (`cat-file`), and reading `ORIG_HEAD` are each red; the S6 message without its
    MERGE_HEAD wording is red in `registry-clauses.test.js`; a comment-only edit stays green. *Lived.* In a temp clone, a
-   lane cut from `bd06dacf` with one commit that touches no registry row took in 5510db64 with the hook active: the
-   commit was blocked, 18 of 320 related tests red, S6 naming `closedBy ea8612e7`. The same lane took in this fix's head
-   `eec9818b` and the commit went through (326 related tests passed, merge `3573d5e1`, `49f36423` an ancestor of HEAD
-   after and of the lane's tip before it no).
+   lane cut from `bd06dacf` with one commit that touches no registry row took in 5510db64 (`git merge --no-commit`, then
+   `git commit`, so the pre-commit hook ran): the commit was blocked, 18 of 320 related tests red, S6 naming `closedBy
+   ea8612e7`. The same lane took in this fix's head `eec9818b` the same way and the commit went through (326 related
+   tests passed, merge `3573d5e1`, `49f36423` an ancestor of HEAD after and of the lane's tip before it no).
+   *Corrected the same day, from the static check.* The first text of this item said a merge commit's pre-commit hook
+   runs on every merge, and that it ran on "the staged registry". githooks(5) says otherwise, and a scratch repo with
+   git 2.55 shows it: a clean `git merge` commits with no pre-commit hook (it runs `pre-merge-commit`, and this repo
+   installs none; `commit-msg` does run), and a merge that stops runs pre-commit when `git commit` finishes it. The
+   hook's tests read the working tree, not the index, and the commit tier selects them by the staged `frontend/` files
+   they import (`related-tests.mjs`). So the allowance matters for a merge that stops, and a clean merge meets S6 first
+   in CI. The same check found that `rev-parse MERGE_HEAD` resolves a branch or tag of that name when no merge is in
+   progress (measured: both can be created and both resolve), which let a sha reachable only from one pass S6 outside a
+   merge; the rule now reads the merge-state file first. Proof for that: a branch and a tag named `MERGE_HEAD` with no
+   merge, and a `closedBy` sha reachable only from them, fail S6 (red on the previous rule: the sha passed); a branch
+   named `MERGE_HEAD` during a real merge does not displace the file. Mutants through `scripts/dev/mutate.sh`: the
+   name lookup alone (the previous rule), the file read at `root/.git/MERGE_HEAD`, the `--git-path` result left
+   unresolved against `root`, and a ref-exists test beside the file test are each red; a comment-only edit stays green.
    *What this does not do.* A lane takes in a main that HOLDS this fix: main at 5510db64 or earlier still fails the
    hook for a lane cut before the registry v2 landing, because the merged tree carries main's old harvest. And the
-   merge meets a second hook: when it brings in gate changes, `commit-msg` wants a `Mutation-Proof:` line, which every
-   earlier merge carries ("the gates this merge brings in are main's, proven where they landed"); the demonstration
-   needed it and `.claude/rules/registry.md` ("Merging main into a lane") now says so. That hook is unchanged.
+   merge meets a second hook: when it brings in gate changes, `commit-msg` wants a `Mutation-Proof:` line (it runs on a
+   clean merge too), which every earlier merge carries ("the gates this merge brings in are main's, proven where they
+   landed"); the demonstration needed it and `.claude/rules/registry.md` ("Merging main into a lane") now says so. That
+   hook is unchanged. Nor does it add a local S6 check to a clean merge: that would need a `pre-merge-commit` hook, which
+   this repo does not install.
 
 ---
 
