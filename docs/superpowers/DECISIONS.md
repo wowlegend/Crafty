@@ -67,6 +67,320 @@ Branch `feat/w3a-feedback-grammar`. Each call below was checked against the code
    deleted layers and duplicated material props), F5 +624: 647,473 B, 284 B under main, against the task script's
    400 B allowance. The ceiling (652,500 B) is unchanged.
 
+---
+
+## 2026-10-31 (lane start-stall) — [LOOP] a Start clicked before the world is built: the stall named, the world-building screen a still caption, and the touch-tap flake's cause
+
+Registry `REVIEW:l10:music-e2e-title-hang` (MED): on CI's software renderer a title Start clicked before the spawn chunk
+was built stopped the page answering, and two Chromium processes grew to the runner's 16 GB (item 306). This lane found
+what grows, where, and the one thing the stall needs on the page's side. Branch `fix/start-before-built-stall` from
+`bd06dacf`, main merged at `5510db64` (registry v2). Every CI run below is a throwaway `probe/start-stall-*` ref (deleted
+after), each with one change named in its commit; the local runs used the production build (`vite preview`) and the dev
+server, one browser at a time from 21:00Z, on ports 4291 and 4292.
+
+370. **What grows, and why.** Under the browser's own pointer lock (granted on the trusted Start click), Chrome's headless
+   shell on Linux streams raw pointer updates with no input at all: 79 to 284 by the first read after the click, and where
+   the page kept up it counted 2,000 to 9,400 a second (`pointerrawupdate`, runs 41245341682, 41247342006, 41248629909;
+   what a page counts is what it dispatched, so a stalled page counts fewer). While App's loading screen covered the
+   canvas in play (`bg-black/90`, `backdrop-blur-sm`, a spinning ring, a pulsing line), the page could not drain them: it
+   stopped answering, the renderer and the browser process grew together at 10 to 44 MB/s each, and the GPU process
+   stayed flat at about 0.35 GB (runs 41243964839, 41244013585, 41244702994, 41245341682, 41246539717). Of 64 pause
+   samples of the stalled main thread (`Debugger.pause`, runs 41244702994 to 41246663123), 38 landed in input listeners
+   (React's continuous-event dispatch among them), 14 in an R3F root's unmount (the title's canvas is the one that unmounts
+   at Start) and 9 in the nametags' troika text warm-up. With the lock granted in the page instead of by the browser (no
+   flood), 4 of 4 attempts kept answering with the browser flat (run 41245341682). With the chunk meshes held back 45 s
+   after the lock, no chunk delivered, the stall came 8 of 8 times (runs 41246642496, 41246663123): it needs play entered
+   with the world unbuilt, not the build's work. Under that hold the browser grew 757 to 1,859 MB in 75 s with the
+   screen as it was (8 of 8, runs 41246642496, 41246663123), and 88 to 455 MB with it hidden or restyled to a still
+   caption at the foot of the screen (7 of 7, runs 41247342006, 41248629909). Removing only the blur, or only the two
+   animations, or only its pointer events, was not enough (1 of 2 stalled; 2 of 2 grew it 0.5 to 0.9 GB; 2 of 2 grew it
+   1.2 to 1.6 GB). Why compositing a layer
+   over the live canvas starves the input drain is not measured: two traces of it were lost (run 41242773722 past V8's
+   string limit, run 41248095937 to a tracing end slower than its 90 s wait).
+
+371. **The fix: the world-building screen is a still caption at the foot of the screen** (`src/App.jsx`, `ac6409ed`). Its
+   two lines of text, unchanged, sit there with no background, no blur, no spinner, no pulse and no pointer events, and
+   nothing covers the canvas. Its text shadow did not make it legible over the unbuilt world's bright fog (1.03:1 for the
+   subtitle, measured on the frame), so it now takes the ink outline of type drawn on the world (item 380). Under the title it is covered, as
+   before; a Start clicked before the world is built now shows the world streaming in behind the caption instead of a black
+   screen, a look change to the loading moment, shot on the real GPU of item 372 (the before and after pair is item 380's).
+   A first fix, `7179f88f`, kept the full-screen layer opaque and still. An earlier form of
+   `tests/e2e/start-before-built.spec.js` (a 600 MB bound over 75 s and a check that the world builds by 135 s, both
+   restored by item 378) failed it 2 of 6 times (runs 41249827128, 41250492755: the browser +659 MB once, the world unbuilt
+   135 s after the click once), against 4 of 4 for the caption there; at n=6 against 4 the two shapes' growth ranges
+   overlap (186 to 659 MB, 88 to 545 MB), so the choice rests on the failures, not on separated ranges. Pacing the canvas at
+   10 fps under it made it worse (1 of 1, +2.4 GB). The caption is not a full cure: under the same flood its page still
+   stalled and grew in 1 of 20 attempts (run 41254347251: the browser +978 MB, all its processes +3.5 GB, 1 read of 6
+   answered), and fell behind for the whole window with the browser bounded in 1 more (run 41253190798); counted by the
+   reworked spec's arms, which also fail a page that stops answering or a world that does not build, the residual is
+   item 378's. Why a page in play before the world is built drains worse than one after it is not measured
+   (`REVIEW:start-stall:caption-page-still-stalls`, item 376). `tests/gates/static-gates.test.js`
+   no longer exempts `App.jsx` from the design language's backdrop-blur ban, so a blur back on that screen reds it (S1 RED
+   on the Tailwind class and the CSS property, the identity edit survived); a blur written as React's inline
+   `backdropFilter` passed it until item 379.
+
+372. **On one Mac's real GPU nothing stalled.** On Kevin's Mac (Apple M3 Max, ANGLE Metal, full Chromium in new headless mode, the
+   production build), a Start clicked 1.6 s and 7.6 s after the title showed, before the world was built, held 60 fps and
+   1.3 to 1.7 GB flat over 90 s with the old screen (the lock granted in the page); with the browser's own lock, granted
+   there, the page received one raw pointer update in 35 s and stayed flat; and the caption, under the browser's lock with
+   the world held 8 s, received one raw pointer update, held 60 fps and 1.3 GB flat and built the world when the hold
+   ended. The flood is the Linux headless shell's, under its own lock; on that Mac a mouse at rest sent nothing. What
+   this measured is one machine (an M3 Max), one browser (Chromium in new headless mode) and a still mouse, 3 runs: there
+   the page met neither the flood nor the stall. It did not measure a mouse moving during the build (a 1,000 to 8,000 Hz
+   mouse streams input at the order of CI's flood, 2,000 to 9,400 a second), Windows or Linux, or a slow GPU, so whether a
+   player can meet the stall is not established; and the M3 Max heat in Kevin's original report is not explained by
+   this. Nor is the growth bounded for a player: item 371's caption cut the stall under the held world from 8 of 8 to about
+   1 in 20, and the gate's 4 GB brake (item 374) stops a test runner, not the product. The green run on `debfdfc2` itself
+   grew all of the page's Chromium processes by 2,175 MB (run 41263751030), and no run of a Start clicked after the world
+   is built gives the baseline that would say whether that is normal.
+
+373. **Ruled out, each by its own run.** The music route (item 306). The debris pool before `83c5abd3` (all 200 bodies
+   awake at one point under the world): main has the fix and still stalled, and main with the old pool copied in by a CI
+   step stalled alike (run 41244181568). The canvas pace: `5a9158d4` paced a world being built at the title's 10 fps with
+   no governor, and the stall came 5 of 5 (run 41246539717) and 4 of 4 under the hold (run 41246663123); reverted in
+   `38ec3f9c`, its gates with it. Local runs never reproduced: macOS's headless shell grants no lock, and the full
+   Chromium's lock streams no flood; CPU throttling (6x, CDP) and the old code (`f0c027e6`, item 306's control) were flat
+   there too.
+
+374. **The gate: `tests/e2e/start-before-built.spec.js`.** The title's Start clicked with a trusted mouse click at its box
+   (no actionability wait), the lock the browser's own on a trusted gesture (L10's probe form), and the chunk meshes
+   held 45 s after the lock, so play is entered with the world unbuilt on any machine (it sets what it reads,
+   gate-authoring class 12). This is the spec as `e8b1acf7` committed it; item 378 reworks it. Over 90 s from the lock it
+   reads the page every 2 s (4 s bound) and the browser process's RSS from `ps`; it fails when the browser grows more
+   than 700 MB (the throwaway probe branches had committed 600 MB over a 75 s window, then 900 and 700; item 378 restores
+   600) or all of the page's Chromium processes together more
+   than 4 GB (a brake: the drained runs' renderer rose 1 to 1.5 GB), stopping the moment either does and crashing the
+   renderer through CDP first so a runner is not run out of memory with its log (L10's runs ended so, and so did this
+   lane's E1 twice, runs 41253190798 and 41253785118, before the brake), or when the page never answers. The bound sits
+   between the caption's 88 to 545 MB (16 attempts, most flat by 75 s) and the old screen's 757 to 1,859 MB by 75 s (8
+   of 8, still growing). Every verdict waits for the window or the bound, so a stalled page fails rather than skips (a
+   SETUP read at the lock raced the lock's own event and scored the stalled page COULD NOT CHECK, run 41249479316; the
+   hold's precondition is a count kept in the page, read on any answer). A browser that grants no lock, or a page that
+   answered 90% of its reads and counted under 100 raw updates, skips as INCONCLUSIVE with the reason printed (the shape
+   `tier-downgrade-reclaim.spec.js` uses; item 372's Mac counted 1 in 35 s). The answers and whether the world built are
+   printed, not judged: under the flood even the caption's page misses many 4 s reads on CI, and in 1 of 12 of this
+   spec's attempts on it it answered 1 of 8 for the whole window with the browser bounded (+406 MB, run 41253190798). It
+   does not separate the full-screen opaque, still screen of `7179f88f` (186 to 659 MB, inside the bound; E2 survived,
+   run 41253190798). Proof, on the runner through `scripts/dev/mutate-e2e.sh` (nothing mutated committed): with the
+   screen as it was (E1) the spec went RED 3 times in 3 (runs 41253785118 and 41254347251: the browser +771, +1,068 and
+   +725 MB, each stopped at the bound); the identity edit (E0) survived in run 41254347251, and in run 41253785118 it
+   scored COULD NOT CHECK (exit 3: its 2 answers of 9 missed the held state, on the earlier spec `4e36364b`), so it
+   survived once, not twice; on the caption the spec passed 7 of 8
+   attempts, the eighth the residual stall of item 371. In CI it runs with the suite's two retries, so the residual
+   reaches a red run only when three attempts in a row meet it, and `flaky-report` names it when a retry passes.
+
+375. **Two commit messages corrected here.** `5a9158d4` stated that the page saturated because the canvas drew at the play
+   pace under the loading screen; item 373 refutes it, and `38ec3f9c` reverts it. `7179f88f`'s "neither the blur alone nor
+   the animations alone were enough to remove" means: removing only the blur, or only the animations, did not remove the
+   stall; and its shape was not the last (item 371).
+
+376. **What is left, as a registry row and a question.** On a local SwiftShader run with the world held, the tier governor
+   stepped high, med, low while the loading screen was up, and the second decline settles the tier for the session
+   (`render/tierGovernor.js`): a slow machine that clicks Start early may play at a tier its build chose
+   (`REVIEW:start-stall:governor-samples-the-build`, LOW). And merging main the documented way failed the commit hook:
+   registry v2's S6 reads `git rev-list HEAD`, and in a merge's pre-commit HEAD is the branch's own tip, so every
+   `closedBy` sha main added read as no ancestor (18 of 37 registry-harvest tests red). The merge `4eb154a0` was made from
+   main's side and the lane fast-forwarded to it; whether S6 should read `MERGE_HEAD` too was the registry v2 owner's
+   (`REVIEW:start-stall:s6-in-a-merge-commit`, LOW), answered the same night by the registry S6 lane (item 369), and the
+   lane's second merge of main (`f7228b13`) went through the documented way. The caption's residual stall under the headless flood is
+   `REVIEW:start-stall:caption-page-still-stalls` (LOW, LANE:flakes). Its candidate fix is to take the pointer lock only
+   once the world is built (the lock is what the flood rides on, and until then the player is held in the sky with nothing
+   to look at), a change to the pointer-lock entry path that this lane did not make: the recovery overlay and the
+   no-stranded-player invariant of `.claude/rules/input-and-pointer-lock.md` gain a dimension, and that wants its own lane
+   and gates. The lane's QUESTION.md asks the command session for that ruling.
+
+377. **The touch taps the caption broke, and the harness input under them.** PR #76's CI (run 41255314244, two attempts)
+   failed `panels.spec.js:83`, the phone tray tap, 6 of 6 and the touch Pause tap of `pause-freezes-world.spec.js:217` 3
+   of 6, each with a canvas over the button, against about 2 of 7 first attempts of the tray tap on other PRs that
+   night. An A/B on the runner put it on this lane (run 41259967132): with main's loading screen restored the tray tap
+   passed 4 of 4 and the touch Pause 4 of 4; with the caption, 0 of 4 and 2 of 4. Run 41261223279 named the mechanism:
+   with the caption the world-ready auto-lock (`App.jsx`, 100 ms after the spawn chunk) was granted and the game started
+   under it, and the tap's `pointerdown` carried clientX/clientY 0,0, where Playwright's hit-target check found the
+   canvas and blocked the tap on every retry; with main's screen the same request was refused (`pointerlockerror`) and
+   the tap landed 3 of 3. Pointer Lock 2.0 refuses a request made without transient activation unless the document
+   released a lock itself with `exitPointerLock()` (`requestPointerLock`, step 3, w3c.github.io/pointerlock, read
+   2026-11-01); the grant came from Playwright running every `page.evaluate` as a user gesture (`frame-cap.spec.js` says
+   how that was found), and the caption builds the world sooner (the lock asked for 7 to 10 s after load, against 13 to
+   20 s), inside the activation the test's own wait had opened. So the flake those rows chased was never the title's
+   canvas, and the fix is the harness's: `tests/e2e/_fixtures.js` now refuses, in a touch context, a lock asked for
+   outside a trusted input event (`4fc42a61`; desktop contexts unchanged). That is stricter than a conforming browser,
+   not the same: transient activation outlasts its event by a few seconds, and PR #76's dynamic review measured Chromium
+   granting a lock asked for 1 s after a real tap where the fixture refuses it (its arms D and DF), so the touch suite
+   cannot show a touch Chromium taking the world-ready auto-lock after a real tap; item 381 rules on that path. Proof, run
+   41262061859 on that tree: the tray tap 6 of 6 and the touch Pause 4 of 4 with it, the tray tap 0 of 3 with its
+   install line removed (the touch Pause passed 2 of 2 there: it is a race), and every other Chromium touch spec 26 of
+   26 with it. `4fc42a61`'s trailer says the touch Pause went 0 of 4 in run 41259967132; it went 2 of 4 there, against 4
+   of 4. The four flake rows (`REVIEW:w2d:pause-tap-title-canvas`, `REVIEW:e2e-flakes:panels-phone-tray-tap-timeout`,
+   `REVIEW:e2e-flakes:hud-at-rest-tracker-tap-canvas`, `REVIEW:e2e-flakes:touch-gear-tap-canvas-intercepts`) get the
+   finding and stay open for their acceptance's ten clean CI runs. Not measured: a real touch browser that has a pointer
+   (a Chromium tablet with a mouse) after a Start before the build.
+
+378. **The gate reworked: it judges the page and the world, not memory alone** (`tests/e2e/start-before-built.spec.js`,
+   `3ec4218f`; PR #76's static review findings 1, 2, 5 and 9, the dynamic review's optional fix). Item 374's spec failed only
+   on memory and printed the answers and the world unjudged, so a page that answered once and then went silent for the
+   window passed (item 374 records one). It now fails on any of five arms, each printed with its number, and prints every
+   2 s sample (the page's answer, the browser's and all of Chromium's RSS, the pointer updates, the lock, the world):
+   - **bound:** the browser process +600 MB over its value at the click. 600 is restored: the throwaway probe branches
+     committed 600 over a 75 s window, then 900 and 700 as the window grew to 90 s, with no measured reason (`git log -p`
+     of the probe refs `32f11347` to `8e7e4819`). The caption's browser rose at most +545 MB in any attempt measured
+     (with the listener below), the outlined caption's +132 to +364 MB over 27 attempts (runs 41269336217 to
+     41270557952), and the old screen stopped at +609 to +895 MB on its first sample past 600 (runs 41268462804 to
+     41270557952), so 600 holds the caption with room and keeps the old screen red;
+   - **brake:** all of the page's Chromium processes +4 GB together (unchanged);
+   - **answers:** the longest span with no answered read over 30 s, from the answer before it to the answer after it, or
+     from the click, or to the end. Judged in time, not in reads: with `page.waitForTimeout` pacing the samples, each
+     missed sample took 12 s while a mutant held the page's main thread and a 45 s silence read as 3 missed reads (run
+     41268462804); Node's own timer paces them now;
+   - **late:** the browser's floor (its lowest sample, over the reads the page answered) over the window's last 15 s
+     more than 50 MB above its floor over the 30 s before. Floors, not peaks: a page that falls behind for one sample
+     spikes the browser and gives it back (+275 and +328 MB, then +42, run 41268462804), which a max-minus-first measure
+     failed 6 of 9 plated attempts on; a leak raises the floor. Over answered reads only, and not judged when a span
+     holds none, because a missed read finds the browser at a spike (item 383);
+   - **world:** the spawn chunk not built 135 s after the click (the hold ends 45 s after the lock).
+   A browser that grants no lock, or streams no flood, is INCONCLUSIVE: a printed skip on a workstation, a failure on CI
+   (`process.env.CI`), so the gate cannot go dark there if CI's Chromium stops flooding. The flood is counted from the
+   game's own `pointermove` events (each carries the raw updates coalesced into it), not from a `pointerrawupdate`
+   listener the shipped page lacks (static finding 5). That listener is not free: added back on the runner, the outlined
+   caption's page failed 4 of 4 attempts on the answers arm (silent 35 to 66 s; once also the bound, at +745 MB),
+   against 0 of 8 without it (run 41269336217), so item 374's spec, and the probes behind items 370 and 371, loaded
+   the page they measured (item 382). That run also printed the late arm failing three of the four at +63, +99 and
+   +79 MB; those floors were missed-read spikes (none of the four had an answered read in the window's last half,
+   item 383), so the verdict rests on the answers arm.
+   The hold now delivers its held meshes in order ahead of any later one, as its comment said (static finding 9).
+   The thresholds against what the outlined caption showed in 27 green attempts on nine runners (runs 41269336217 to
+   41270557952): the browser +132 to +364 MB (600), the longest silence 4.9 to 23.7 s (30), the floor's rise -24 to +39
+   MB (50), the world built 50 to 68 s after the click (135). The silence and floor bounds have the least room. (The floor
+   range is the arm as `3ec4218f` had it; item 383's arm reads -17 to +39 MB over 40 outlined attempts.)
+   On any failure the spec now kills every Chromium process of the test from Node before raising it. Item 374's spec
+   crashed the renderer through CDP instead, and that did not hold: in run 41269336217 one old-screen attempt filled its
+   runner and the runner was shut down with nothing printed, and in run 41270116196 the bound failed at +895 MB, the
+   page then went unanswered, and the largest chrome-headless process on the runner grew to 11.5 GB while Playwright
+   waited to close it, until that runner was shut down too (the log's process list names no role, so that process is not
+   shown to be the browser rather than the renderer). Proof of the spec as `3ec4218f` committed it, on the runner through
+   `scripts/dev/mutate-e2e.sh` (run 41270557952, the spec byte-identical; nothing mutated committed; its late arm read
+   every sample until item 383), each arm red by a mutant that reds it alone: the old screen RED 3 of
+   3 on the bound (+672, +657, +609 MB, each runner keeping its memory and its log); a page that releases the lock 20 s
+   after it and blocks its main thread 60 s RED on answers alone (60.2 s silent); 16 MB/s of blobs from 60 s after the
+   lock RED on late alone (the floor +84 MB, the bound +364 MB passed); a spawn chunk that never marks the world built
+   RED on the world alone; Start with no lock RED as INCONCLUSIVE on CI; the identity edit SURVIVED; the outlined
+   caption passed 8 of 8. The earlier drafts met the same mutants in runs 41268462804, 41269336217 and 41270116196 with
+   the same verdicts, except where this item says why a draft changed: round 1's identity edit went red on the
+   peak-based late measure, round 1's 45 s silence passed as 3 missed reads, and round 1's 4 MB/s blob leak raised the
+   floor only about 1.8 MB/s and passed, so the late arm's reach starts above that rate.
+
+379. **The design language's blur ban sees React's inline spelling** (`tests/gates/static-gates.test.js`, `1d95958a`; the
+   dynamic review's finding 1). The S1-C gate matched `backdrop-blur|backdrop-filter`, so `style={{ backdropFilter: ... }}`
+   passed it, which falsified its own comment and item 371. One case-insensitive pattern now covers the Tailwind class,
+   the CSS property and the inline key (`backdropFilter`, `WebkitBackdropFilter`) in the ban, the App.css check and the
+   reporter. Proof (`scripts/dev/mutate.sh`, 8 tests): the caption with an inline `backdropFilter` SURVIVED the old
+   pattern and is RED on the new; `WebkitBackdropFilter` RED; Tailwind `backdrop-blur-sm` RED; an identity edit SURVIVED.
+
+380. **The caption's look: an ink outline, not a plate** (`src/App.jsx`, `d8b50695`; static finding 7, dynamic finding 4).
+   On the real GPU (production build, Chromium new headless, Apple M3 Max ANGLE Metal, 1280x800 at DPR 2, Start clicked
+   before the world was built, the lock held), the bare caption read 1.03:1 (subtitle) and 1.78:1 (headline) against the
+   unbuilt world's pink fog, and 1.38:1 and 2.84:1 against the soft shadows around its glyphs. A first fix, `30fef172`,
+   set it on a small solid plate in the design language (bg-panel, ink border, hard offset): 9.53:1 and 12.99:1. On the
+   runner the plated page measured worse than the bare caption: the browser +116 to +337 MB and the longest silence up
+   to 26.9 s over 8 attempts, against +35 to +57 MB and at most 8.8 s over 4 (run 41268462804), which read at first as
+   the plate's cost. `d8b50695` gives the caption the ink outline of type drawn on the
+   world (`ui/onWorldText.js`, as the coin count and the target's nameplate have) and no plate: the subtitle's fill reads
+   9.71:1 and the headline's 14.53:1 against their immediate surround (the non-glyph pixels within 2 device pixels),
+   while the fog beyond stays 1.10:1 and 1.50:1, so the outline carries the legibility. On the runner the outlined page
+   passed every arm in 27 of 27 attempts (item 378's numbers; runs 41269336217 to 41270557952, nine runners), the
+   first 8, in run 41269336217, at the browser +168 to +295 MB and the longest silence 5.3 to 17.9 s. Those runs do not
+   separate the plate from the outline: the bare caption's 4 attempts ran on one runner of an older image (20261015),
+   the plate's 8 on two runners and the outline's first 8 on two more, all of the newer image (20261021), and the plate
+   and the outline measured alike there. So `d8b50695`'s message overstates when it says a covering element, even a
+   small one, costs the drain: these runs do not show that. The outline is kept because it adds no element over the
+   canvas, where items 370 and 371 found a covering layer to starve the drain, and because it is the design language's
+   own convention for type on the world. The lookbook's sets cannot show this state (each enters a built world), so the
+   before and after pair is a lane probe's: `docs/superpowers/masterpiece-2026-10/evidence/start-stall/` (both frames, both crops at full
+   resolution, the plate's frame, and `contrast.json` with the method). The first probe run's after frame was shot
+   under the Paused surface (the browser had released the lock) and its measure took the commonest colour for the
+   backdrop; both were redone before any number here was read.
+
+381. **Ruling: the world-ready auto-lock waits for a mouse or a pen** (the dynamic review's finding 3; the lane's QUESTION.md
+   third question). App asks for the pointer lock 100 ms after the spawn chunk is built whatever started play, and on a
+   touch Chromium that has the API a Start tap's activation can still be live then (the review's arm D: Chromium grants
+   a lock asked 1 s after a real tap), and under that lock a tap's `pointerdown` carries 0,0 (arm L). The command
+   session's ruling: the auto-lock asks only when the gesture that started play was a mouse or a pen (its
+   `pointerType`), never touch, so an iPad with a trackpad keeps mouse-look and a touch player is not locked. This lane
+   does not make the change, a product change to the input path that wants its own red-first e2e; it is
+   `REVIEW:start-stall:touch-start-auto-lock` (LOW, LANE:W3-C, the first minute), accepted when a touch Start never
+   requests the lock and a mouse Start on a touch-capable device still does.
+
+382. **Records corrected before landing.** Items 371, 372, 374 and 377 were edited in place, since none had landed: 371
+   no longer leans on a spec form that was not committed (its 2 of 6 is the earlier spec's) and records the text
+   shadow's failure; 372 no longer says a player meets neither the flood nor the stall, or that the growth is bounded,
+   and says what was measured (one M3 Max, Chromium in new headless mode, a still mouse); 374's identity edit survived
+   once, not twice; 377's fixture is stricter than a conforming browser, not the same. The fixture's comment says so
+   too (`f4bef2b3`). The registry's `REVIEW:start-stall:caption-page-still-stalls` and the closed
+   `REVIEW:l10:music-e2e-title-hang` carry the narrowed claim about players. Static finding 5 changes the record most:
+   items 370, 371 and 374 measured the caption under a `pointerrawupdate` listener the shipped page lacks, which item
+   378 shows loads the page, so the caption's 88 to 545 MB and its residual stall of about 1 in 20 describe the page
+   under that listener, not the shipped page; the old screen still fails without it (item 378).
+   `REVIEW:start-stall:caption-page-still-stalls` stays open on its acceptance with that recorded. One commit message of
+   this round overstates: `d8b50695`'s, on what the plate cost (item 380 says how). The next round's corrections are item
+   383's.
+
+383. **Fix round 3: the late arm reads answered reads only, the blur ban reads every stylesheet, and the records are
+   corrected** (`tests/e2e/start-before-built.spec.js` `f5c8b67c`, `tests/gates/static-gates.test.js` `c9199dfd`; PR #76's
+   round-2 reviews: the dynamic review's F1 to F5 and the static review's findings 3 and 4). This round changes tests and
+   records only; `src/App.jsx` changes a comment.
+   - **F1, the late arm no longer calls a missed read a leak.** It took each half's floor over every sample, and a read that
+     misses finds the browser at a spike (13 to 358 MB above the attempt's answered floor in 76 missed samples of the green
+     outlined attempts, runs 41269336217 to 41271264457). So a span whose samples all missed read a spike as its floor:
+     plate-a attempt 3 of run 41268462804 failed at +210 MB on one missed sample, and the head's own green run
+     (41271264457) had one answered read of three in its last half. Both floors are now taken over the reads the page
+     answered. *The first form did not hold.* It compared the last 15 s with the 15 s before and read "not reached" when a
+     half held no answered read. On the runner (run 41274837477) the slow-leak mutant was RED once (+108 MB) and then
+     SURVIVED: the leaking page missed four reads in a row (63 to 81 s), so its reference half held none, the arm read "not
+     reached", and the answers arm saw 27.1 s of silence against its 30. The arm of `f025bc5b` reads -52 MB on that run as
+     well: the missed reads' spikes hid the leak, which only answered reads see. So the reference is the 30 s before the last
+     15 s (45 to 75 s), where the same run holds answered reads and reads +147 MB. A span with no answered read is "not
+     reached" and not failed, because a page silent that long is the answers arm's; a span with no browser reading at all
+     (ps found none) still fails the arm. What this leaves: a leak that also silences the page for the whole last 15 s, and
+     for under 30 s, passes both arms; and the arm reads only the window's last 45 s, when the world is usually built (50
+     to 68 s), so a leak confined to the unbuilt phase is held by the bound and the brake alone (static finding 1, not
+     changed here).
+     *Proof, on the runner* through `scripts/dev/mutate-e2e.sh` (run 41275275384 at `7e43b22c`, whose probe copy of the spec
+     is byte-identical to the committed one; nothing mutated committed): the slow-leak mutant RED on late alone 3 of 3 (+145,
+     +124, +85 MB; the bound +219, +342, +240 MB passed; answers and the world passed); the old screen RED on the bound
+     (+623 MB); the page that releases the lock and blocks its main thread 60 s RED on answers alone (63.2 s silent; late
+     not reached); a spawn chunk that never marks the world built RED on the world alone; Start with no lock RED as
+     INCONCLUSIVE on CI; the identity edit SURVIVED twice (late +6 and -11 MB); the outlined caption passed 8 of 8 (late -7
+     to +18 MB, the bound +108 to +398 MB, the longest silence 9.3 to 16.9 s, the world built 46 to 61 s after the click).
+     *Rescore of the logs* (102 attempts from runs 41268462804 to 41275275384, to the 0.1 s the logs print, so a sample
+     printed at 75.0 s may belong to either span; the spec's own function over the logs gives the same numbers, and the
+     runs' printed values are the ones cited above): plate-a attempt 3 (+210 MB FAIL) is not reached; the raw-listener
+     attempts 2 to 4 (+63, +99, +79 MB FAIL) are not reached, where the answers arm fails all four; the first form's missed
+     slow-leak sample reads +147 MB FAIL; no other attempt changes its verdict, every slow-leak attempt that failed before
+     still fails, and the 51 judged attempts of pages that are not mutants read -17 to +39 MB against the bound of 50 (the
+     40 outlined attempts the same). The surviving margin is the one item 378 names: the floor bound has the least room.
+   - **F4, the blur ban reads every stylesheet under `src/`** (`c9199dfd`). It read the JS and JSX files and `App.css`, so
+     `backdrop-filter` in `index.css` passed (8 of 8), while item 379 and the gate's comment say a blur on the screen reds
+     it. Its walk now covers every `.css` file and asserts it found at least the three there are. Proof
+     (`scripts/dev/mutate.sh`, 8 tests): the blur in `index.css` SURVIVED the gate as it stood and is RED on this one;
+     `-webkit-backdrop-filter` in `theme/fonts.css` RED; the old `App.css` and Tailwind-on-`App.jsx` checks RED; a walk that
+     enumerates nothing RED; an appended comment SURVIVED.
+   - **F5, noted.** The spec's flood counter calls `getCoalescedEvents()` on each `pointermove`, which nothing in `src`
+     calls, at about 70,000 raw updates a second by its own count. Its cost is not measured; the risk it carries is a false
+     red, never a false green. The spec's comment says so.
+   - **Records corrected.** F2: item 378 and the spec said the browser grew to 11.5 GB, but the log lists only the largest
+     chrome-headless process (the browser process read 1,010 MB at the verdict), so the 11.5 GB process is not shown to be
+     the browser. F3: item 378's "floor +63 to +99 MB" for the raw-listener run were missed-read spikes (none of the four
+     attempts had an answered read in its last half); that run's verdict rests on the answers arm, which failed all four.
+     Static finding 3: item 371 still said the caption sits on a plate, and `App.jsx`'s comment and `contrast.json` still
+     said the plate drained the flood worse, which item 380 withdraws; all three now say what item 380 says. Static finding
+     4: `REVIEW:start-stall:caption-page-still-stalls` was a `flake` that was not player-visible, while its note says whether
+     a player can meet the flood is not measured; it is now an `instrument` (a real mouse and a real GPU against the flood,
+     not yet run), area `input`, player-visible, as the registry's other unmeasured-exposure rows are.
+   - **Not changed here:** static finding 2 (the flood check asks whether the lock and 100 updates were ever seen, not for
+     the whole unbuilt phase), 5 (the answers arm judges the longest silence, not the answered fraction) and 8 (the
+     counter's work, F5 above), and the touch buttons that stay live during the build, which have no registry row yet.
+
+---
+
 ## 2026-10-31 (registry S6) — [LOOP] a lane takes main in the documented way and the commit goes through: S6 reads MERGE_HEAD while a merge is unfinished
 
 Found by the start-stall lane (`fix/start-before-built-stall`), which could not merge main without `--no-verify` and
