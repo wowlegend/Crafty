@@ -22,6 +22,9 @@ export const CLEAR_BEYOND_M = 30;
 /** A marcher that moves less than `moveM` in `windowMs` of world time sidesteps `sideM` for `sideMs`; after `tries`
  *  sidesteps it hunts the player instead. */
 export const STUCK = Object.freeze({ moveM: 1.5, windowMs: 6000, sideM: 8, sideMs: 4000, tries: 2 });
+/** A marcher this near its objective has arrived: it holds there and is never called stuck, since the marchers at the
+ *  brazier are the ones H1's flame drains for (within 3 m of it). */
+export const ARRIVED_M = 3;
 
 /** Units into the night at `gameTime`, 0 to 599, or -1 by day. Constant while the clock is held. */
 export function unitsIntoNight(gameTime) {
@@ -165,7 +168,8 @@ export function hornClearance(mobs, { px, pz, free, need }) {
  * One director tick of a marcher's way to its objective, in world time: `track` (null for a new marcher) and where the
  * mob stands now. A marcher that moved less than STUCK.moveM in STUCK.windowMs sidesteps STUCK.sideM to one side of
  * the line to its objective (the sides alternate) for STUCK.sideMs, then marches again; one stuck after STUCK.tries
- * sidesteps hunts the player for good. Progress clears the count. Returns the next track, its anchor mode and point.
+ * sidesteps hunts the player for good. Progress clears the count, and so does arriving: within ARRIVED_M of its objective
+ * a marcher holds on it, its window restarting. Returns the next track, its anchor mode and point.
  */
 export function marchStep(track, { x, z, now, objective, player }) {
   const t = track || { mode: 'march', fromX: x, fromZ: z, since: now, tries: 0, side: 1, until: 0, sideX: 0, sideZ: 0 };
@@ -174,6 +178,9 @@ export function marchStep(track, { x, z, now, objective, player }) {
   if (t.mode === 'side') {
     if (now < t.until) return at('side', t.sideX, t.sideZ);
     return at('march', objective.x, objective.z, { fromX: x, fromZ: z, since: now });
+  }
+  if (Math.hypot(x - objective.x, z - objective.z) <= ARRIVED_M) {
+    return at('march', objective.x, objective.z, { fromX: x, fromZ: z, since: now, tries: 0 });
   }
   if (now - t.since < STUCK.windowMs) return at('march', objective.x, objective.z);
   if (Math.hypot(x - t.fromX, z - t.fromZ) >= STUCK.moveM) {

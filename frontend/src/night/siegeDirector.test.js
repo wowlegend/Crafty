@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  WAVE_UNITS, WAVE_CAP, HUB_SLOTS, CAPTAIN_SCALE, CLEAR_BEYOND_M, STUCK, SECTOR_HALF,
+  WAVE_UNITS, WAVE_CAP, HUB_SLOTS, CAPTAIN_SCALE, CLEAR_BEYOND_M, STUCK, SECTOR_HALF, ARRIVED_M,
   unitsIntoNight, waveSizes, eliteCount, planNight, chooseBearings, landScoreFrom, waveLaunchesBetween, hornClearance,
   marchStep, rngFor,
 } from './siegeDirector.js';
@@ -290,6 +290,44 @@ describe('a marcher at a wall', () => {
     expect([t.mode, t.anchorX, t.anchorZ], 'a mob stuck after two sidesteps did not hunt the player').toEqual(['hunt', 5, 5]);
     expect(marchStep(t, { x: 9, z: 9, now: 1e6, objective, player: { x: 7, z: 1 } }), 'the hunt let go of the player')
       .toMatchObject({ mode: 'hunt', anchorX: 7, anchorZ: 1 });
+  });
+
+  // The static review's F3 (round 2 of phase 2a): a marcher stopped beside its objective read as stuck, stepped 8 m out
+  // and walked back, every 16 s.
+  it('holds a marcher that has reached its objective, never calling it stuck', () => {
+    expect(ARRIVED_M).toBe(3);
+    for (const [x, z] of [[1, 0], [0, 0], [0, -2.9]]) {
+      let t = null;
+      const modes = new Set();
+      for (let now = 0; now <= 60_000; now += 1000) {
+        t = marchStep(t, { x, z, now, objective, player: { x: 25, z: 0 } });
+        modes.add(t.mode);
+      }
+      expect([[...modes], t.anchorX, t.anchorZ], `a marcher still at (${x}, ${z}) for 60 s did not hold on its objective`).toEqual([['march'], 0, 0]);
+      expect(t.tries).toBe(0);
+    }
+    let t = marchStep(null, { x: 3.1, z: 0, now: 0, objective, player });
+    t = marchStep(t, { x: 3.1, z: 0, now: STUCK.windowMs, objective, player });
+    expect(t.mode, 'a marcher still 3.1 m out was not called stuck').toBe('side');
+    // Held 20 s, then its objective moves 30 m off (a doused Hearth hands the march to the player): a fresh window.
+    let held = null;
+    for (let now = 0; now <= 20_000; now += 1000) held = marchStep(held, { x: 1, z: 0, now, objective, player });
+    held = marchStep(held, { x: 1, z: 0, now: 21_000, objective: { x: 30, z: 0 }, player });
+    expect([held.mode, held.anchorX], 'a marcher leaving its objective was judged on the window before it arrived').toEqual(['march', 30]);
+    // The review's walk: it steps toward its anchor and stops 1 m short of a march's. Held, it never leaves.
+    let pos = { x: 1, z: 0 };
+    let walk = null;
+    let modes = '';
+    for (let now = 0; now <= 60_000; now += 1000) {
+      walk = marchStep(walk, { x: pos.x, z: pos.z, now, objective, player: { x: 25, z: 0 } });
+      modes += walk.mode[0];
+      const dx = walk.anchorX - pos.x;
+      const dz = walk.anchorZ - pos.z;
+      const d = Math.hypot(dx, dz);
+      const step = Math.max(0, Math.min(d - (walk.mode === 'march' ? 1 : 0), 2));
+      if (d > 0) pos = { x: pos.x + (dx / d) * step, z: pos.z + (dz / d) * step };
+    }
+    expect(modes, 'the marcher at the brazier left it').toBe('m'.repeat(61));
   });
 
   it('clears its count of sidesteps once it moves again', () => {
