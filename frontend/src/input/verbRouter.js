@@ -16,6 +16,9 @@
 //   chestTargeted the ray hit resolves to a placed chest
 //   chestHasItems that chest currently stores something — the difference between removing a chest
 //                you placed and destroying one with your things in it
+//   forcePlace   the player holds the place key (input intent `forcePlace`, C): a right click places on the face the
+//                build ray hit where the ladder would interact with a chest or cast at a mob (QUEUE:Q26/b). The
+//                deliberate exception to "never place onto a mob": the player asked for the wall between them.
 
 export const AIM_CONE_RANGE = 24;          // ~spell range; through-mob guard reach
 export const AIM_CONE_ARC = Math.PI / 8;   // narrow crosshair cone (vs the wide PI/2 melee arc)
@@ -34,7 +37,7 @@ export const AIM_CONE_ARC = Math.PI / 8;   // narrow crosshair cone (vs the wide
 // keeps clicking. Deleting these as "dead code" is exactly the mistake this comment exists to prevent;
 // tests/gates/verb-router-gates.test.js pins both halves so the next reader does not have to re-derive it.
 export function routeMouseVerb(button, ctx) {
-  const { held, meleeHit, aimedMobDist, terrainDist, chestTargeted, chestHasItems } = ctx;
+  const { held, meleeHit, aimedMobDist, terrainDist, chestTargeted, chestHasItems, forcePlace } = ctx;
   if (button === 0) {
     if (held) return 'attack';                       // -> HURL at M3; never mines the anvil wall
     if (meleeHit) return 'attack';
@@ -53,6 +56,7 @@ export function routeMouseVerb(button, ctx) {
   }
   if (button === 2) {
     if (held) return 'cast';                          // -> SLAM at M3; hands full, chest ignored
+    if (forcePlace && terrainDist < Infinity) return 'place';
     if (chestTargeted && terrainDist < aimedMobDist) return 'interact';
     if (aimedMobDist <= terrainDist) return 'cast';   // tie -> combat (never place onto a mob); ALSO whiff
     if (terrainDist < Infinity) return 'place';

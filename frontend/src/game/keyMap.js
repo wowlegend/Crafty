@@ -20,6 +20,7 @@ export const KEY_MAP = [
   // --- Combat ---
   { key: 'LMB',   label: 'Attack (hold: heavy) / mine', labelKey: 'controls.attack', group: 'Combat' },
   { key: 'RMB',   label: 'Cast / place / interact',  labelKey: 'controls.use',    group: 'Combat' },
+  { key: 'C',     code: 'KeyC', label: 'Hold with RMB: place at a chest or a mob', labelKey: 'controls.forcePlace', group: 'Combat' },
   { key: 'F',     code: 'KeyF', label: 'Cast spell', labelKey: 'controls.cast',   group: 'Combat' },
   { key: 'T',     code: 'KeyT', label: 'Melee (hold: heavy)', labelKey: 'controls.melee', group: 'Combat' },
   { key: '1–4',   label: 'Select spell',            labelKey: 'controls.spell',  group: 'Combat' },

@@ -31,6 +31,7 @@ Click into the game to capture the mouse, then move the mouse to look. Esc relea
 |  | <kbd>Shift</kbd> | Dodge-roll (at a lunge: perfect) |
 | **Combat** | <kbd>Left click</kbd> | Attack (hold: heavy) / mine |
 |  | <kbd>Right click</kbd> | Cast / place / interact |
+|  | <kbd>C</kbd> | Hold with RMB: place at a chest or a mob |
 |  | <kbd>F</kbd> | Cast spell |
 |  | <kbd>T</kbd> | Melee (hold: heavy) |
 |  | <kbd>1</kbd> to <kbd>4</kbd> | Select spell |

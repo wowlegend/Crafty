@@ -169,14 +169,14 @@ test.describe('block placement', () => {
   });
 });
 
-// HOLD Q TO PLACE WHERE THE CLICK WOULD OPEN A CHEST (registry QUEUE:Q26/b; input/verbRouter.js). A right click on a chest
-// interacts with it, and one with a mob in the aim cone casts; held Q makes the same click a placement on the face the
+// HOLD C TO PLACE WHERE THE CLICK WOULD OPEN A CHEST (registry QUEUE:Q26/b; input/verbRouter.js). A right click on a chest
+// interacts with it, and one with a mob in the aim cone casts; held C makes the same click a placement on the face the
 // build ray hit. A real key through the controller's window listener and a real right click through the game's mouse pair
 // (input/compatMouse.js), as input-live.spec.js drives them: headless Chromium holds no pointer lock, so the page stands
 // one in before the app loads. A capture listener turns the camera down at the ground and marks the cell the build ray
 // meets as a chest (a store write: the chest's identity is the `chests` map, world/buildRay.js); a bubble listener after
-// the game's own records what the press became. The control first: the same aimed click without Q interacts.
-test.describe('hold Q with a right click', () => {
+// the game's own records what the press became. The control first: the same aimed click without C interacts.
+test.describe('hold C with a right click', () => {
   test('places a block on a chest the click would open, through a real key and a real click', async ({ page }) => {
     test.setTimeout(240000);
     await page.addInitScript(() => {
@@ -240,7 +240,7 @@ test.describe('hold Q with a right click', () => {
       s.setActiveChestCoords(null);
     });
 
-    // PRESENCE: without Q the aimed right click on the chest is the chest's.
+    // PRESENCE: without C the aimed right click on the chest is the chest's.
     await arm();
     await page.mouse.click(640, 400, { button: 'right' });
     const control = await read();
@@ -255,19 +255,19 @@ test.describe('hold Q with a right click', () => {
     await expect.poll(() => page.evaluate(() => window.__craftyTest.call('readIntents').active), { timeout: 10000 }).toBe(true)
       .catch(() => { throw new Error('SETUP: the input gate did not come back after the control click'); });
 
-    // The subject: Q held across the same aimed right click.
+    // The subject: C held across the same aimed right click.
     await arm();
-    await page.keyboard.down('KeyQ');
+    await page.keyboard.down('KeyC');
     await page.mouse.click(640, 400, { button: 'right' });
-    await page.keyboard.up('KeyQ');
+    await page.keyboard.up('KeyC');
     let forced = await read();
     await expect.poll(async () => { forced = await read(); return forced.cellAfter; }, { timeout: 10000 }).not.toBeNull()
       .catch(() => {});
-    console.log(`[force-place] with Q held: ${JSON.stringify(forced)}`);
+    console.log(`[force-place] with C held: ${JSON.stringify(forced)}`);
     expect(forced.chestTargeted, `SETUP: the aimed build ray did not land on the staged chest (${JSON.stringify(forced)})`).toBe(true);
-    expect({ pressed: forced.pressed, verb: forced.verb }, `held Q did not turn the right click on a chest into a placement (${JSON.stringify(forced)})`)
+    expect({ pressed: forced.pressed, verb: forced.verb }, `held C did not turn the right click on a chest into a placement (${JSON.stringify(forced)})`)
       .toEqual({ pressed: true, verb: 'place' });
-    expect(forced.chestOpen, `the click held on Q opened the chest as well (${JSON.stringify(forced)})`).toBe(false);
+    expect(forced.chestOpen, `the click held on C opened the chest as well (${JSON.stringify(forced)})`).toBe(false);
     expect(forced.cellBefore ?? 0, `SETUP: the cell on the chest's face was not air (${JSON.stringify(forced)})`).toBe(0);
     expect(forced.cellAfter ?? 0, `the placement did not fill the cell on the chest's face (${JSON.stringify(forced)})`).not.toBe(0);
   });

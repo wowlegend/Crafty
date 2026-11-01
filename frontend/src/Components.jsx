@@ -464,6 +464,10 @@ export const Player = ({ isWorldBuilt }) => {
         if (!e.repeat) denyAspectPress('imbue', useGameStore.getState());
       }
 
+      // Held C: a right click places where it would open a chest or cast at a mob (input/verbRouter.js). C, not Alt: on
+      // Windows an Alt press and release could drop the pointer lock to the browser's menu (Chromium bug 40734020).
+      if (e.code === 'KeyC') setIntent('forcePlace', true);
+
       // 2026-06-28 (Kevin): magic spells are the marquee feature -> the prime F key CASTS the
       // selected spell; melee moves to T. Both gate on input being live, inside the router, like every other live verb.
       const express = routeExpressVerb(e.code, useGameStore.getState(), getInput().active);
@@ -501,6 +505,8 @@ export const Player = ({ isWorldBuilt }) => {
       if (e.code === 'KeyZ') {
         setIntent('imbue', false);
       }
+
+      if (e.code === 'KeyC') setIntent('forcePlace', false);
 
       // Shift was the ONE held key with no release branch. Releasing it must clear the intent even if the
       // press was refused above, so a Shift held across a panel open/close cannot arrive as a queued roll.
@@ -574,6 +580,7 @@ export const Player = ({ isWorldBuilt }) => {
         terrainDist: hit ? hit.toi : Infinity,
         chestTargeted: !!(hit && hit.chestTargeted),
         chestHasItems: !!(hit && hit.chestHasItems),
+        forcePlace: getInput().forcePlace,
       });
 
       if (verb === 'attack') {

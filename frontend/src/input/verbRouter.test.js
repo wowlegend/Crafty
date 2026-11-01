@@ -106,6 +106,42 @@ describe('verbRouter (#72 — the spec §5 edge table)', () => {
   });
 });
 
+// QUEUE:Q26/b: held C (input intent `forcePlace`) makes a right click a placement where the ladder would interact with a
+// chest or cast at a mob, on the face the build ray hit. It never makes one where nothing is in reach, never on the left
+// button, and never with the hands full (held: the slam keeps the right click). Exhaustive over the same grid as below.
+describe('routeMouseVerb — held C forces a placement', () => {
+  const DISTS = [0, 1, 5, 23.9, 24, 100, Infinity];
+  const BOOLS = [false, true];
+
+  it('a chest the click would open and a mob it would cast at both yield to a placement', () => {
+    expect(routeMouseVerb(2, { ...base, chestTargeted: true, terrainDist: 4, aimedMobDist: 9 }), 'SETUP: the chest case is not interact').toBe('interact');
+    expect(routeMouseVerb(2, { ...base, chestTargeted: true, terrainDist: 4, aimedMobDist: 9, forcePlace: true })).toBe('place');
+    expect(routeMouseVerb(2, { ...base, terrainDist: 6, aimedMobDist: 3 }), 'SETUP: the mob case is not cast').toBe('cast');
+    expect(routeMouseVerb(2, { ...base, terrainDist: 6, aimedMobDist: 3, forcePlace: true })).toBe('place');
+    expect(routeMouseVerb(2, { ...base, meleeHit: true, terrainDist: 2, aimedMobDist: 1, forcePlace: true })).toBe('place');
+  });
+
+  it('over every well-formed ctx it places exactly when terrain is in reach and the hands are free, on the right button only', () => {
+    let checked = 0, placed = 0;
+    for (const held of BOOLS) for (const meleeHit of BOOLS) for (const chestTargeted of BOOLS)
+      for (const aimedMobDist of DISTS) for (const terrainDist of DISTS) {
+        const ctx = { held, meleeHit, chestTargeted, chestHasItems: chestTargeted, aimedMobDist, terrainDist };
+        const forced = routeMouseVerb(2, { ...ctx, forcePlace: true });
+        const want = !held && terrainDist < Infinity ? 'place' : routeMouseVerb(2, ctx);
+        expect(forced, `button 2, C held, ${JSON.stringify(ctx)}`).toBe(want);
+        expect(routeMouseVerb(0, { ...ctx, forcePlace: true }), `button 0, C held, ${JSON.stringify(ctx)}`).toBe(routeMouseVerb(0, ctx));
+        if (forced === 'place') placed++;
+        checked++;
+      }
+    expect(checked).toBe(392);
+    expect(placed, 'held C placed in none of the grid, so the sweep judged nothing').toBe(2 * 2 * 7 * 6);
+  });
+
+  it('a NaN distance with C held still falls back to the combat verb, never a placement', () => {
+    expect(routeMouseVerb(2, { ...base, terrainDist: NaN, aimedMobDist: 3, forcePlace: true })).toBe('cast');
+  });
+});
+
 // THE TWO FINAL RETURNS: UNREACHABLE FOR WELL-FORMED INPUT, AND A DELIBERATE NaN FALLBACK.
 //
 // A holistic-review finding proposed deleting them as unreachable. The first half of that is right and
