@@ -154,13 +154,16 @@ test.describe('the feedback grammar', () => {
         for (let i = 0; i < 3; i++) await frame();
         let key = null;
         window.__threeScene.traverse((o) => { if (o.isDirectionalLight && !key) key = o; });
-        const d = key.position.clone().sub(key.target.position);
+        // The direction three lights with (WebGLLights: the light's world position less its target's), in world space.
+        key.updateMatrixWorld(true); key.target.updateMatrixWorld(true);
+        const d = key.getWorldPosition(new key.position.constructor()).sub(key.target.getWorldPosition(new key.position.constructor()));
         d.y = 0; d.normalize();
         const r0 = window.__craftyTest.call('faceMob', mid, 0);
         const toward = (r) => Math.sin(r) * d.x + Math.cos(r) * d.z;
         let best = null;
-        for (let y = -75; y <= 75; y += 15) {
-          if (y === 0) continue;
+        // Turns of 30 to 60 degrees only: both faces stay wide on screen. At 75 the front face is a sliver, and when the
+        // sliver was the lit one its eroded interior held almost nothing (CI run 41281876320, two attempts of three).
+        for (const y of [-60, -45, -30, 30, 45, 60]) {
           const front = r0 + (y * Math.PI) / 180;
           const side = front + (y > 0 ? -Math.PI / 2 : Math.PI / 2);
           const split = Math.max(Math.min(toward(front), -toward(side)), Math.min(-toward(front), toward(side)));
@@ -228,7 +231,8 @@ test.describe('the feedback grammar', () => {
     expect(l.uFlash, `the live rim materials took the flash (juice ${juice})`).toBe(juice);
     expect(l.outline, 'the live hull went white').toEqual([1, 1, 1]);
     expect(l.emissive, 'and no emissive: the old 300 ms flood').toBe(0);
-    // Measured: 1,790 of 12,928 (14%) whitened, and 309 (2%: the white edge over the head) with the flash term cut (K3c).
+    // Measured at a 30-degree turn: about 4,000 of 12,600 (31%) whitened, and 209 (2%: the white edge over the head) with
+    // the flash term cut (K3c).
     expect(whitened / body, `interior pixels on the lit band went white: ${whitened} of ${body}`).toBeGreaterThanOrEqual(0.06);
     expect(kept / body, `interior pixels in the shadow band kept their pink: ${kept} of ${body}`).toBeGreaterThanOrEqual(0.3);
     await page.evaluate(() => window.useGameStore.setState({ hitstopUntil: performance.now() }));
