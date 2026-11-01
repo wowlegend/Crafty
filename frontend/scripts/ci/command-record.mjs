@@ -307,16 +307,19 @@ const NOW = {
   chest: () => rect(104, 64, 92, 52, 'wood-l e', 4) + rect(100, 40, 100, 28, 'wood-t e', 10)
     + rect(144, 40, 12, 76, 'gold-l') + rect(141, 62, 18, 16, 'gold-t e', 3)
     + sparkle(88, 34, 10) + sparkle(214, 50, 8) + sparkle(204, 18, 6),
-  shrine: () => rect(186, 38, 26, 78, 'stone-l e') + rect(180, 30, 38, 12, 'stone-t e', 3)
+  shrine: (state) => rect(186, 38, 26, 78, 'stone-l e') + rect(180, 30, 38, 12, 'stone-t e', 3)
     + '<circle class="glow" cx="199" cy="22" r="14"/><circle class="ember-t" cx="199" cy="22" r="6"/>'
     + fig(104, 116, 1.25) + fig(146, 116, 1.25)
     + `<polygon class="dragon" points="${pts([60, 52], [84, 40], [98, 46], [86, 56], [72, 60])}"/>`
     + `<polygon class="dragon-2" points="${pts([66, 50], [60, 28], [78, 44])}"/>`
-    + check(232, 30, 13),
-  stall: () => rect(86, 24, 128, 90, 'device', 8) + rect(93, 31, 114, 76, 'screen', 4)
+    + (state === 'ok' ? check(232, 30, 13) : ''),
+  // The stall's and the shrine's marker follow the cell's state: a tick only once the work is done. The stall shows a stuck bar
+  // and a turning arrow while it is open and a full bar once fixed.
+  stall: (state) => rect(86, 24, 128, 90, 'device', 8) + rect(93, 31, 114, 76, 'screen', 4)
     + rect(118, 42, 64, 24, 'tag tag-idle', 12) + text(150, 59, 'Start', 14, 'lbl on-tag')
-    + rect(106, 80, 88, 10, 'slot-line', 5) + rect(106, 80, 34, 10, 'bar-before', 5)
-    + busy(214, 28, 13),
+    + rect(106, 80, 88, 10, 'slot-line', 5)
+    + (state === 'ok' ? rect(106, 80, 88, 10, 'bar-now', 5) + check(214, 28, 13)
+      : rect(106, 80, 34, 10, 'bar-before', 5) + busy(214, 28, 13)),
   slots: () => rect(118, 22, 96, 70, 'slot slot-3', 8) + rect(108, 34, 96, 70, 'slot slot-2', 8)
     + rect(98, 46, 96, 70, 'slot', 8) + rect(106, 54, 42, 30, 'sky', 4)
     + `<polygon class="hill" points="${pts([106, 84], [106, 72], [122, 64], [148, 72], [148, 84])}"/>`
@@ -326,7 +329,7 @@ const NOW = {
 
 function picNow(d) {
   const origin = [[0, 0], [300, 0], [0, 240], [300, 240]];
-  const b = d.cells.map((c, i) => `<g transform="translate(${origin[i][0]},${origin[i][1]})">` + NOW[c.pic]()
+  const b = d.cells.map((c, i) => `<g transform="translate(${origin[i][0]},${origin[i][1]})">` + NOW[c.pic](c.state)
     + rect(110, 132, 80, 30, `tag tag-${c.state}`, 15) + text(150, 153, c.tag, 17, 'lbl on-tag')
     + text(150, 196, c.lines[0], 23) + text(150, 224, c.lines[1], 23) + '</g>').join('');
   return svg('0 0 600 480', d.alt, b, 'art art-narrow');

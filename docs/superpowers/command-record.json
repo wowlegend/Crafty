@@ -5,16 +5,16 @@
       "live": "Live",
       "green": "All green",
       "alt": "The game's world is live for players, and every check is green.",
-      "caption": "Live for everyone, and every check is green: 31 October 2026."
+      "caption": "Live for everyone, and every check is green: 1 November 2026."
     },
     "better": {
       "sub": "Since you handed over on 27 October.",
       "cards": [
         { "pic": "box", "alt": "A player steps out of an invisible box, free.", "caption": "Placing a block can no longer trap you in an invisible box." },
         { "pic": "continue", "alt": "The title screen offers Continue, with New World below.", "caption": "Continue on the title takes you straight back to your world." },
-        { "pic": "dragon", "alt": "The Shadow Dragon flies over a glowing ring on the ground where its attack will land; the player steps out of it.", "caption": "The Shadow Dragon marks the ground before each attack lands." },
+        { "pic": "dragon", "alt": "The Shadow Dragon flies over a glowing ring on the ground where its attack will land; the player steps out of it.", "caption": "The dragon marks the ground, and other enemies edge red, before they strike." },
         { "pic": "death", "alt": "An iPhone and an iPad show the YOU DIED screen, not a crash.", "caption": "Dying on iPhone or iPad should no longer crash. Check it on yours." },
-        { "pic": "rock", "alt": "A player stuck in rock is lifted to open ground, and a player at the bottom of a deep hole stays there.", "caption": "Stuck in rock? You are moved clear." },
+        { "pic": "rock", "alt": "A player stuck in rock is lifted to open ground, and a player at the bottom of a deep hole stays there.", "caption": "Stuck in rock? You are moved clear. Walls are no longer ladders." },
         { "pic": "mac", "alt": "On a big Mac screen the game draws about 4.2 million pixels where it drew 7.7 million: two bars to scale.", "caption": "Big Macs draw half the pixels, so they should run cooler." },
         { "pic": "look", "alt": "A grass block with clear top and side faces, and a game screen that is almost all world with small on-screen panels.", "caption": "Blocks have a new look, and the screen is far less cluttered." },
         { "pic": "build", "alt": "A block mined from stone travels to the wall you build.", "caption": "Building uses the blocks you mine." }
@@ -28,26 +28,26 @@
       "big": "8 big ones",
       "fixed": "8 fixed",
       "busy": "2 on device",
-      "alt": "Over 40 real bugs found, 8 of them big. All 8 are fixed in code and all 12 fix lanes have landed; two wait on your iPhone and iPad.",
-      "caption": "All 8 big ones are fixed in code, and all 12 fix lanes landed. Two need your iPhone and iPad."
+      "alt": "Over 40 real bugs found, 8 of them big. All 8 are fixed in code and all 12 fix lanes have landed; two wait on your iPhone and iPad. Three newer reviews filed 36 more bugs, 11 of them medium, none fixed yet.",
+      "caption": "All 8 big ones are fixed in code. Newer reviews filed 36 more bugs, 11 medium. Two things need your iPhone and iPad."
     },
     "now": {
       "cells": [
-        { "pic": "chest", "tag": "Done", "state": "ok", "lines": ["Rewards match", "what happened"] },
-        { "pic": "slots", "tag": "Done", "state": "ok", "lines": ["Saves that fail", "now tell you"] },
-        { "pic": "shrine", "tag": "Done", "state": "ok", "lines": ["Remembers your", "squad and shrines"] },
-        { "pic": "stall", "tag": "Now", "state": "run", "lines": ["Checking a stall", "on test machines"] }
+        { "pic": "stall", "tag": "Done", "state": "ok", "lines": ["Early Start shows", "a still caption"] },
+        { "pic": "chest", "tag": "Done", "state": "ok", "lines": ["Hold C to place", "beside a chest"] },
+        { "pic": "shrine", "tag": "Now", "state": "run", "lines": ["The First Night:", "first phase"] },
+        { "pic": "slots", "tag": "Now", "state": "run", "lines": ["Rock and load", "fixes, part two"] }
       ],
-      "alt": "Done: rewards match what really happened; saves that fail now tell you; the game remembers your squad and shrines. Now: checking a stall that automatic checks saw when Start is clicked before the world is built; whether players meet it is not measured. Also landed: sound fixes for iPhone and iPad, which you still need to hear, and better tests. Next: the First Night.",
-      "caption": "Just shipped: rewards, saves, better tests, and iPhone and iPad sound fixes you still need to hear. Now: a stall seen on test machines. Next: the First Night."
+      "alt": "Done: a Start clicked before the world is built now shows a still caption; the stall was seen only on test machines. On desktop, holding C with a right click places a block beside a chest. Now: the first phase of the First Night, and the second part of the rock and load fixes. Also landed: clearer fights, wall and respawn fixes, and the findings of three deep reviews filed. iPhone and iPad sound fixes landed earlier and still need your ears.",
+      "caption": "Just shipped: a calm early Start, clearer fights, wall fixes. Now: the First Night's first phase, more rock fixes. iPhone and iPad sound needs your ears."
     },
     "you": {
       "cols": [
         { "pic": "devices", "lines": ["Play on iPhone", "and iPad"] },
         { "pic": "ears", "lines": ["Mix the sound", "by ear"] },
-        { "pic": "lens", "lines": ["3 deep reviews", "on account 2"] }
+        { "pic": "lens", "lines": ["Spend credits on", "a full review?"] }
       ],
-      "alt": "Three things for you: play on iPhone and iPad, mix the sound by ear, and if you like, three deep reviews on account 2.",
+      "alt": "Three things for you: play on iPhone and iPad, mix the sound by ear, and, if you like, decide whether to spend credits on a full deep review of the UI.",
       "caption": "Only you can do these. Nothing is blocked on them."
     }
   },
@@ -58,7 +58,26 @@
       "title": "What landed",
       "sub": "Every merged change since 27 October, plus a few direct ones. Days are UTC.",
       "rows": [
+        { "day": "2026-11-01", "rows": [
+          { "pr": 80, "text": "A mob's blow now kicks the camera away from it, not straight back.", "src": "gh pr view 80: merged 11:22:03Z (main 84a04099), title 'six small fixes beside the First Night (W3-A PR B)'; DECISIONS (W3-A PR B) item 442; a hit with no source position (a skeleton's bolt, the dragon's fireball impact and lava) still kicks straight back, item 448: registry REVIEW:w3a-pr-b:bolt-hit-no-source and AUDIT:ultra-1101:5-render-2; Production deploy 11:22:31Z (gh api deployments)" },
+          { "pr": 80, "text": "On desktop, hold C and right-click to place a block instead of opening a chest.", "src": "gh pr view 80; DECISIONS (W3-A PR B) items 443 and 449 (C, not Alt: Alt can drop the pointer lock on Windows; Cmd, Ctrl, blur and a hidden tab let go of C); desktop only, touch has no equivalent: registry REVIEW:w3a-pr-b:touch-cannot-force-placement; the Cmd+C and Ctrl+C release is gated with synthetic key events, so a real Mac keyboard is unconfirmed and is Kevin's to try (round-2 static review, 'Not checked')" },
+          { "pr": 80, "text": "The ember bar marks each verb's price, and the dusk warning names the roar.", "src": "gh pr view 80; DECISIONS (W3-A PR B) items 444, 451 and 452 (on touch the dusk line names no key); on a 30 px phone track the 25, 30 and 35 marks sit within 3 px, so which notch is which verb is not readable: registry REVIEW:w3a-pr-b:ember-marks-name-no-verb (open)" },
+          { "pr": 80, "text": "Beast forms stand on the ground; the Hearth fire is amber.", "src": "gh pr view 80; DECISIONS (W3-A PR B) items 440 and 445 (the lowest box of each form 0.000 m from the ground in a real roar); the pad by the fire still reads maroon at midnight on screen: registry REVIEW:light:midnight-brazier-maroon (open, for W3-A unit L1)" },
+          { "commit": "cf815ac4", "text": "Your free runs on account 2 reviewed UI, render and audio: ten findings each.", "src": "git log cf815ac4 (records only, landed by fast-forward over e5e1f745; CI 41295615485 success); DECISIONS (ultrareview chunks 4-6) items 460-461: 4-ui 36 found, 28 verified, 25 refuted; 5-render 30, 25, 19; 6-audio-scene-rest 29, 30, 13; each delivered exactly 10; session-truth 07:35Z; Production deploy 10:20:43Z" },
+          { "commit": "cf815ac4", "text": "A local copy of the review found 28 UI problems; the cloud returned 10.", "src": "DECISIONS (ultrareview chunks 4-6) items 463-464: five hunters, 49 raw, 32 unique, three votes each, 28 survived (22 normal, 6 nit); 6 of the 28 are among the cloud's 10; the 22 others rest on the replica's three votes alone, no probe re-verified them" },
+          { "commit": "cf815ac4", "text": "15 of the 16 ordinary bugs the cloud left out were confirmed by votes.", "src": "DECISIONS (ultrareview chunks 4-6) item 464: 16 normal-severity replica survivors absent from the cloud's 10, 15 with at least two CONFIRMED votes of three and AUDIT:replica-1101:4-ui-16 with PLAUSIBLE three times; why the cloud lacks them is unknown (cut at 10, or never found); the replica's votes are not a probe" },
+          { "commit": "cf815ac4", "text": "59 new rows filed: 50 from the deep reviews, 9 from the combat-look reviews.", "src": "registry row ids at e5e1f745 (836) against cf815ac4 (895) by script: 59 new, 28 AUDIT:ultra-1101, 22 AUDIT:replica-1101, 9 REVIEW:w3a-pr-a; DECISIONS item 467: of the 50, 36 bugs (11 MED, 25 LOW), 12 debt, 2 instrument; session-truth 10:20Z" },
+          { "pr": 79, "text": "Enemies show a red edge before they strike, and flash when hit.", "src": "gh pr view 79: merged 09:46:55Z (main e5e1f745), title 'one feedback grammar: danger at the edge, contact on the lit band, magic as a solid core (W3-A PR A)'; DECISIONS (W3-A PR A) items 421-422 (a windup reddens the outline and rim; a 70 ms lit-band flash, a white edge and a 50 ms squash on contact); PR CI 41291292913 success; Production deploy 09:47:24Z (gh api deployments)" },
+          { "pr": 79, "text": "Spells are solid inked shapes, not see-through glows; elite enemies wear crests.", "src": "gh pr view 79; DECISIONS (W3-A PR A) items 424-425 (opaque spell cores ringed in ink; an elite ember crest and a captain banner)" },
+          { "pr": 77, "text": "A held jump no longer climbs sheer walls or shafts.", "src": "gh pr view 77: merged 07:30:29Z (main 3442443d), title 'lane L13, the stuck-in-solid remainder'; DECISIONS (lane L13) item 390 (a wall contact is not ground; the real Player held Space into a six-high face and rose 2.95 m against a 2.35 m jump before, and the gate is green after); Production deploy 07:31:07Z (gh api deployments)" },
+          { "pr": 77, "text": "Clicks no longer pass through a block you have just placed.", "src": "gh pr view 77; DECISIONS (lane L13) item 391 (the build ray sees a cell placed since the last world step; Terrain.jsx's own wiring gated in the mounted world, item 398)" },
+          { "pr": 77, "text": "Respawning over a dug-out spawn corner finds ground instead of looping.", "src": "gh pr view 77; DECISIONS (lane L13) item 393 (with the corner's four columns dug out, a minute idle reset the player 9 times before and once after)" },
+          { "pr": 77, "text": "A respawn now fits your beast form's body, too.", "src": "gh pr view 77; DECISIONS (lane L13) round 2 (the spawn fallback stands the body's own capsule clear, a beast form's too; session-truth 08:00Z: no 0.12 m bull intrusion)" },
+          { "pr": 76, "text": "An early Start shows a still caption; the stall was seen only on test machines.", "src": "gh pr view 76: merged 05:36:32Z (main dae1afb4), title 'a Start clicked before the world is built: the stall named, the world-building screen a still caption'; DECISIONS (lane start-stall) items 370-383; Production deploy 05:36:59Z; session-truth 02:40Z: the stall was seen on CI's Linux headless shell, and on a real GPU (M3 Max, production build) no stall appeared, so players should not meet it, which is a reading on one machine and not a measure of players" },
+          { "pr": 75, "text": "Lanes can merge main again: the project-list check no longer blocks a merge.", "src": "gh pr view 75: merged 00:54:42Z (main eff58e9a); DECISIONS (registry S6) items 369 and following (S6 accepts a sha main added while a merge is unfinished, read from the merge-state file); Production deploy 00:55:02Z (gh api deployments)" }
+        ] },
         { "day": "2026-10-31", "rows": [
+          { "commit": "d76c342c", "text": "Command Record version 15: all twelve fix lanes landed, and the project list counts in.", "src": "git show d76c342c (docs(command-record): published in place, stamped and synced as of 5510db64), committed 23:20:42Z; c1518994, 0f170067; Production deploy 23:46:09Z (gh api deployments)" },
           { "pr": 74, "text": "The project list is cleaned: 279 open rows in 13 lanes, 535 closed, as merged.", "src": "gh pr view 74: merged 22:47:50Z (main 5510db64), title 'Registry v2: one list of open work, cleaned and kept clean'; DECISIONS (registry v2) items 361-368, item 367 for the counts on main bd06dacf: 827 rows, 292 open, 279 of them work rows in 13 lane rows, 535 closed (349 before); the same counts read from memory/registry.jsonl by script on 5510db64 (827 rows, 292 open, 13 open lane rows, 535 closed); the registry-v2 plan's 193 is its snapshot a150a93a count and is not used; Production deploy 22:48:09Z" },
           { "commit": "13cbf789", "text": "Command Record now reads its open-work counts and your waiting list from the project list.", "src": "git show 13cbf789 (feat(orient, command-record)): the health row and 'Waiting on you' read memory/registry.jsonl; reached main inside PR #74, merged 22:47:50Z; DECISIONS (registry v2) item 361" },
           { "pr": 71, "text": "Tests now catch errors the game swallowed, and show which code they reach.", "src": "gh pr view 71: merged 20:29:03Z (main bd06dacf), title 'L12: instruments that can see'; PR body (a reactor or effect that throws is reported; one merged report of the code the 8 test shards reach); DECISIONS (lane L12) items 310-317; registry AUDIT:lane:L12-instruments-that-can-see closed; Production deploy 20:29:43Z" },
@@ -148,7 +167,7 @@
     },
     "hunt": {
       "title": "The bug hunt",
-      "sub": "After your invisible box, a deep audit hunted such bugs: 47 rechecked, 40 confirmed.",
+      "sub": "After your invisible box, a deep audit hunted such bugs: 47 rechecked, 40 confirmed. Newer reviews are last.",
       "groups": [
         { "title": "The one you found", "rows": [
           { "state": "fixed", "text": "A right-click sealed you inside your own block.", "lane": "", "pr": 59, "src": "registry REVIEW:fix-invisible-box:placed-into-body, HIGH, closedBy 2fb8c72c (PR #59)" }
@@ -167,6 +186,10 @@
           { "state": "fixed", "text": "On touch, Respawn and Keep exploring ignored a finger.", "lane": "L1", "pr": 62, "src": "registry REVIEW:l1:touch-overlay-buttons-cancelled, HIGH, closedBy 9b89e569 (PR #62)" },
           { "state": "fixed", "text": "A respawn could drop you blind from high up, sometimes into rock.", "lane": "L4", "pr": 66, "src": "registry REVIEW:l4:spawn-wait-counted-in-frames, HIGH, closedBy 1c58500c (PR #66)" },
           { "state": "fixed", "text": "A body clipped into rock above a cave stayed stuck there.", "lane": "L4", "pr": 66, "src": "registry REVIEW:l4:clip-over-cave-left-in-rock, HIGH, closedBy ab662a2f (PR #66)" }
+        ] },
+        { "title": "Newer deep reviews", "rows": [
+          { "state": "filed", "text": "Three reviews filed 36 new bugs, 11 of them medium; none is fixed yet.", "lane": "UI, render, audio", "href": "https://github.com/wowlegend/Crafty/blob/main/docs/superpowers/DECISIONS.md", "label": "record", "src": "DECISIONS (ultrareview chunks 4-6) item 467: 50 rows added, 36 bugs (11 MED, 25 LOW), 12 debt, 2 instrument; read from memory/registry.jsonl by script at 84a04099: the 50 AUDIT:ultra-1101 and AUDIT:replica-1101 rows are all open, 36 bugs with 11 MED and 25 LOW; the 22 replica rows rest on the replica's own votes" },
+          { "state": "open", "text": "Why the cloud left 16 ordinary bugs out is unknown; a full rerun costs credits.", "lane": "4-ui", "href": "https://github.com/wowlegend/Crafty/blob/main/docs/superpowers/DECISIONS.md", "label": "record", "src": "DECISIONS (ultrareview chunks 4-6) items 464, 466 and 468 (a further ultrareview costs usage credits, typically $5 to $25 a run, DECISIONS 2026-10-27, and is Kevin's); registry AUDIT:ultra-1101:cap-question (open, LANE:kevin)" }
         ] }
       ],
       "lanes": {
@@ -191,6 +214,9 @@
       "title": "Calls made",
       "sub": "A selection of the calls made, each with its number in the decision record.",
       "rows": [
+        { "item": "464", "text": "The cloud's ten findings are treated as a sample, not the full list.", "src": "DECISIONS (ultrareview chunks 4-6) item 464 (16 ordinary UI bugs the cloud's ten lack, why unknown) and item 468 (Kevin keeps any further ultrareview and the cap question); registry AUDIT:ultra-1101:cap-question" },
+        { "item": "453", "text": "The next First Night step frees download room before it adds any.", "src": "DECISIONS (W3-A PR B) item 453: the command session's ruling that PR C's C0 frees at least 2,500 B of the first download before PR C's index units land; the index chunk is 651,620 B against its 652,500 B ceiling; item 282 forbids raising the ceiling" },
+        { "item": "443", "text": "C places beside a chest, not Alt: on Windows Alt can drop the mouse lock.", "src": "DECISIONS (W3-A PR B) item 443: under a pointer lock on Windows Chromium released the lock on an Alt press (Chromium commit 560e652, bug 40734020), and Firefox on Windows raises its menu bar on Alt; Q is a retired panel key, C is bound to nothing" },
         { "item": "362 (list)", "text": "Each open row in the project list belongs to an open lane.", "src": "DECISIONS (registry v2) item 362: 'an open row's lane must be an open lane row'; 'A lane row now closes only when no open row names it (S4)'; item 362 is also numbered in lane L12 round 3, so the lead names the entry (the registry-v2 one, here called the project list)" },
         { "item": "350 (L8)", "text": "The first download is 7 KB smaller; Chrome and Edge 87-90 still run it today.", "src": "DECISIONS (lane L8, round 2) item 350: build target Chrome and Edge 91, index chunk 646,192 B (7,130 B less) after main's lane L7 left the merged tree 822 B over the 652,500 B ceiling, which item 282 forbids raising; a scan of every built chunk found no optional call with a spread argument, so Chrome and Edge 87-90 still run it today (registry REVIEW:l8:optional-call-spread-chrome-87-90 open, LOW); item 350 is also numbered in lane L12 round 2" },
         { "item": "330 (L8)", "text": "A refresh in a fight is no free heal; health and mana are kept.", "src": "gh pr view 73 body, item 330 ('the command session's call, superseding item 222's open call'); DECISIONS (lane L8) item 330; items 330 and 331 are also numbered in lane L7" },
@@ -215,20 +241,20 @@
     },
     "next": {
       "title": "In flight and next",
-      "sub": "Being built first, then queued work. The First Night is next; the rest has no set order.",
+      "sub": "Being built now, then queued work. The First Night leads; the rest has no set order.",
       "rows": [
-        { "lane": "Start", "text": "Checking a stall test machines hit on an early Start; players' machines not yet measured.", "state": "in flight", "src": "the registry row still reads open until the lane lands (the page says in flight because the lane has a branch and a worktree: git branch -v read fix/start-before-built-stall 5 commits ahead of main at 23:10Z); registry REVIEW:l10:music-e2e-title-hang (MED, open, LANE:W3-C): a Start click before the spawn chunk is built stalled the page on CI's software renderer, Chromium near 16 GB, whether a player can meet it is unmeasured; session-truth 20:37:00Z (lane launched from main bd06dacf) and 22:48:40Z (in flight, worktree start-stall); git rev-list origin/main..fix/start-before-built-stall is 4 at 22:56Z (3 at the 22:50Z orient read), a merge of main among them; gh pr list: 0 open" },
-        { "lane": "L13", "text": "Stuck-in-rock leftovers: climbing walls, respawn and load waits, clicks through a block just placed.", "state": "queued", "src": "registry LANE:L13-stuck-in-solid-remainder (open, MED; 20 open rows name it); DECISIONS (registry v2) item 362; no session-truth row says it has started" },
-        { "lane": "Gaps", "text": "Corners the audit never reached: hurl, snare, the Forge, quest givers.", "state": "queued", "src": "registry AUDIT:critic:coverage-gaps/hunt (MED, open, lane ACTIVE_PLAN:T23); its parent AUDIT:critic:coverage-gaps is closed as superseded by this row and AUDIT:critic:coverage-gaps/ultra (Kevin's)" },
-        { "lane": "W3-A", "text": "The First Night: a siege marches on your Hearth until a golden dawn.", "state": "queued", "src": "registry LANE:W3-A (open, HIGH; 13 open rows) and MASTERPIECE:encounters-and-a-siege-that (open, HIGH); session-truth 22:48:40Z (NEXT: W3-A First Night); retired long form 002b0b9e 'What comes next'" }
+        { "lane": "W3-A", "text": "The First Night, phase one: the eight-beat play-through, download room, test profiles.", "state": "in flight", "src": "session-truth 11:23Z 2026-11-01 (the flush: W3-A PR C phase 1, Workflow wf_fda82aba-209, worktree w3a-first-night, branch feat/w3a-first-night, a draft PR to come) and 10:36Z (U0 the eight-beat first-night play-through e2e, red first; C0 free at least 2,500 B of the first download by lazy imports; U0b fresh and returning test profiles); orient read 11:30Z: feat/w3a-first-night 4 commits ahead of origin/main; registry LANE:W3-A (open, HIGH; 17 open rows name it); gh pr list read 11:37Z: only #78 (a Dependabot dev-dependency bump) is open, so no PR for this lane yet" },
+        { "lane": "L13", "text": "Stuck-in-rock leftovers, part two: 14 rows left, such as a rim wedge.", "state": "in flight", "src": "session-truth 11:23Z 2026-11-01 (L13 part 2, Workflow wf_b779a537-00c, worktree l13-stuck, new PR); orient read 11:30Z: fix/l13-stuck-in-solid 1 commit ahead of origin/main; registry LANE:L13-stuck-in-solid-remainder (open, MED), 14 open rows name it by script at 84a04099, among them REVIEW:chaos-play:rim-wedge and REVIEW:l6:load-hold-empty-column; part one landed as PR #77" },
+        { "lane": "Gaps", "text": "Corners the audit never reached: hurl, snare, the Forge, quest givers.", "state": "queued", "src": "registry AUDIT:critic:coverage-gaps/hunt (MED, open, lane ACTIVE_PLAN:T23) read at 84a04099; its sibling AUDIT:critic:coverage-gaps/ultra closed done on DECISIONS (ultrareview chunks 4-6) item 468" },
+        { "lane": "Review", "text": "Run the local review copy on render and audio, with two new lenses.", "state": "queued", "src": "registry AUDIT:replica-1101:chunks-5-6 (MED, open, LANE:backlog); DECISIONS (ultrareview chunks 4-6) item 464 (two more lenses: what the production bundle runs, tools that ship in src; a harm-ranked top ten beside the full list)" }
       ]
     },
     "health": {
       "title": "Health",
-      "sub": "Read 31 October, 22:59 UTC; the count is made when the page is written.",
+      "sub": "Read 1 November, 11:37 UTC; the count is made when the page is written.",
       "rows": [
-        { "label": "Checks", "text": "All checks passed on the newest change, as read at 22:59 UTC.", "src": "gh run list --branch main read 22:59Z: CI run 41249766864 success on 5510db64 (created 22:47:51Z, updated 22:48:41Z) and CodeQL run 41249766770 success on 5510db64; full suite on the PR: run 41245466393 success on 5510db64; git ls-remote origin main is 5510db64; gh pr list: 0 open" },
-        { "label": "Live site", "text": "The live game is that newest change, from 22:48 UTC, as read at 22:59.", "src": "gh api deployments read 22:59Z (Production 7465485103, sha 5510db64, success 22:48:09Z); curl crafty-sand and crafty-game: both serve assets/index-CAGKPMxK.js, 647,757 B at 22:56Z, the size DECISIONS (lane L12, round 3) item 364 records for the L12 branch merged with 341531d1 (section line 246); git diff bd06dacf 5510db64 -- frontend/src is empty; no local build made here, so the match is of size and file name only" }
+        { "label": "Checks", "text": "All checks passed on the newest change, as read at 11:37 UTC.", "src": "gh run list --branch main read 11:37Z: CI run 41301573941 success on 84a04099 (created 11:22:04Z, updated 11:23:02Z) and CodeQL run 41301573535 success on 84a04099; the PR's full suite before the merge: run 41298720703 success on 84a04099; git ls-remote origin main is 84a04099; gh pr list: 1 open, #78, a Dependabot dev-dependency bump with ci ok success" },
+        { "label": "Live site", "text": "The live game is that newest change, from 11:22 UTC, as read at 11:37.", "src": "gh api deployments read 11:37Z (Production 7472297605, sha 84a04099, success 11:22:31Z); curl crafty-sand and crafty-game: both serve assets/index-EGu8onpO.js, 651,620 B at 11:37Z, the name and size of the index chunk in run 41298720703's build (index-EGu8onpO.js 651.62 kB) and the 651,620 B DECISIONS (W3-A PR B) item 453 records for this tree; no local build made here, so the match is of size and file name only" }
       ]
     },
     "waiting": {
