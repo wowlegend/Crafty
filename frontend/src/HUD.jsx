@@ -20,7 +20,6 @@ import {
 import { SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { CombatLog } from './ui/CombatLog';
-import { BossHealthBar } from './ui/BossHealthBar';
 import DamageDirection from './ui/DamageDirection';
 import LowHealthVignette from './ui/LowHealthVignette';
 import HeartbeatAudio from './ui/HeartbeatAudio';
@@ -43,7 +42,7 @@ import {
 } from './ui/hudLayout.js';
 import { lineNotification } from './ui/notifications.js';
 import { ON_WORLD_TEXT } from './ui/onWorldText.js';
-import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
+import { PanelBoundary, onceRetrying, BossHealthBar } from './ui/panels/lazyPanels.js';
 import { requestGameLock } from './input/pointerLock.js';
 
 // The windup chevrons (combat-stance Task 7) load behind a lazy boundary: the combat-stance lane's share of the index
@@ -291,8 +290,9 @@ export const Encounter = ({ bossSystem, notifications }) => {
   const column = toastsInEncounter(mode);
   const line = column ? lineNotification(notifications) : null;
   const inBar = column && bossSystem.bossActive;
-  const boss = (
-    <BossHealthBar
+  // The bar is lazy (ui/panels/lazyPanels.js): mounted only in a fight, in its own boundary, so the HUD never waits on it.
+  const boss = bossSystem.bossActive && (
+    <React.Suspense fallback={null}><BossHealthBar
       bossActive={bossSystem.bossActive}
       bossHealth={bossSystem.bossHealth}
       bossMaxHealth={bossSystem.bossMaxHealth}
@@ -302,7 +302,7 @@ export const Encounter = ({ bossSystem, notifications }) => {
       compact={compactBoss(mode)}
       call={inBar ? line : null}
       callLines={bossCallLines(mode)}
-    />
+    /></React.Suspense>
   );
   const toasts = column && !inBar
     ? <NotificationStack notifications={line ? [line] : NO_NOTICES} inline single maxWidth={toastMaxWidth(mode)} lines={COLUMN_TOAST_LINES} />

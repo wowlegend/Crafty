@@ -19,6 +19,35 @@
 
 ---
 
+## 2026-11-01 (W3-A PR C) — [LOOP] the First Night, phase 1: room in the boot chunk, the play-through instrument, harness profiles
+
+The W3-A task script's PR C, units U0, C0 and U0b (`docs/superpowers/plans/2026-11-01-w3a-first-night-tasks.md`),
+branch `feat/w3a-first-night`. The rest of PR C (U1 onward) is the next phase. Items 480 onward.
+
+480. **C0: 2,998 B leave the boot chunk; the ceiling is not raised.** A one-off `rollup-plugin-visualizer@7.1.1` treemap
+   (installed in a scratch directory, not a dependency) and an isolated-minify estimate per module ranked the index
+   chunk at the merged base (`cf815ac4`, 649,228 B). Three modules nothing needs before the world is built moved:
+   `ui/BossHealthBar.jsx` (a fight only) and `render/FrameStats.jsx` (F3 or Show Stats only) to the lazy panel chunk
+   through `lazyPanels.js`'s own factory, each mounted inside its own `<Suspense>` (the readout's inside the Canvas, so a
+   suspend cannot hide the scene); and `ui/DebugOverlay.jsx` to a DEV-only lazy import. The overlay looked DEV-only
+   already, but the static import kept its module-load WebGL probe in production, which built and lost a throwaway
+   context on every boot. Measured: 649,228 to 646,230 B (overlay -566, bar and readout -2,432). The panel chunk was
+   chosen over a new one because it costs the index one `lazyPanel` line per module, and its retry, boundary and idle
+   prefetch are already gated; the price is that a failed load says "That panel could not load", the generic notice,
+   for the bar and the readout too. Gated: one `bundle-budget.mjs` marker per module (the two testids absent from the
+   boot chunk and in exactly one lazy chunk; the overlay's `"experimental-webgl"` in no chunk), red at the base and red
+   again with each module moved back; `lazy-boss-bar-gates` and `lazy-frame-stats-gates` drive the lazy path to the real
+   component through the chunk's import. Not moved, each for a reason: the context-loss and other-tab panels are
+   covering surfaces derived from state, so a failed load would leave input dead with nothing to click (the stranding
+   `input-and-pointer-lock.md` exists for); the touch controls and the music player sit on the iOS `enterPlay` cold
+   start (the second needs the Start tap's gesture); the synth voices (`audio/synthVoices.js`, about 11.6 KB) are
+   SoundManager's, which U1 and then W2-M edit next and whose first sound comes with play; `i18n/strings.js` is PR B's
+   file. **The arithmetic after PR B** (item 453 of PR B's entry: 651,620 B at its head): with PR B and C0 both in, about
+   648,622 B, so PR C's index units have about 3,878 B against their 4.7 KB of shares. The next room, unmeasured as a
+   build: `ui/CombatInstructions.jsx` (about 4,161 B minified on its own; the title's controls panel, the desktop-only
+   first-session card and the hint, four unit gates to re-harness) and `AchievementsPanel`, an on-demand panel still in
+   `QuestSystem.jsx` outside the panel chunk. A unit over its share takes one of them, or moves code to the night chunk.
+
 ## 2026-11-01 (ultrareview chunks 4-6) — [LOOP] the three parts of the game no review had read are reviewed: what the cloud delivered, what a local replica found beside it, and the rows filed
 
 Registry row AUDIT:critic:coverage-gaps/ultra asked for the deep review of the ui, render and audio-and-scene areas, the

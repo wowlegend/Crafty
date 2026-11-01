@@ -42,13 +42,14 @@ vi.mock('@react-three/fiber', async (importOriginal) => {
     useFrame: (cb) => { h.frame = cb; },
     useThree: (sel) => (sel ? sel({ gl: h.gl }) : { gl: h.gl }),
     // The real Canvas needs WebGL. This one does the two things GameScene relies on it for: call onCreated once with a
-    // renderer, and render its children — the FrameStats child only (by identity), so nothing else in the scene mounts.
+    // renderer, and render its children — the FrameStats child only (by identity: the lazy readout inside its own
+    // <Suspense>), so nothing else in the scene mounts.
     Canvas: ({ onCreated, children }) => {
       R.useEffect(() => {
         h.created += 1;
         onCreated({ gl: h.gl, camera: { rotation: { order: '', set() {} }, lookAt() {} }, scene: {} });
       }, []);
-      return R.createElement(R.Fragment, null, R.Children.toArray(children).filter((c) => c && c.type === h.FrameStats));
+      return R.createElement(R.Fragment, null, R.Children.toArray(children).filter((c) => c && c.type === R.Suspense && c.props.children?.type === h.FrameStats));
     },
   };
 });
@@ -56,7 +57,11 @@ vi.mock('@react-three/fiber', async (importOriginal) => {
 vi.mock('../../src/world/Terrain', () => ({ MinecraftWorld: () => null }));
 vi.mock('../../src/Components', () => ({ Player: () => null }));
 
-h.FrameStats = (await import('../../src/render/FrameStats.jsx')).FrameStats;
+// The readout GameScene mounts is the lazy one (ui/panels/lazyPanels.js), loaded here first so it renders in the same
+// commit, as it does once the game's idle prefetch has run; the lazy path itself is lazy-frame-stats-gates'.
+const panels = await import('../../src/ui/panels/lazyPanels.js');
+await panels.loadPanels();
+h.FrameStats = panels.FrameStats;
 const { GameScene } = await import('../../src/GameScene.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore.jsx');
 const gl = await import('../../src/render/glDiagnostics.js');
