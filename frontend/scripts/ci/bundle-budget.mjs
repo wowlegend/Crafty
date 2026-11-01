@@ -182,6 +182,42 @@ for (const marker of LOOKBOOK_SEAM_MARKERS) {
   }
 }
 
+// ROOM IN THE BOOT CHUNK (W3-A C0, DECISIONS 2026-11-01 (W3-A PR C) item 480): code nothing needs before the world is
+// built, moved out of the boot chunk so the First Night's index units fit under the ceiling, which is never raised. The
+// boss bar (a fight only) and the Show Stats readout (F3 or Settings only) ride the lazy panel chunk
+// (ui/panels/lazyPanels.js); each marker is an inline literal only its module carries, a testid, matched quoted. ABSENT
+// from the boot chunk proves no static import pulled the module back; PRESENT in exactly one other chunk proves it still
+// ships. The debug overlay is DEV-only (App.jsx imports it under import.meta.env.DEV), so its marker, a context name
+// only its module-load probe asks for, must be in NO chunk; the on-demand markers' presence half is the control that the
+// quoted matcher can see a literal at all.
+const ON_DEMAND_MARKERS = [
+  { module: 'ui/BossHealthBar.jsx', marker: 'boss-health-bar' },
+  { module: 'render/FrameStats.jsx', marker: 'frame-stats' },
+];
+const DEV_ONLY_MARKERS = [{ module: 'ui/DebugOverlay.jsx', marker: 'experimental-webgl' }];
+let onDemandSeen = 0;
+for (const { module, marker } of ON_DEMAND_MARKERS) {
+  const holders = holdersOf(`"${marker}"`);
+  if (bootChunk && holders.includes(bootChunk)) {
+    console.error(`✘ room in index: "${marker}" (${module}) is in the BOOT chunk (${bootChunk.file}); a static import pulled it back`);
+    failed = true;
+  } else if (holders.length !== 1) {
+    console.error(`✘ room in index: "${marker}" (${module}) found in ${holders.length} chunk(s); expected exactly one lazy chunk`);
+    failed = true;
+  } else {
+    onDemandSeen += 1;
+  }
+}
+for (const { module, marker } of DEV_ONLY_MARKERS) {
+  const holders = holdersOf(`"${marker}"`);
+  if (holders.length) {
+    console.error(`✘ room in index: "${marker}" (${module}) is in ${holders.map((c) => c.file).join(', ')}; the DEV-only module ships`);
+    failed = true;
+  } else if (onDemandSeen === ON_DEMAND_MARKERS.length) {
+    console.log(`✓ room in index: ${ON_DEMAND_MARKERS.length} on-demand markers each in one lazy chunk, none in the boot chunk; ${DEV_ONLY_MARKERS.length} DEV-only marker in none of ${chunks.length} chunks`);
+  }
+}
+
 // LAZY GAME ICONS: the baked game-icons.net path data (~75 KB) is fetched
 // after boot by Icon.jsx. Path data from the first, a middle and the last baked icon must be ABSENT from the boot chunk
 // and PRESENT in exactly one other chunk, the same one for all three: presence proves the icons still ship, absence

@@ -65,8 +65,8 @@
  * the clock run) but it does stop the Player's controller (movement and the KCC, the death branch, the void guard, the
  * beast / voidhand / imbue ticks), and PositionTracker publishes the posed CAMERA as store.playerPosition: allies, the
  * spawner and chunk streaming see the camera, not the body (src/render/lookbookSeam.js), while the mobs' senses read
- * the body. So a night shot can kill the player: the shot is marked invalid and the store's own respawn() runs before the next. First-session onboarding toasts are
- * suppressed (crafty_onboarded) so they do not cover the frames.
+ * the body. So a night shot can kill the player: the shot is marked invalid and the store's own respawn() runs before the next. Every page plays the
+ * returning profile (_profile.mjs), so first-session onboarding toasts do not cover the frames.
  *
  * --hold <seconds> is the power scenario (scripts/dev/power-ab.sh): one Chromium page at 1280x800, entered at spawn by
  * clicking Start Adventure and nothing else, in every build — never through the seam, which the A/B's baseline build
@@ -105,7 +105,7 @@ import os from 'node:os';
 import { serveVite, probePort } from './_serve.mjs';
 import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
-  freshRenderer, resolveChromium, contextOptions, initScript, info, setCycle, clearHostiles, play, hudOn, respawnIfDead,
+  freshRenderer, resolveChromium, contextOptions, initScript, initArgs, info, setCycle, clearHostiles, play, hudOn, respawnIfDead,
   restingBody, handsBaseline, holdActive, chromeVars, holdFrames, releaseFrames, twinShot,
 } from './_lookbookPage.mjs';
 import {
@@ -694,7 +694,7 @@ async function shootTarget(target, launchOpts, launchId) {
       log.push({ t: Date.now(), type: 'pageerror', text });
       report.pageErrors.push(text);
     });
-    await page.addInitScript(initScript, { touch: target.touch, firstSession: FIRST_SESSION });
+    await page.addInitScript(initScript, initArgs({ touch: target.touch, firstSession: FIRST_SESSION }));
     // The combat set counts draws per frame at the GL context (_glDrawCounter.mjs); installed before the app's canvas.
     if (SETS.includes('combat')) await page.addInitScript({ content: `(function (window) {${drawCounterSource()}})(window);` });
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -1053,7 +1053,7 @@ async function hold(launchOpts, launchId) {
   const b = await launch('chromium', launchOpts);
   try {
     const page = await (await b.newContext(contextOptions(TARGETS[0]))).newPage();
-    await page.addInitScript(initScript, { touch: false });
+    await page.addInitScript(initScript, initArgs({ touch: false }));
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(() => typeof window.useGameStore === 'function', null, { timeout: 60000 });
     out.seam = await page.evaluate(() => !!window.__craftyLookbook);
@@ -1273,7 +1273,7 @@ async function measurePasses(launchOpts, launchId) {
   try {
     const page = await (await b.newContext(contextOptions(PASS_TARGET))).newPage();
     page.on('pageerror', (e) => out.pageErrors.push(String(e.message).slice(0, 200)));
-    await page.addInitScript(initScript, { touch: false });
+    await page.addInitScript(initScript, initArgs({ touch: false }));
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     if (!(await page.waitForFunction(() => !!window.__craftyLookbook?.passesOff, null, { timeout: 30000 }).then(() => true, () => false))) {
       out.notes.push('COULD NOT MEASURE: this build has no passesOff on its lookbook seam');

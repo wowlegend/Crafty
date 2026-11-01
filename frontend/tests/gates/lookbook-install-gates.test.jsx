@@ -112,7 +112,7 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     expect(loads.seam, 'presence: the counter must see the one load a ?lookbook=1 page makes').toBe(1);
     expect(seamWhenStoreSet, 'window.useGameStore appeared before the seam was installed — a probe that waits on the store reads no seam').toBe(seam);
     expect(seam, 'the entry module did not install the seam on ?lookbook=1 — the probe has no door').toBeDefined();
-    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stage', 'stand', 'unstage', 'frame'].sort());
+    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'night', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stage', 'stand', 'unstage', 'frame'].sort());
   });
 
   it('hands the seam the boss system\'s lookbook spawn, read from the store at the call', async () => {

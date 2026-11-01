@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 
 // WHERE THE NOTICES SHOW (DECISIONS 2026-10-29 item 92), rendered through the HUD's own components at each layout. In the
@@ -16,12 +16,17 @@ import { isTouchUIMode } from '../../src/input/touchDevice';
 import { Encounter, PlacedToasts } from '../../src/HUD.jsx';
 import { toNotification } from '../../src/ui/notifications.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { loadPanels } from '../../src/ui/panels/lazyPanels.js';
 
 const at = (w, h, touch) => {
   isTouchUIMode.mockReturnValue(touch);
   window.innerWidth = w;
   window.innerHeight = h;
 };
+// The boss bar rides the lazy panel chunk (ui/panels/lazyPanels.js). Loaded first, as the game's idle prefetch has it by
+// any fight, so the bar mounts on the loaded path and renders in the same commit; the lazy path itself is
+// tests/gates/lazy-boss-bar-gates.test.jsx's.
+beforeAll(() => loadPanels());
 afterEach(() => { cleanup(); at(1024, 768, false); useGameStore.setState({ locale: 'en' }); });
 
 const plain = (id, key) => ({ id, ...toNotification(key, 'warn') });

@@ -676,6 +676,7 @@ export const NotificationStack = React.memo(({ notifications, inline = false, si
                             key={notif.id}
                             data-testid="notification"
                             data-notification-key={notif.key || ''}
+                            data-notification-id={notif.id}
                             initial={{ opacity: 0, x: 100, scale: 0.8 }}
                             animate={{ opacity: 1, x: 0, scale: 1 }}
                             exit={{ opacity: 0, x: 100, scale: 0.8 }}

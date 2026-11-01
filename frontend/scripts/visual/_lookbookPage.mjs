@@ -5,6 +5,7 @@
 // owns the lifecycle (_serve.mjs shutdown). Leading underscore: a helper, not a probe; it binds no port.
 import { devices } from '@playwright/test';
 import { CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, CHROME_VARS, classifyRenderer, pickCandidate, handCount } from './_lookbook.mjs';
+import { DEFAULT_PROFILE, profileSeed } from './_profile.mjs';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -47,11 +48,21 @@ export function contextOptions(target) {
   return o;
 }
 
-/** Before any page script: skip the first-session toasts; for a returning player (the default) mark the controls panel
- *  opened, so the first-run controls card and its hint stay away, and for a first-session player (`firstSession`)
- *  clear both controls flags; on touch, remove Pointer Lock as iOS has none. */
-export function initScript({ touch = false, firstSession = false } = {}) {
-  try { localStorage.setItem('crafty_onboarded', '1'); } catch { /* storage blocked: toasts may show */ }
+/** initScript's argument, in Node: the profile's seed from the one table (_profile.mjs), a returning player unless
+ *  `profile` names another, so no caller can leave the seed out and get a fresh player by default (DECISIONS
+ *  2026-11-01 (W3-A PR C) item 492). */
+export const initArgs = ({ touch = false, firstSession = false, profile = DEFAULT_PROFILE } = {}) => ({ touch, firstSession, seed: profileSeed(profile) });
+
+/** Before any page script: write the profile's `seed` (build the argument with initArgs; the lookbook shoots a
+ *  returning player, so the first-session toasts stay away); for a returning player (the default) mark the controls
+ *  panel opened, so the first-run controls card and its hint stay away, and for a first-session player
+ *  (`firstSession`) clear both controls flags; on touch, remove Pointer Lock as iOS has none. Self-contained (it runs
+ *  in the page), so the seed is handed in rather than imported, and an argument with none is refused. */
+export function initScript({ touch = false, firstSession = false, seed } = {}) {
+  if (!seed || typeof seed !== 'object') throw new TypeError('initScript: no profile seed; build the argument with initArgs()');
+  for (const [key, value] of Object.entries(seed)) {
+    try { localStorage.setItem(key, value); } catch { /* storage blocked: toasts may show */ }
+  }
   try {
     if (firstSession) {
       localStorage.removeItem('crafty_controls_seen');

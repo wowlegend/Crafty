@@ -37,7 +37,7 @@ import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
 import { FrameCap, governorBounds } from './render/FrameCap.jsx';
-import { FrameStats } from './render/FrameStats.jsx';
+import { FrameStats } from './ui/panels/lazyPanels.js';
 import { watchContextLoss, trackRenderer } from './render/glDiagnostics.js';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
@@ -510,7 +510,9 @@ export const GameScene = React.memo(function GameSceneRender({
           <Preload all />
         </Suspense>
 
-        {showStats && <FrameStats capActive={capActive} />}
+        {/* Its own boundary: the readout is lazy (ui/panels/lazyPanels.js), and a suspend in the scene's boundary would
+            hide the world and unsubscribe its useFrame callbacks (render/dragonLoader.js says how). */}
+        {showStats && <Suspense fallback={null}><FrameStats capActive={capActive} /></Suspense>}
       </Canvas>
     </div>
   );

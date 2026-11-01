@@ -5,7 +5,7 @@ import { nearestLandmark } from './world/shrines.js';
 import { blightHeartSite } from './world/blightHeart.js';
 import { dayPhase } from './game/dayPhase.js';
 import { useT } from './i18n/i18n.js';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
 import { ControlsCardUntilSeen } from './ui/CombatInstructions';
@@ -20,7 +20,6 @@ import {
 import { SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { CombatLog } from './ui/CombatLog';
-import { BossHealthBar } from './ui/BossHealthBar';
 import DamageDirection from './ui/DamageDirection';
 import LowHealthVignette from './ui/LowHealthVignette';
 import HeartbeatAudio from './ui/HeartbeatAudio';
@@ -43,7 +42,7 @@ import {
 } from './ui/hudLayout.js';
 import { lineNotification } from './ui/notifications.js';
 import { ON_WORLD_TEXT } from './ui/onWorldText.js';
-import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
+import { PanelBoundary, onceRetrying, BossHealthBar } from './ui/panels/lazyPanels.js';
 import { requestGameLock } from './input/pointerLock.js';
 
 // The windup chevrons (combat-stance Task 7) load behind a lazy boundary: the combat-stance lane's share of the index
@@ -290,9 +289,13 @@ export const Encounter = ({ bossSystem, notifications }) => {
   const mode = useHudMode();
   const column = toastsInEncounter(mode);
   const line = column ? lineNotification(notifications) : null;
-  const inBar = column && bossSystem.bossActive;
-  const boss = (
-    <BossHealthBar
+  // The bar is lazy (ui/panels/lazyPanels.js): mounted only in a fight, in its own boundary, so the HUD never waits on it.
+  // It holds the line only once it is drawn (ui/BossHealthBar.jsx onDrawn); while its chunk loads, or after it failed,
+  // the line stands as the one toast, so no notice is handed to a bar that is not on screen.
+  const [barDrawn, setBarDrawn] = useState(false);
+  const inBar = column && bossSystem.bossActive && barDrawn;
+  const boss = bossSystem.bossActive && (
+    <React.Suspense fallback={null}><BossHealthBar
       bossActive={bossSystem.bossActive}
       bossHealth={bossSystem.bossHealth}
       bossMaxHealth={bossSystem.bossMaxHealth}
@@ -302,7 +305,8 @@ export const Encounter = ({ bossSystem, notifications }) => {
       compact={compactBoss(mode)}
       call={inBar ? line : null}
       callLines={bossCallLines(mode)}
-    />
+      onDrawn={setBarDrawn}
+    /></React.Suspense>
   );
   const toasts = column && !inBar
     ? <NotificationStack notifications={line ? [line] : NO_NOTICES} inline single maxWidth={toastMaxWidth(mode)} lines={COLUMN_TOAST_LINES} />

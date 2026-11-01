@@ -11,3 +11,5 @@ export { WorldManager } from '../../WorldManager';
 export { TradingInterface } from '../TradingInterface';
 export { QuestLog } from '../QuestLog';
 export { ChestInventoryPanel } from '../ChestInventoryPanel';
+export { BossHealthBar } from '../BossHealthBar';
+export { FrameStats } from '../../render/FrameStats.jsx';

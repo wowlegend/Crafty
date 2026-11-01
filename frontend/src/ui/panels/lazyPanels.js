@@ -104,3 +104,9 @@ export const WorldManager = lazyPanel('WorldManager');
 export const TradingInterface = lazyPanel('TradingInterface');
 export const QuestLog = lazyPanel('QuestLog');
 export const ChestInventoryPanel = lazyPanel('ChestInventoryPanel');
+// Not panels: on-demand pieces nothing needs before the world is built, out of the boot chunk to make room under its
+// ceiling (DECISIONS 2026-11-01 (W3-A PR C) item 480). The boss bar shows in a fight only, the Show Stats readout on F3
+// or its setting only; each mounts inside its own <Suspense>, so a first mount before the idle prefetch suspends itself
+// and nothing around it.
+export const BossHealthBar = lazyPanel('BossHealthBar');
+export const FrameStats = lazyPanel('FrameStats');

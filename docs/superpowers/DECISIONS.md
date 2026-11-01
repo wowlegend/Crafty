@@ -139,7 +139,8 @@ named in each commit's trailer, with an identity mutant beside each batch that s
    30.95, -10.5) in the tunnel in 0.25 s and 0.283 s, crossing nothing; with nothing in reach the column's top and the
    warning; boxed in by four pillars, never past a pillar's corner (all six cases red at `845be264`). This supersedes
    item 504's "stood on top of it" for a block with open room beside it: the player is stood beside it now.
-   Index chunk: 652,343 B to 652,424 B for this and item 516, 76 B under the 652,500 B ceiling, which is unchanged.
+   Index chunk: 652,343 B to 652,424 B for this and item 516, 76 B under the 652,500 B ceiling, which is unchanged; with
+   main merged at `229722e6` (PR #81, whose C0 took 2,998 B out), 649,488 B, 3,012 B under.
 516. **The load's hold reads which chunks have answered** (`845be264`, dynamic F1). Item 500 read the fit's four corner
    columns, and a corner column dug through the world answers nothing, as one in a chunk not streamed in does: shafts
    two and three wide, the rim of a two-wide one, one at a chunk corner, and a save on the ground beside a one-wide
@@ -178,11 +179,243 @@ named in each commit's trailer, with an identity mutant beside each batch that s
    reaches it; recorded on its row.
 519. **The six flake sightings of PR CI run 41311336652** are on their rows: canvas-pace-panels :29
    (`REVIEW:w2d:canvas-pace-esc-setup`), feedback-grammar :140 (`REVIEW:e2e-flakes:feedback-grammar-lit-band-white`) and
-   :93, another assertion of the same spec (a new row, `REVIEW:e2e-flakes:feedback-grammar-windup-interior-dims`),
+   :93, another assertion of the same spec, on `REVIEW:e2e-flakes:feedback-grammar-windup-near-mob`, the row PR #81
+   landed for that case (the row this lane had opened for it is closed as its duplicate),
    music-bus :74, input-live :72, and light-pool :25, whose presence line went red first this time; and from run
    41322243911, quest-text :54 (`REVIEW:e2e-flakes:quest-text-no-frame-while-held`). **Left open:**
    `REVIEW:l4:gate-reach-round1` (item 506), so the lane row stays open; new rows in the backlog: the golem in a pit
    (item 517) and the risen floor (item 514).
+
+## 2026-11-01 (W3-A PR C) — [LOOP] the First Night, phase 1: room in the boot chunk, the play-through instrument, harness profiles
+
+The W3-A task script's PR C, units U0, C0 and U0b (`docs/superpowers/plans/2026-11-01-w3a-first-night-tasks.md`),
+branch `feat/w3a-first-night`. The rest of PR C (U1 onward) is the next phase. Items 480 onward.
+
+480. **C0: 2,998 B leave the boot chunk; the ceiling is not raised.** A one-off `rollup-plugin-visualizer@7.1.1` treemap
+   (installed in a scratch directory, not a dependency) and an isolated-minify estimate per module ranked the index
+   chunk at the merged base (`cf815ac4`, 649,228 B). Three modules nothing needs before the world is built moved:
+   `ui/BossHealthBar.jsx` (a fight only) and `render/FrameStats.jsx` (F3 or Show Stats only) to the lazy panel chunk
+   through `lazyPanels.js`'s own factory, each mounted inside its own `<Suspense>` (the readout's inside the Canvas, so a
+   suspend cannot hide the scene); and `ui/DebugOverlay.jsx` to a DEV-only lazy import. The overlay looked DEV-only
+   already, but the static import kept its module-load WebGL probe in production, which built and lost a throwaway
+   context on every boot. Measured: 649,228 to 646,230 B (overlay -566, bar and readout -2,432). The panel chunk was
+   chosen over a new one because it costs the index one `lazyPanel` line per module, and its retry, boundary and idle
+   prefetch are already gated; the price is that a failed load says "That panel could not load", the generic notice,
+   for the bar and the readout too. Gated: one `bundle-budget.mjs` marker per module (the two testids absent from the
+   boot chunk and in exactly one lazy chunk; the overlay's `"experimental-webgl"` in no chunk), red at the base and red
+   again with each module moved back; `lazy-boss-bar-gates` and `lazy-frame-stats-gates` drive the lazy path to the real
+   component through the chunk's import. Not moved, each for a reason: the context-loss and other-tab panels are
+   covering surfaces derived from state, so a failed load would leave input dead with nothing to click (the stranding
+   `input-and-pointer-lock.md` exists for); the touch controls and the music player sit on the iOS `enterPlay` cold
+   start (the second needs the Start tap's gesture); the synth voices (`audio/synthVoices.js`, about 11.6 KB) are
+   SoundManager's, which U1 and then W2-M edit next and whose first sound comes with play; `i18n/strings.js` is PR B's
+   file. **The arithmetic after PR B** (item 453 of PR B's entry: 651,620 B at its head): with PR B and C0 both in,
+   648,622 B, measured on the build of this lane's merge of PR B (`a7ec7ed4`), so PR C's index units have 3,878 B
+   against their 4.7 KB of shares. The next room, unmeasured as a
+   build: `ui/CombatInstructions.jsx` (about 4,161 B minified on its own; the title's controls panel, the desktop-only
+   first-session card and the hint, four unit gates to re-harness) and `AchievementsPanel`, an on-demand panel still in
+   `QuestSystem.jsx` outside the panel chunk. A unit over its share takes one of them, or moves code to the night chunk.
+
+481. **U0b: every harness plays a returning player unless it says fresh.** First-minute D11, pulled forward.
+   `scripts/visual/_profile.mjs` is the one table: `returning` writes `crafty_onboarded` (the flag a first session
+   writes once its world is built, `App.jsx`), `fresh` writes nothing, which is what a new Playwright context already
+   holds. The e2e fixture takes it as an option (`profile`, default `returning`; a spec opts out with
+   `test.use({ profile: 'fresh' })`) and writes it before the page's scripts run; the lookbook and the media pipeline
+   now hand their init script the same seed instead of a literal. Only the onboarding flag: the controls card's two
+   flags are another axis, which the lookbook's `firstSession` and `panels.spec.js` set themselves. So from this
+   commit every e2e spec runs without the two goal-loop toasts (1.6 s and 8.6 s after the world is built), which none
+   of them read; `hud-at-rest.spec.js`'s own seed is now redundant and is left. Red first: `harness-profiles.test.js`
+   failed on the missing module, then held five mutants of the table; `harness-profiles.spec.js` reads the storage the
+   page holds before its own scripts run, and went red with the fixture's seed deleted and with the option ignored.
+   The task script's second check, a no-seed mutant turning `day-night-cycle.spec.js` red, can only bite once D2 makes
+   a fresh profile start cold, so D2 runs it.
+
+482. **U0: the eight beats are written red first, and a beat waiting for its feature is skipped in CI unless opted
+   in.** `tests/e2e/first-night.spec.js` holds the task script's eight beats, (a) kindle to (h) lend, each its own test
+   of 120 s or less, each driving its verb with real input (G, R, a left click, a hotbar click, the Respawn button)
+   and reading a presence before the beat. The repo had no mark for a red-first instrument waiting on its feature:
+   `@local-only` is the only tag, and CI greps it out because a run there cannot measure it (DECISIONS 2026-08-02 ①), a
+   different reason. Playwright's `test.fail()` was rejected: it passes on any failure, so a broken boot or a dead
+   reader would read as the beat's red. So the spec carries its own: an `AWAITS` table names, for each beat, the units
+   that build it and the red it shows until then. A listed beat is skipped by default, so CI stays green; with
+   `FIRST_NIGHT_AWAITING=1` it runs and must fail with exactly that red (a `RED (x): ...` line matching its reason).
+   Any other failure (a SETUP or PRESENCE line, a timeout, a red for another reason) fails that run, and so does a
+   listed beat that passes. A unit that lands a beat's feature deletes its entry in the same commit, and the beat
+   then gates every CI sha; a unit that moves a beat's red without finishing it rewrites the reason. The table: (a) D2,
+   (b) N5 and U3, (c) B1, (d) V2, (e) N6a and D3, (f) L2 and N8, (g) L2, L3 and N2, (h) R1. Run on this branch's head
+   with the opt-in, locally (Chromium, the Playwright-managed dev server on 4179), every beat showed its recorded red, 8
+   of 8 in 3.7 minutes, each under 50 s: (a) the brazier lit at Start, intensity 1.6; (b) no siege at the crossing,
+   the store holding none, after one numbered siege notice; (c) the camera back at the eye 1.36 s into a 14 s form,
+   after a reveal that did pull it back; (d) no regeneration, 0.0 HP/s from 4.1 s to 7.0 s of calm, after a hit that
+   did land; (e) and (h) no siege, so no captain and no wave 3; (f) and (g) no lantern slot on the hotbar, which shows
+   its other slots. The readers a later unit must satisfy are named in the spec's header (the store's `hearthLit`,
+   `siege` with `bearings`, `wave`, `night` and `captainId`, `lanterns`; the compass pip of kind `siege`; the hotbar's
+   lantern slot; the keys `notice.hearthLends` and the dawn payoff's; a DEV hook `ambientAttempts`), and a unit that
+   builds one under another name changes the reader in the commit that lands it. The table's own teeth, each red:
+   a wrong recorded reason under the opt-in; a beat turned on before its feature in a default run; a reader aimed at
+   the wrong point (a PRESENCE line, not the beat's red); and a beat that passes while listed. The horn is counted by the numbered
+   siege notice that fires on the same crossing; S1's sound log can replace that.
+
+483. **The seam's read-only `night()`.** `render/lookbookSeam.js` (the lazy seam chunk: index 0) gains `night()`: the
+   clock, the vitals, the ember bar, and the night's own fields (`hearthLit`, `hearthFlame`, `siege`, `dawnRush`,
+   `lastNightfall`, `lastHurtAt`), each null while the store holds none, as copies. Red first in
+   `lookbook-seam.spec.js` (case 5, red on the seam without it) and in `lookbook-seam-gates` (four mutants red).
+
+484. **`scripts/visual/first-night.mjs` plays the night, and `_firstNight.mjs` decides it.** The probe serves the
+   production build (or `--url`), opens the title as a fresh profile with `?lookbook=1`, clicks Start and plays in
+   real time on real keys and buttons: to the brazier and G, then the nearest hostile, aimed by mouse moves computed
+   from the seam's mob list against the game's own look maths, and R on a full bar. The lock is stood in, as the
+   lookbook's `--hold` does, and the cursor's way back to the centre is the one move the stood-in lock hides from the
+   look. It writes the beat log, the pressure numbers (lowest health, hits taken, seconds engaged, the flame's low),
+   the whole run as `clip.webm`, the captain-kill frame as `hero.jpg`, a frame every 30 s and a contact sheet, under
+   `docs/superpowers/masterpiece-2026-10/evidence/first-night/` beside the eye-level frames by default. The verdict is
+   pure (`firstNightVerdict`: kindle by 1:00, one horn at 4:00 plus or minus 3 s, the beast held 13.5 s or more, dawn
+   by 8:05; lowest health 30-85 %, 60 s or more engaged, the flame dipped and held, a build with no flame a miss) and
+   gated in `first-night-verdict-gates` (eight mutants red). Its port is 4219. Two 75 s smoke runs on this branch's
+   production build (`index-CFt9jvxN.js`, ANGLE Metal on the M3 Max) exited 1 as they must on a build with no night
+   yet: no kindle (G pressed 1.8 m from the brazier, `hearthLit` null), no horn, beast or dawn (cut short), no flame. They
+   also showed the bot's first draft at work: in the first run it stood at the cold brazier pressing G for 90 s and
+   died five times to the day's hostiles, so a hostile within 6 m now ends the kindle walk and a death counts as zero
+   health; the second run killed a spider, lowest health 61 %, 8 s engaged. Those numbers are a bot's on a build with
+   no siege, a smoke, not J1's verdict.
+
+**Round 2: the instrument fixed after its reviews** (the static review's findings 1-16 and the dynamic review's F1-F3 of
+phase 1, head `d558a594`). The Command's rulings stand: no CI job runs the awaiting beats, the spec prints its
+denominator, C0 met its ruling, and the next room in the boot chunk goes to the first PR C unit that would cross the
+ceiling.
+
+485. **Every check of an awaiting beat is reached under the opt-in, and the record lists each one's red** (finding 5;
+   this amends item 482, whose run read only each beat's first assertion). Phase 1's "8 of 8 showed their reds"
+   measured the first assertion failing with its reason; the claim that a beat goes green once its feature exists needs
+   every later step to have run, and none had, which is how findings 1 and 6 went unseen. Under
+   `FIRST_NIGHT_AWAITING=1` a red is now recorded and the beat goes on. Where a missing feature leaves nothing to read,
+   it goes on over a stand-in (a bearing, two husks, a captain, a lantern's place, a lantern in the bag), named in the log
+   and refused unless a red came first, so a stand-in can never make a beat green. The record moved to
+   `tests/e2e/_firstNightAwaits.js`: for each awaiting beat, each check's red with the unit whose landing turns it green,
+   37 reds over the eight beats, and a run must show exactly those (`compareReds`: each recorded check once with its
+   reason; a check gone green, a red the record does not hold, a red twice, or none at all fails). A beat with no entry
+   is a gate and stops at its first red, as before. A test of its own prints the denominator in every run, CI's
+   included, where the eight are skipped: beats gating, beats awaiting with their units, reds recorded. The run that
+   checked the record is item 493. Gated: `first-night-awaits-gates` (A1-A6 red).
+
+486. **Beat (f) places its deaths where the light it names is the nearest lit one** (finding 1, HIGH). Phase 1's death
+   stood 40 m from the lantern and 20 m from the Hearth, which the returning profile reads lit: a correct N8 rose at the
+   Hearth and failed, and a rule preferring any lantern passed. Three deaths now (`tests/e2e/_firstNightRespawn.js`):
+   12 m from the lantern and about 32 m from the Hearth, rising within 3 m of the lantern; 14 m from the Hearth and about
+   34 m from the standing lantern, rising at the Hearth, the case a rule preferring any lantern fails; and beside the
+   mined lantern's place, rising at the Hearth, the case a stale index fails. The beat asserts each case's geometry (6 m
+   between the two distances) before it dies. The task script's "40 m" kept "rise where you fell" apart; 12 m does that
+   past both tolerances. `first-night-respawn-gates` plays the three cases under the right rule and five wrong ones: only
+   the nearest lit light answers all three.
+
+487. **Beat (b) reads what only N5 produces** (findings 3 and 12). Its horn count passed on today's code, whose
+   `isDay`-edge horn fires on the crossing. The horn check is now the brief's one claim: once at the crossing and never on
+   a load, with the live world saved and loaded into night 1 (today: once and once, red). Wave 1 must come from the
+   stated bearing (two or more new hostiles, and three quarters of them, within 30 degrees of it and 20 m out) and march:
+   10 m closer to the Hearth in 20 s, closing at every 5 s step until it is within 4 m, and ending nearer it than the
+   player. The steps are there because a wanderer's random walk (`game/mobWander.js`: 3-8 m legs, a pause one time in
+   three) drifts 10 m toward the Hearth in 20 s about one time in twelve (estimated from those legs, not measured), and a
+   stand-in husk ended about 6 m nearer it in two runs of six; it rarely closes at all four steps. The rule is
+   `tests/e2e/_firstNightMarch.js marches`, gated in `first-night-march-gates` (M1-M3 red) on a marcher's, a hunter's and a
+   wanderer's tracks. The player stands 32 m or more from the Hearth,
+   square to the bearing, past the largest aggro range (28 m, the duskhound), so a mob hunting the player closes on them
+   and not on the Hearth; the first column with a floor among 18 nearby is taken. The wedge must sit within 2 degrees
+   ahead and within 12 px of an edge behind (U3's pin, which the brief names).
+
+488. **A unit that lands a beat's feature must rewrite its reds, and a CI-run check holds it to that** (finding 4).
+   The awaiting beats are skipped in CI, so nothing saw a unit that forgot. `tests/scripts/first-night-awaits.test.js`
+   runs in every unit run, so on every CI sha. For each unit that owns a listed red, `LANDED` names what in the repo
+   shows it has landed: the exports the task script names (D2 `night/kindle.js kindleBeat`, N5
+   `night/SiegeDirectorSystem.jsx`, B1 `game/playerPoint.js steadyEye`, V2 `game/vitality.js isCalm`, D3
+   `night/dawnPayoff.js dawnPayoffBeat`); a behaviour of a pure module only that unit adds (U3 `layoutCompass` keeping a
+   marker behind the player, N6a `followSkyClock` following a 60-unit tick at the rush rate, L2 `BLOCK_ID.lantern` 16, L3
+   `forgeOffers` listing the lantern, R1 `notice.hearthLends` in the en strings); N8 a module importing `nearestLit` from
+   `game/lights.js`; N2 the `ambientAttempts` hook registered. The check fails while a listed red belongs to a landed
+   unit, or a beat is listed with no red. Each probe is first shown to see a landing on a fixture tree holding only its
+   unit's piece, and none on an empty tree, so a dead probe cannot pass the check by reading nothing. It fails open
+   where a unit builds its piece under another name; the probe then moves with it, the rule the spec's readers already
+   follow.
+
+489. **The probe times its beats from the clock's start, reads the horn off its notice, and kindles only from cold; a
+   declared-off flame and a crash get their own answers** (findings 2, 3, 7 and 15; F1). The clock runs only once the
+   world is built and play is live (`dayNight.js shouldAdvanceClock`), and `first-night.mjs` took `t0` at the Start
+   click, so a correct horn read late by the world's build time against a window of 3 s. `t0` is now the first moment
+   both hold, and the report gives the gap after the click. The horn is the siege notice the page shows (the log the e2e
+   reads, item 490); the clock's flip logs as `dusk`. The kindle needs a cold reading before a lit one, so a profile that
+   starts lit logs none. `--flame-off` declares the flame switched off (H1's `FLAME_DRAIN = 0` night, or the flame cut):
+   the flame must then not dip, and a dip under the declaration is a miss. Exit 2 is now a crash (no verdict on the
+   game) and 1 only a miss. Each decision is pure in `_firstNight.mjs` (`tickBeats`, the flame's verdict, `exitCodeFor`)
+   and gated in `first-night-verdict-gates` (T1-T4 red).
+
+490. **A notice is counted once, however often its toast mounts** (finding 11). The stack's toasts
+   (`QuestSystem.jsx` NotificationStack) and the boss bar's line carry the channel's id as `data-notification-id`, and
+   the notice log the spec and the probe share (`_firstNight.mjs installNoticeLog`) counts an id once; a toast from a
+   build without the id counts each insertion, as before. Gated: `first-night-notice-log-gates` (N1-N3 red). The spec's
+   horn is counted where it is raised instead (the store's `addNotification`, wrapped in the DEV page): a load rebuilds
+   the world, and a notice raised while the HUD waits can end its 4 s life unseen. Three runs of (b) raised the load's
+   horn each time and showed it on screen once; counted on screen, the record would read the horn green two times in
+   three. The probe, on the production build with no store to wrap, keeps the shown log.
+
+491. **The boss bar takes the line only once it is drawn** (finding 16, from C0). Where the encounter column holds the
+   notices, the line went into the boss bar whenever a boss was up, and since C0 the bar is lazy: while its chunk loads,
+   or after it failed, every notice, the "could not load" one among them, showed nowhere. The bar now reports itself
+   drawn from a layout effect (`onDrawn`), and until it does the line stands as the one toast. Gated:
+   `boss-bar-line-gates` (B1, B2 red), with `hud-notices-gates` holding the drawn bar's line (B3 red).
+
+492. **The smaller corrections** (findings 6, 8, 9, 10, 13 and 14; F2, F3). (a) faces the brazier (heading 0 from 2 m
+   south; 180 faced away), and its kindle check needs the brazier cold before G and lit after; the old poll passed on a
+   brazier already lit. (c) holds its window from the task script's 1.2 s, written in the spec, not `transformCam.js`'s
+   constant, which B1 rewrites; its return check needs a held view at the form's end; its wait for the form to end is a
+   PRESENCE, not swallowed. (d)'s restart check needs health to come back after the second hit's 4 s; it passed today
+   because nothing regenerates. (e) reads D3's swell as the store's bloom window, 300 ms or more past the kill, and its
+   sky check needs a rush to have happened, since no rush read as no cut. A cut is now measured against each frame's
+   time: the sky's own clock (`readSkyLight` `cycle`) moving further in one frame than the rush's 60 units a second could
+   pan it, where the sun's height step it replaced would read a slow page's pan as a cut (one local run drew 3 frames a
+   second); a rush drawn slower than a frame every 0.25 s is a PRESENCE, too slow to tell. The rule is
+   `tests/e2e/_firstNightSky.js`, gated in `first-night-sky-gates` (S1-S3 red). (c)'s recorded red takes any
+   time for the camera's return: the first frame off the held view came at 1.36 to 1.76 s in four runs and at 3.59 and
+   3.68 s in two, on a loaded machine; why it moved is not measured, and B1's window replaces it. (g): the `ambientAttempts` contract is the
+   player's live position, a dry run (it places nothing, so no mob cap or budget is spent between the two batches) and
+   one entry per attempt; the warded batch must reach the ward's edge (16-30 m) as its presence; the lantern is bought
+   for the Forge's price through `buyForgeOffer` (`goods:lantern`), so L3 joins the beat's units as the task script has
+   it. (h)'s night-2 wave is a red, not a timeout. The Respawn button's own pointer-lock request is refused on a headless
+   page (finding 14, measured in item 493: the gate read shut after each of the three respawns), so the beats hold the
+   gate again as `startPlayActive` does. A lethal hit waits out the 5 s a respawn protects the player for
+   (`damagePlayer`'s `_spawnTime`), which ignored (f)'s second death in one run; and every crossing holds the gate first
+   and names the clock's gates (`shouldAdvanceClock`'s inputs) when it never comes, after one run under a load of 98 saw
+   (b)'s crossing not come in 15 s. `initArgs` (`_lookbookPage.mjs`) builds the init script's seed, a returning
+   player unless named, and the init script refuses an argument with none (finding 13; S1, S2 red). The head run's two
+   flake sightings are on their rows, with the light-pool fall the dynamic review read (`e362323e`).
+
+493. **The record against the game: every beat showed every recorded red under the opt-in.** The whole spec, run
+   locally with `FIRST_NIGHT_AWAITING=1` (Chromium, the Playwright-managed dev server on 4179): 9 passed in 5.8 minutes,
+   started at a load of 9.5, and again on this round's last spec in 7.9 minutes, started at 25.8 under a load that rose
+   past 100; each time the eight beats with 37 of 37 reds as recorded. By beat (the first of those runs): (a) the
+   brazier lit at Start, intensity 1.6, and the same after G; `hearthLit` null. (b) no siege; no wedge ahead or behind;
+   no bearing for the sector; the stand-in husk drifted from 28.1 to 34.9 m off the Hearth, no march; the horn raised
+   once at the crossing and once on the load (shown on screen after the load: 0). (c) the camera back at the eye inside
+   the held window, not held at the form's end, `playerPosition` 4.00 m off the body. (d) 0.0 HP/s from 4.1 to 7.0 s of
+   calm; held to 5.5 s after the second hit, and no regeneration. (e) no captain; the stand-in killed by the real click
+   inside the swing's reach; no day within 6 s, no rush in the sky log (56 frames), `lastRewardedNight` 0, no keyed
+   notice after the kill, the bloom window 0 ms. (f) no slot, so nothing to select; the death 12 m from the lantern's
+   place rose 20.2 m from it, the other two 0.0 m from the Hearth; nothing to mine. (g) the Forge answered `stale`; no
+   slot; the three reds of no `ambientAttempts` hook; nothing to mine. (h) no siege, the bar at 40, the line 0 times, no
+   wave 3 on night 2. The default run, as CI has it: 8 skipped and the denominator test passed. The runs before it found
+   what phase 1's first-red stop hid, finding 5's point, each fixed at its cause: (b)'s stand had no floor at 32 m east
+   and its stand-in husks none 50 m out (the stand takes the first floored column of 18 near square; the husks stand
+   28 m out); (e)'s click, aimed before it, did not kill the captain (it is aimed on its own mousedown, which
+   `talents.spec.js` measured is needed); (f)'s second death fell in the respawn's 5 s protection; the load's horn is
+   counted where it is raised (item 490); a march must close at every step (item 487); and (e)'s sky check measures a
+   cut against frame time (item 492). After each of (f)'s three respawns the input gate read shut (finding 14, confirmed
+   on the headless page). Two runs started over the load ceiling of 28 (at 41 and 66) and were stopped within a minute;
+   another, started at 26 under a load that rose to 98, saw (b)'s crossing not come in 15 s, which did not recur.
+
+494. **The boot chunk after round 2: 648,684 B, 3,816 B under the ceiling.** Measured on this round's build: 648,622 B
+   before (item 480; no source change since) and 648,684 B after, the notice id and the bar's drawn state (+62 B),
+   against 652,500 B, which was not raised. PR C's index units have 3,816 B against their 4.7 KB of shares; item 480's
+   next room stands for the first unit that would cross.
+
+---
 
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor
 

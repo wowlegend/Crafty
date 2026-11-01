@@ -24,7 +24,6 @@ import { isTouchDevice } from './input/touchDevice';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { MotionProvider } from './ui/MotionProvider.jsx';
-import { DebugOverlay } from './ui/DebugOverlay';
 import { prefetchPanels } from './ui/panels/lazyPanels.js';
 import { initSettingsPersistence } from './game/settingsPersist.js';
 import { ONBOARDING_TIPS } from './game/onboardingTips.js';
@@ -46,6 +45,11 @@ import { ON_WORLD_TEXT } from './ui/onWorldText.js';
 // is tree-shaken out of the production bundle.
 const PrimitivesShowcase = import.meta.env.DEV
   ? lazy(() => import('./ui/PrimitivesShowcase').then((m) => ({ default: m.PrimitivesShowcase })))
+  : () => null;
+// The same for the DEV debug overlay: a static import kept its module-load WebGL probe in production, which built and
+// lost a throwaway context on every boot (DECISIONS 2026-11-01 (W3-A PR C) item 480).
+const DebugOverlay = import.meta.env.DEV
+  ? lazy(() => import('./ui/DebugOverlay').then((m) => ({ default: m.DebugOverlay })))
   : () => null;
 
 function App() {
@@ -346,7 +350,7 @@ function GameApp({ experienceSystem }) {
         questSystem={questSystem}
       />
 
-      {import.meta.env.DEV && !hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
+      {import.meta.env.DEV && !hudHidden && (<Suspense fallback={null}><DebugOverlay isWorldBuilt={isWorldBuilt} /></Suspense>)}
 
       {import.meta.env.DEV && showcaseView && (<Suspense fallback={null}><PrimitivesShowcase /></Suspense>)}
     </div>
