@@ -15,7 +15,8 @@ import { CHUNK_SIZE, CHUNK_VOLUME, voxelIndex } from '../world/chunkLayout.js';
 //    some of its frames (the defect is present in the run, so its absence below is measured, not assumed);
 //  - on the brink of a ledge, borne only by its edge, the capsule is ground while the edge meets it within 45 degrees of
 //    up (40) and not past it (50), where the controller's flag still reads ground and the cast under the capsule meets the
-//    edge's slanted face (measured 2026-11-01: sweep normal 0.65, cast normal 0.52).
+//    edge's slanted face (measured 2026-10-31: sweep normal 0.65, cast normal 0.52);
+//  - a frame the controller calls airborne stays airborne (a stand-in controller: the claim is the function's).
 // The Player's use of it (the jump, the glue) is tests/gates/player-wall-ground-gates.test.jsx's.
 
 const DT = 1 / 60;
@@ -103,5 +104,21 @@ describe('supportedGround: the controller\'s ground, kept only where a walkable 
     expect(read[50].kcc, `SETUP: the controller does not call the brink ground, so the case measures nothing ${JSON.stringify(read)}`).toBe(true);
     expect(read[40].supported, `an edge 40 degrees from up does not bear the capsule ${JSON.stringify(read)}`).toBe(true);
     expect(read[50].supported, `an edge 50 degrees from up bears the capsule ${JSON.stringify(read)}`).toBe(false);
+  });
+
+  // The rule removes grounds and never adds one: a frame the controller calls airborne stays airborne, whatever its sweep
+  // met and the cast under the capsule finds. A stand-in controller and world, since the claim is the function's: one
+  // whose sweep met a floor and whose cast meets one, grounded or not.
+  it('a frame the controller calls airborne is airborne, though its sweep met a floor and the cast under it finds one', () => {
+    const floor = { normal1: { x: 0, y: 1, z: 0 } };
+    const stand = (grounded) => ({
+      computedGrounded: () => grounded, numComputedCollisions: () => 1, computedCollision: () => floor, offset: () => 0.05,
+    });
+    const world = { castShape: () => floor };
+    const body = { nextTranslation: () => ({ x: 0, y: TOP + 0.95, z: 0 }) };
+    const collider = { shape: {} };
+    const read = { grounded: supportedGround(stand(true), world, body, collider), airborne: supportedGround(stand(false), world, body, collider) };
+    expect(read.grounded, `SETUP: a grounded frame on a floor is not ground, so the airborne one measures nothing ${JSON.stringify(read)}`).toBe(true);
+    expect(read.airborne, `a frame the controller called airborne was made ground ${JSON.stringify(read)}`).toBe(false);
   });
 });

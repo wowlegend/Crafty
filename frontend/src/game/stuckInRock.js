@@ -1,5 +1,7 @@
-// stuckInRock.js — the stuck-in-rock recovery: a body whose centre is inside solid ground is stood on the nearest clear
-// spot, wherever it is (Components.jsx, on every frame in play, after the spawn branch).
+// stuckInRock.js — the stuck-in-rock recovery: a body whose centre, or the point just above its lowest point, is inside
+// solid ground is stood on the nearest clear spot, wherever it is (Components.jsx, on every frame in play, after the spawn
+// branch). A capsule reaching into the rock sideways with both points in the open is not read (registry
+// REVIEW:l13:sideways-reach-in-rock-unread).
 //
 // A chunk's trimesh is hollow (world/mesher.js closes each chunk), so a body that clipped into the ground (a chunk that
 // landed round it, a drop onto ground still streaming in) touches no face from inside and falls through the rock until
@@ -16,8 +18,9 @@
 // fitLoadedSpot, for the body's own shape): the nearest spot within a few decimetres whose cell is not solid and where the
 // capsule is clear, else the top of the columns the capsule stands across. Never the origin.
 //
-// Cost: a frame adds its step to a counter; a reading is one ray cast per face above the centre, ten times a second, and
-// allocates only Rapier's ray and hit objects; the fit runs only when the body is moved.
+// Cost: a frame adds its step to a counter; ten times a second a reading casts a ray up the centre's cell, one cast per
+// face above it, and in play, where that cell is clear, as many again up the lowest point's cell: two scans a reading,
+// each allocating Rapier's ray and hit objects; the fit runs only when the body is moved.
 import { cellSolid, fitLoadedSpot } from './formFit.js';
 
 export const STUCK_CHECK_SEC = 0.1;
@@ -37,8 +40,8 @@ export function makeStuckWatch() {
 }
 
 /**
- * One Player frame in play. Returns the centre to stand the body at once its centre has read solid for STUCK_CONFIRM_SEC,
- * else null.
+ * One Player frame in play. Returns the centre to stand the body at once its centre or lowest point has read solid for
+ * STUCK_CONFIRM_SEC, else null.
  *   watch      makeStuckWatch()'s state, kept per player
  *   body       the player's kinematic body; its collider(0) is the shape it has now (a beast form's too)
  *   stepSec    this frame's step
