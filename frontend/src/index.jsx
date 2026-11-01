@@ -62,6 +62,7 @@ import { skyFrameRef } from './render/mood.js';
 import { handNodeCount } from './render/viewmodel.js';
 import { worldNow } from './game/worldClock.js';
 import { _roots } from '@react-three/fiber';
+import { loadNightWhenBuilt } from './night/nightLoader.js';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
 
@@ -100,6 +101,8 @@ function boot(installLookbookSeam) {
 
   // The world this tab plays is loaded before the first render (startGame.jsx, game/worldBoot.js).
   startGame(ReactDOM.createRoot(document.getElementById('root')));
+  // The First Night's chunk, fetched once that world is built (night/nightLoader.js).
+  loadNightWhenBuilt();
 }
 
 // A `?lookbook=1` page boots when the seam's chunk arrives; if that fetch fails the page stops with the error, and only

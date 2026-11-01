@@ -75,6 +75,14 @@ console.log(`bundle-budget: ${chunks.length} chunks in build/assets\n`);
 
 for (const { name, max, actualAtWrite } of BUDGETS) {
   const chunk = findChunk(name);
+  // A lazy module named like a budgeted chunk (a dynamically imported `index.js` names its chunk `index-<hash>.js`) would
+  // let the prefix match read the wrong chunk's bytes, and every check below that reads the boot chunk with it.
+  const named = chunks.filter((c) => c.file.startsWith(`${name}-`));
+  if (named.length > 1) {
+    console.error(`✘ ${name}: ${named.length} chunks are named ${name}-* (${named.map((c) => c.file).join(', ')}); the budget cannot tell which one it is`);
+    failed = true;
+    continue;
+  }
   if (!chunk) {
     console.error(`✘ ${name}: MISSING. Expected a \`${name}-*.js\` chunk — did manualChunks change?`);
     failed = true;
@@ -179,6 +187,24 @@ for (const marker of LOOKBOOK_SEAM_MARKERS) {
     failed = true;
   } else {
     console.log(`✓ lookbook seam: ${LOOKBOOK_SEAM_MARKERS.length} marker only in ${holders[0].file}, none in the boot chunk`);
+  }
+}
+
+// THE NIGHT'S CHUNK (W3-A U1, DECISIONS 2026-11-01 (W3-A PR C) item 498): the First Night's code is its own chunk, rooted
+// at src/night/night.js and fetched by night/nightLoader.js once the world is built. The chunk's name is an inline literal
+// only its root carries (installNight's handle): ABSENT from the boot chunk proves no static import pulled the night into
+// it; PRESENT in exactly one other chunk proves the split happened rather than the root having been deleted.
+const NIGHT_MARKERS = ['crafty:night-chunk'];
+for (const marker of NIGHT_MARKERS) {
+  const holders = holdersOf(`"${marker}"`);
+  if (bootChunk && holders.includes(bootChunk)) {
+    console.error(`✘ night: "${marker}" is in the BOOT chunk (${bootChunk.file}); src/night/night.js is statically imported`);
+    failed = true;
+  } else if (holders.length !== 1) {
+    console.error(`✘ night: "${marker}" found in ${holders.length} chunk(s); expected exactly one lazy night chunk`);
+    failed = true;
+  } else {
+    console.log(`✓ night: ${NIGHT_MARKERS.length} marker only in ${holders[0].file}, none in the boot chunk`);
   }
 }
 

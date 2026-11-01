@@ -1,7 +1,7 @@
 import { useGameStore } from '../store/useGameStore.jsx';
 import { STRINGS } from './strings.js';
 
-/** @internal Exported for the tests that enumerate it. */
+/** The locales the string tables hold: the tests enumerate them, and night/nightStrings.js merges into each. */
 export const LOCALES = ['en', 'zh-CN'];
 
 function interpolate(str, vars) {

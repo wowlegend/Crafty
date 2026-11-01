@@ -299,6 +299,29 @@ ceiling.
    worker stubbed and its reply handed in): 3 of 3 red on the base, 8 mutants red, the identity survived;
    `kill-attribution-gates`' emit shape now names the entity (its mutant red).
 
+498. **U1, the night's chunk and its doors: the loader in the boot chunk, the root and the string merge in the night
+   chunk, the voice registry in SoundManager.** `night/nightLoader.js` (boot chunk) fetches the night once the store's
+   `isSpawnChunkLoaded` holds, at once when it already does, through `onceRetrying` (a failed fetch is silent, and the
+   next `loadNight()` from whatever needs the night tries again), and installs it once; `src/index.jsx` arms it after
+   `startGame`. The chunk's root is `night/night.js`, not the task script's `night/index.js`: a lazy root named
+   `index.js` names its chunk `index-<hash>.js`, and `bundle-budget.mjs` finds the boot chunk by that prefix, so the first
+   build read whichever of the two sorted first; the gate now also fails when two chunks share a budgeted name (red with
+   a copy named `index.js`). The root's `installNight()` merges the night's strings and registers its voices (both empty
+   until D2, R1, D3 and S1) and returns its handle, whose name `crafty:night-chunk` is the marker the bundle gate holds
+   absent from the boot chunk and in one lazy chunk (red on the base, where no chunk held it, and red with the root
+   imported statically). `registerVoices` (`SoundManager.jsx`) builds an added voice into the mounted provider's bank at
+   once and into any bank built later, and refuses a name the bank holds, shipped or added. `mergeStrings` merges en and
+   zh-CN together or throws (a key in one only, or a different text for a key the tables hold), and skips the same text
+   again; the task script put it in `i18n.js`, and it lives in the night chunk (`night/nightStrings.js`) under the same
+   script's rule that a unit over its share moves code there, since the night is its only caller (-360 B). Gated:
+   `night-loader-gates` (4 tests, 6 mutants red) and `night-voices-strings-gates` (6 tests, 10 mutants red), each with an
+   identity mutant surviving. **U1's bytes:** 644,426 B before U1 and 646,343 B after, +1,917 B against its 900 B share
+   (the store +942, the bus +347, these doors +628: the loader with its import about 350, the voice registry about 210),
+   against 652,500 B, which was not raised. The room of item 495 covers it today. PR #82 (lane L13 part 2) was estimated
+   to leave about 157 B before item 495, so about 3,660 B of its own: with it, about 2,500 B remain for PR C's later index
+   units, which hold about 3.35 KB of shares (L1's 0.3 KB among them, once the lights move to the boot chunk), so the
+   next room is taken before those units build (the controls card and hint, item 495), or the shares are cut.
+
 ---
 
 ## 2026-11-01 (W3-A PR B) — [LOOP] six small fixes beside the First Night: the fire's pad gated, a long frame keeps the fight, the flinch turns away, C forces a placement, the ember bar shows its prices, each beast stands on its floor

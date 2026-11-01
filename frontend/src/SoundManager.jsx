@@ -16,6 +16,26 @@ const PROC_MUSIC_GAIN = 0;
 
 const SoundContext = createContext();
 
+// Voices a lazy chunk adds after boot (the night's, W3-A S1), kept so a bank built later holds them too, and the bank of
+// the mounted provider, which takes one at once.
+const addedVoices = {};
+let liveBank = null; // { ctx, sounds } while a provider with a context is mounted
+
+/**
+ * Add `voices` ({ name: (ctx) => AudioBuffer }) to the sound bank, for playSound and the spatial voices. A name the bank
+ * already holds, shipped or added, is refused, so no chunk can replace a voice. Returns the names it added.
+ */
+export function registerVoices(voices) {
+  const added = [];
+  for (const [name, make] of Object.entries(voices)) {
+    if (name in VOICES || name in addedVoices) continue;
+    addedVoices[name] = make;
+    if (liveBank) liveBank.sounds[name] = make(liveBank.ctx);
+    added.push(name);
+  }
+  return added;
+}
+
 export const useSounds = () => {
   const context = useContext(SoundContext);
   if (!context) {
@@ -448,6 +468,8 @@ export const SoundProvider = ({ children }) => {
 
     // Generate procedural sounds
     generateSounds();
+    const bank = audioContext.current ? { ctx: audioContext.current, sounds: sounds.current } : null;
+    liveBank = bank;
     // W4-T9b: publish the shared ctx + master-bus input so the WeatherSystem can route its storm bed
     // through the same limiter (null-safe: getMasterBus() returns null if the ctx failed to init).
     setAudioBridge(audioContext.current, getMasterBus());
@@ -455,7 +477,11 @@ export const SoundProvider = ({ children }) => {
     // don't re-render) — so consumers get the real context immediately, not after the first hostile spawn.
     setAudioReady(true);
     // A context the platform stopped (iOS: an app switch, a call, Siri) comes back on the next gesture or page return.
-    return installAudioRecovery(() => audioContext.current);
+    const uninstallRecovery = installAudioRecovery(() => audioContext.current);
+    return () => {
+      uninstallRecovery?.();
+      if (liveBank === bank) liveBank = null;
+    };
   }, []);
 
   // SFX overhaul Slice 2: lazily build ONE master bus + limiter on the shared ctx and route every voice
@@ -479,8 +505,8 @@ export const SoundProvider = ({ children }) => {
 
   const generateSounds = () => {
     if (!audioContext.current) return;
-    // S3-M1: the voice bank lives in audio/synthVoices.js — one registry, one loop.
-    for (const [name, make] of Object.entries(VOICES)) {
+    // S3-M1: the voice bank lives in audio/synthVoices.js — one registry, one loop — with any a chunk has added.
+    for (const [name, make] of Object.entries({ ...VOICES, ...addedVoices })) {
       sounds.current[name] = make(audioContext.current);
     }
   };
