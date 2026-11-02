@@ -94,7 +94,7 @@ describe('buildCooldownMirror', () => {
   });
 });
 ```
-- [ ] Run it and watch it fail: `cd /Users/kz/Code/Crafty/frontend && npx vitest run tests/data/cooldownMirror.test.js` → expect `Cannot find module '.../cooldownMirror.js'`.
+- [ ] Run it and watch it fail: `cd ~/Code/Crafty/frontend && npx vitest run tests/data/cooldownMirror.test.js` → expect `Cannot find module '.../cooldownMirror.js'`.
 - [ ] Create `frontend/src/game/cooldownMirror.js` (minimal impl):
 ```js
 // Pure HUD model for the ability-bar cooldown sweeps. The 4 Aspect SMs (voidhand/soulbind/beast)
@@ -1457,7 +1457,7 @@ export const QuestLog = React.memo(({ quests = [], onClose }) => {
 
 ## Final W3 verification (run before declaring the workstream complete)
 
-- [ ] Full unit suite: `cd /Users/kz/Code/Crafty/frontend && npx vitest run` → all green (count grows or holds vs the pre-W3 baseline; record the delta).
+- [ ] Full unit suite: `cd ~/Code/Crafty/frontend && npx vitest run` → all green (count grows or holds vs the pre-W3 baseline; record the delta).
 - [ ] Build: `npm run build` → clean.
 - [ ] Lint: `npx eslint src` → clean.
 - [ ] Visual gate: `npm run visual:capture && npx vitest run --config vitest.visual.config.js` → all frames within 6%; the ONLY intended baseline changes are `hearth` (hub buildings) + `explore-day`/`explore-night` (decluttered controls). Confirm those were RE-BASELINED deliberately (M-HUD.9, M-HUB.2) and reviewed by eye; every OTHER frame byte-stable.

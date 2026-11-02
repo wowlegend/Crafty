@@ -16,7 +16,7 @@
 
 # Crafty — V1 Source-Grep Gate Plan
 ### Classification (post-attack), Seam-Extraction Batches, and Ratchet Targets
-**Scope:** `/Users/kz/Code/Crafty/frontend/tests/gates/` · ratchet `/Users/kz/Code/Crafty/frontend/scripts/ci/gate-shape.mjs` · ledger `/Users/kz/Code/Crafty/frontend/tests/gates/.source-grep-ledger.json`
+**Scope:** `frontend/tests/gates/` · ratchet `frontend/scripts/ci/gate-shape.mjs` · ledger `frontend/tests/gates/.source-grep-ledger.json`
 **Status:** replaces status-doc item V1 and its "~80 never classified". Every one of the 116 ledger entries is now classified with per-test evidence and adversarial review.
 
 ---

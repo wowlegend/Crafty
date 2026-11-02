@@ -28,11 +28,11 @@
 
 # Crafty Ground + Grass — FINAL EXECUTION PLAN
 
-**Provenance.** Every line/file cited below I opened this session under `/Users/kz/Code/Crafty/`. Where I am relaying a reviewer's measurement I did not reproduce, it is tagged `[lens]`. **Nothing was executed** — no `npm run lint`, `test:unit`, `build`, `test:visual`, `perf:m2`, no rendered PNG. All frame-cost figures are structural.
+**Provenance.** Every line/file cited below I opened this session under `~/Code/Crafty/`. Where I am relaying a reviewer's measurement I did not reproduce, it is tagged `[lens]`. **Nothing was executed** — no `npm run lint`, `test:unit`, `build`, `test:visual`, `perf:m2`, no rendered PNG. All frame-cost figures are structural.
 
 **Standing gate for every commit** (mirrors `.githooks/pre-push:99-110`, which runs doc-currency → queue-ledger → lint → gate-shape → cli-guard → test:unit → build → bundle-budget):
 ```
-cd /Users/kz/Code/Crafty/frontend && npm run lint && npm run test:unit && npm run build && node scripts/ci/bundle-budget.mjs && npm run knip
+cd ~/Code/Crafty/frontend && npm run lint && npm run test:unit && npm run build && node scripts/ci/bundle-budget.mjs && npm run knip
 ```
 `npm run test:visual` is in **neither** pre-push nor CI (`.githooks/pre-push:30-34` names it an explicit exclusion) — run it deliberately on every item marked *moves baselines*. Re-baselining stays owner-gated (invariant 7).
 
@@ -223,7 +223,7 @@ else                          uvs.push(0,0,  w,0,  w,h,  0,h);
 ## 5. STILL UNKNOWN — nobody measured it
 
 **Q1. Every frame-cost number in this document, and in all four input documents.** No agent ran anything; all figures are structural, and the only recorded measurement (`memory/perf/m2-*.json`, 2026-06-10) reports all five scenarios pinned at `16.6999…` ms.
-→ `cd /Users/kz/Code/Crafty/frontend && npm run perf:m2` — but only meaningful **after S2**.
+→ `cd ~/Code/Crafty/frontend && npm run perf:m2` — but only meaningful **after S2**.
 
 **Q2. Rapier trimesh BVH build time, per streamed chunk and per mined block. This is S15's gate.** `Terrain.jsx:218-220` sits in the React tree; S3, S13 and S15 all change `positions`/`indices` identity, so the `useMemo` at `:189` rebuilds the geometry *and* `<TrimeshCollider>` re-creates the collider — on the main thread. Chunk (0,0) is ~2202 triangles `[lens]`; S15 raises it ~1.5×. No frame-cost section in any document costs this.
 → Instrument `performance.now()` around the `TrimeshCollider` remount in `src/world/Terrain.jsx`, `npm run dev`, then (a) walk to stream 81 chunks and (b) mine 20 blocks; log median and max. **Ship S15 only if the per-mined-block figure stays under one frame at 60 Hz after the 1.5× rise.**

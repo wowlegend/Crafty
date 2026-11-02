@@ -81,7 +81,7 @@ and the 4 sword patterns are the only ones declared with null-padded outer colum
   ```
 
 **The ENTIRE sword tree is uncraftable — Iron Sword and Diamond Sword do not exist in the shipped game, and weapon progression is permanently capped at the starting Stone Sword**
-- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/data/recipes.js:9-28 (the 4 sword recipes) × /Users/kz/Code/Crafty/frontend/src/ui/panels/CraftingTable.jsx:27-54 (normalizeGrid) and :75 (RECIPES.find(gridsEqual))`
+- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `frontend/src/data/recipes.js:9-28 (the 4 sword recipes) × frontend/src/ui/panels/CraftingTable.jsx:27-54 (normalizeGrid) and :75 (RECIPES.find(gridsEqual))`
 - *verdict:* CONFIRMED (mechanical defect) — but headline, severity, and "PROBE H" evidence REFUTED
 - *player impact (refuter's words):* REAL BUT MUCH SMALLER THAN CLAIMED. What genuinely happens: a player who mines iron/diamond, opens the crafting table, and lays out the universal two-materials-plus-a-stick vertical sword pattern gets nothing — the result slot stays Empty. All 4 sword recipes are dead rows, and the ore->weapon sink at the table does not exist. That is a real, unfixed, player-facing defect deserving the one-line fi
 - *executed evidence:*
@@ -239,7 +239,7 @@ Worst case is unrecoverable: the 4 stati
   ```
 
 **The joystick knob is 100% TRANSPARENT and every touch-button ink border is silently dropped -- bare var(--ui-*) against space-separated RGB-CHANNEL tokens**
-- *domain:* Touch / mobile input  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/ui/TouchControlsSurface.jsx:11-12 (and BTN() at :16-20, ring/knob at :53-58)`
+- *domain:* Touch / mobile input  ·  *at:* `frontend/src/ui/TouchControlsSurface.jsx:11-12 (and BTN() at :16-20, ring/knob at :53-58)`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Reachable by every real touch player: TouchControls.jsx:28 `if (!isTouchDevice()) return null;` -> TouchControlsLive -> the same <TouchControlsSurface> (line 118) I probed, so this is not capture-only or dead code. On any phone/tablet the joystick thumbstick knob is 100% transparent (the W4-T11 rAF knob-follow at TouchControls.jsx:74-81 animates an invisible element -> zero directional feedback), 
 - *executed evidence:*
@@ -254,7 +254,7 @@ Worst case is unrecoverable: the 4 stati
   ```
 
 **Pause hit-button is 100% DISJOINT from the Pause glyph -- and it hit-covers the Settings gear, so tapping Settings pauses the game instead**
-- *domain:* Touch / mobile input  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/ui/TouchControls.jsx:126-127 (hit: right:8) vs src/ui/TouchControlsSurface.jsx:76 (glyph: right:64)`
+- *domain:* Touch / mobile input  ·  *at:* `frontend/src/ui/TouchControls.jsx:126-127 (hit: right:8) vs src/ui/TouchControlsSurface.jsx:76 (glyph: right:64)`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Real and unavoidable on every touch device. (1) The drawn Pause glyph is dead: tapping the visible || icon does literally nothing (swallowed as a look-zone touch) — verified live. (2) The Settings gear is unreachable: its center sits inside the transparent Pause hit-button, which wins on z-order (z-40 vs z-20), so tapping the gear pauses the game and kicks the player to the tap-to-play screen inst
 - *executed evidence:*
@@ -380,7 +380,7 @@ Worst case is unrecoverable: the 4 stati
   ```
 
 **The crystal/wand economy is severed at the bucket boundary — crystals you buy or craft are unusable, and the wand trade can never be afforded**
-- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/ui/TradingInterface.jsx:47-75 (executeCrystalTrade spends prev.magic.crystals, banks the item into prev.blocks) vs :35-42 (executeBlockTrade banks bought crystals into prev.blocks) vs /Users/kz/Code/Crafty/frontend/src/EnhancedMagicSystem.jsx:175 (reads inventory.magic.wand)`
+- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `frontend/src/ui/TradingInterface.jsx:47-75 (executeCrystalTrade spends prev.magic.crystals, banks the item into prev.blocks) vs :35-42 (executeBlockTrade banks bought crystals into prev.blocks) vs frontend/src/EnhancedMagicSystem.jsx:175 (reads inventory.magic.wand)`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Yes, reachable turn-1. npcSpawn.js:11 spawns 'Bram the Trader' (role merchant) and InputManager.jsx:206 opens TradingInterface on the interact key. A new player has magic.crystals=8 against a 15-crystal wand cost, and NOTHING can ever raise it — so the merchant's headline "Crystals to Wand" trade is greyed out permanently, showing "Have: 8" forever while the merchant's own Crystals counter stays f
 - *executed evidence:*
@@ -389,7 +389,7 @@ Worst case is unrecoverable: the 4 stati
   ```
 
 **Placing a block is FREE (no inventory cost) while mining grants +1 — infinite diamonds, infinite everything, in seconds**
-- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/world/Terrain.jsx:819-848 (place() — zero removeFromInventory calls, zero inventory check) vs :581-591 (worker 'block_broken' -> store.addToInventory(blockForId(id), 1))`
+- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `frontend/src/world/Terrain.jsx:819-848 (place() — zero removeFromInventory calls, zero inventory check) vs :581-591 (worker 'block_broken' -> store.addToInventory(blockForId(id), 1))`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Yes — trivially reachable in normal play, not theoretical. place() is live code: registered at Terrain.jsx:893 on GameMethods.terrainVerbs and dispatched by the #72 verb router at Components.jsx:479. verbRouter.js:31-35 routes a right-click to 'place' whenever no mob is in the aim cone and terrain is within 8m, and a left-click to 'mine' — i.e. "look at the ground and click." Hotbar selection is u
 - *executed evidence:*
@@ -561,7 +561,7 @@ The UI literally promises the broken behavior. GamePanels.jsx:457: `{ name: 'Arc
   ```
 
 **A stray tap anywhere in the LEFT half kills a held joystick -- the player freezes with the stick fully deflected**
-- *domain:* Touch / mobile input  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/input/touchHandlers.js:39-44 (handleTouchEnd)`
+- *domain:* Touch / mobile input  ·  *at:* `frontend/src/input/touchHandlers.js:39-44 (handleTouchEnd)`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* YES — real, on the shipped iPad/iPhone touch build. The overlay makes the ENTIRE left half (minus the tray button) a move zone, and the HUD above it is pointer-events-none, so any second finger there — a regripping thumb, a resting finger, a tap on the quest tracker / combat log / the left half of the hotbar — is routed as a move-zone touch. When it lifts, all four move intents are zeroed while th
 - *executed evidence:*
@@ -581,7 +581,7 @@ The UI literally promises the broken behavior. GamePanels.jsx:457: `{ name: 'Arc
   ```
 
 **The hotbar physically overflows the phone viewport -- 2 of 9 blocks are entirely off-screen on an iPhone**
-- *domain:* Touch / mobile input  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/ui/GameHud.jsx:20-24 (MinecraftHotbar: fixed 9 x 62px slots, centred, no wrap/scroll)`
+- *domain:* Touch / mobile input  ·  *at:* `frontend/src/ui/GameHud.jsx:20-24 (MinecraftHotbar: fixed 9 x 62px slots, centred, no wrap/scroll)`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Real but narrower than claimed. Every phone player sees a hotbar that physically bleeds off BOTH screen edges — 2 of 9 slots entirely off-glass on an iPhone 13, 4 of 9 on an iPhone SE, with no horizontal scroll to reach them. That is a permanent, visible layout break on the mobile build, and the pinned visual baseline (mobile.png) has been cementing it as "correct".
 
@@ -739,7 +739,7 @@ Severity is directionally right but the claim's HEADLIN
   ```
 
 **Closing the crafting panel with materials staged on the grid DESTROYS them**
-- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/ui/panels/CraftingTable.jsx:22 (grid is component-local useState) + :79-90 (handleGridClick removes from inventory on placement) — no unmount cleanup anywhere in the file`
+- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `frontend/src/ui/panels/CraftingTable.jsx:22 (grid is component-local useState) + :79-90 (handleGridClick removes from inventory on placement) — no unmount cleanup anywhere in the file`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Yes — and reachable via MORE paths than the claim states. InputManager.jsx's toggleUI closes EVERY panel before opening a new one, so setShowCrafting(false) fires on: Escape (:71, the panic key during a night siege), KeyC (:120 — the panel's own footer says "Press C to close"), the X button (:123), the Modal backdrop click (Modal.jsx:47), AND E / B / M / L / Tab (:101, :155) — so a player who taps
 - *executed evidence:*
@@ -748,7 +748,7 @@ Severity is directionally right but the claim's HEADLIN
   ```
 
 **Four recipes produce items that do not exist — and the result slot lies about what you are getting ("5x Bow" hands you 5 Arrows; there is no bow in the game)**
-- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/data/recipes.js:104-108 (Bow -> {Arrow:5}), :109-113 (Torch -> {torch:4}), :119-123 (Planks -> {planks:4}), :124-128 (Magic Crystal -> {crystals:4}); label rendered at /Users/kz/Code/Crafty/frontend/src/ui/panels/CraftingTable.jsx:178`
+- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `frontend/src/data/recipes.js:104-108 (Bow -> {Arrow:5}), :109-113 (Torch -> {torch:4}), :119-123 (Planks -> {planks:4}), :124-128 (Magic Crystal -> {crystals:4}); label rendered at frontend/src/ui/panels/CraftingTable.jsx:178`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Yes — and reachability is STRONGER than the claim itself argued. The starting loadout (useGameStore.jsx:583) is `wood: 16, coal: 8`, and `C` opens the crafting table (InputManager.jsx:120). So Planks (1 wood) and Torch (coal + wood) are both craftable in the FIRST MINUTE of a fresh game with zero mining. The player drops wood into the grid, the slot promises "4× Planks", the toast says "Crafted Pl
 - *executed evidence:*
@@ -1023,7 +1023,7 @@ Reachable in ordinary play: player builds a base, stands o
   ```
 
 **The joystick knob recentres on ANY touchend -- including a look-drag release -- while the stick is still held**
-- *domain:* Touch / mobile input  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/ui/TouchControls.jsx:83-89 (onEnd recentres unconditionally, without checking the ended touch's zone)`
+- *domain:* Touch / mobile input  ·  *at:* `frontend/src/ui/TouchControls.jsx:83-89 (onEnd recentres unconditionally, without checking the ended touch's zone)`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Yes — real, in the standard two-thumb mobile control scheme. Every time the player finishes a look-drag while running (constant in normal play), AND every time they tap Jump/Action/Cast/Pause/tray while running, the joystick knob snaps to centre even though the thumb is still on the stick and the character is still moving. It then STAYS centred indefinitely, because a resting thumb generates no fu
 - *executed evidence:*
@@ -1036,7 +1036,7 @@ Reachable in ordinary play: player builds a base, stands o
   ```
 
 **The joystick is FLOATING in logic but FIXED in visuals -- the drawn ring is decorative and in the wrong place**
-- *domain:* Touch / mobile input  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/input/touchMath.js:70 (zone = entire left half; origin = the touchstart point) vs src/ui/TouchControlsSurface.jsx:53 (ring drawn at a FIXED left:7% bottom:13%)`
+- *domain:* Touch / mobile input  ·  *at:* `frontend/src/input/touchMath.js:70 (zone = entire left half; origin = the touchstart point) vs src/ui/TouchControlsSurface.jsx:53 (ring drawn at a FIXED left:7% bottom:13%)`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Yes, a real mobile player is affected, but the impact is cosmetic/affordance, not functional. The visible 148px ring at bottom-left says "put your thumb here," while the code re-anchors the stick wherever the thumb lands in the entire left half — and the knob deflection is then drawn inside that fixed ring, up to ~600px away from the actual thumb. Even a player who obeys the ring gets a mis-anchor
 - *executed evidence:*
@@ -1133,7 +1133,7 @@ Two real (
   ```
 
 **The crafting panel's material picker hijacks the world hotbar — after closing the panel, left-click-to-place silently does nothing**
-- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `/Users/kz/Code/Crafty/frontend/src/ui/panels/CraftingTable.jsx:201 (picker calls the GLOBAL setSelectedBlock) -> /Users/kz/Code/Crafty/frontend/src/world/Terrain.jsx:822-827 (place() reads store.selectedBlock; idForBlock null -> silent return)`
+- *domain:* Crafting, recipes, coins, trading economy  ·  *at:* `frontend/src/ui/panels/CraftingTable.jsx:201 (picker calls the GLOBAL setSelectedBlock) -> frontend/src/world/Terrain.jsx:822-827 (place() reads store.selectedBlock; idForBlock null -> silent return)`
 - *verdict:* CONFIRMED
 - *player impact (refuter's words):* Real but bounded, and LOW severity is honest. On a fresh save a player can open the craft panel (C), click any staged material — including the default Stone Sword / Health Potion / Mana Potion, so crafting is not even a prerequisite — close the panel, and terrain placement is silently dead: no sound, no message, no highlighted hotbar slot. But the claim's "clicks do nothing / player assumes the ga
 - *executed evidence:*
@@ -1263,10 +1263,10 @@ PROBE D: a player doing exactly what the guide says (hold X, keep aiming) suffer
 
 Kept on the record so nobody re-files them.
 
-- ~~The domain's ONLY live probe is vacuous — `playSpatialSound?.()` cannot fail, so it reports playable=true even when spat~~ — **REFUTED**. File:line is real and verbatim as quoted (/Users/kz/Code/Crafty/frontend/scripts/visual/esc-pause-probe.mjs:42), and the JS semantics point is true in isolation (node check: `o.playSpatialSound?.('hit', arg())` -> `resul
+- ~~The domain's ONLY live probe is vacuous — `playSpatialSound?.()` cannot fail, so it reports playable=true even when spat~~ — **REFUTED**. File:line is real and verbatim as quoted (frontend/scripts/visual/esc-pause-probe.mjs:42), and the JS semantics point is true in isolation (node check: `o.playSpatialSound?.('hit', arg())` -> `resul
 - ~~The attack telegraph is bypassable: a stale `windupUntil` survives de-aggro and produces an instant, zero-telegraph, und~~ — **REFUTED**. The cited code is REAL and the state leak is REAL, but the player-facing consequence is fabricated by an impossible probe input.
 
-VERIFIED TRUE (premise): /Users/kz/Code/Crafty/frontend/src/workers/ai.worker.js:280-287 (
+VERIFIED TRUE (premise): frontend/src/workers/ai.worker.js:280-287 (
 - ~~The mob-bestiary visual gate is VACUOUS: all six mobs are 1.495% of the frame and the diff threshold is 6%. Every silhou~~ — **NO-PLAYER-IMPACT**. CITATIONS REAL + NOT FIXED: frontend/tests/visual/diff.test.js:32 is `const THRESHOLD = 0.06`; mob-bestiary is in STATES (line 22); App.jsx mobBestiary fixture spawns ['skitterling','duskhound','skeleton','emberhusk','co
 - ~~inventory.tools is read by NOTHING — the starting sword / pickaxe / shovel / axe are invisible and unusable~~ — **NO-PLAYER-IMPACT**. MECHANISM REPRODUCED, IMPACT REFUTED. Cited line is real and unfixed on HEAD (1386b5e): useGameStore.jsx:588 `tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 }`. Census of every inventory access in src/ (`grep -rnoE "in
 - ~~The kill block runs 11 side effects inside a React setState updater, with the idempotency latch set FIRST and the win la~~ — **REFUTED**. Cited code is REAL and unfixed on HEAD (1386b5e): frontend/src/world/bossSystem.js:84-110, bossKilledRef.current=true at :88 (first), markGameWon() at :107 (last), ~9 effects in between, all inside setBossHealth(prev => 
@@ -1299,13 +1299,13 @@ VERIFIED TRUE: capture.mjs:280 is `window.__craftyTest.call('setDangerLevel', 2)
 - ~~Two vacuous assertions in the BEHAVIORAL audio tests (stormBed asserts nothing; synthVoices title lies about the count)~~ — **NO-PLAYER-IMPACT**. Both cited facts reproduce on HEAD (1386b5e), so this is not fabricated and not already fixed — but it is test-hygiene only. (1) frontend/src/audio/stormBed.test.js:36-37 does contain `// does not throw; the gain ramps w
 - ~~A held Voidhand phantom survives a menu open (the HELD branch never checks ctx.active)~~ — **REFUTED**. The mechanism reproduces, but the claim's load-bearing premise is factually false about the codebase.
 
-(1) File:line is REAL. /Users/kz/Code/Crafty/frontend/src/game/voidhand.js:56-64 — HELD guards `!ctx.alive` (:58), no
+(1) File:line is REAL. frontend/src/game/voidhand.js:56-64 — HELD guards `!ctx.alive` (:58), no
 - ~~weatherMoodBoost is never reset -- the WeatherSystem cleanup tears down the storm AUDIO but leaves the dark, starry SKY ~~ — **NO-PLAYER-IMPACT**. The code asymmetry is REAL and I reproduced it; the player-facing premise is REFUTED.
 
 MECHANISM CONFIRMED (executed): WeatherSystem.jsx:101 is verbatim `return () => { clearInterval(interval); if (stormBedRef.current) s
-- ~~The storm notification is NOT capture-gated -- a toast can land in a visual baseline (gate flake)~~ — **NO-PLAYER-IMPACT**. MECHANISM CONFIRMED (stronger than claimed), but fails the player bar. (1) Cited lines are real at HEAD 1386b5e, NOT fixed: /Users/kz/Code/Crafty/frontend/src/render/WeatherSystem.jsx — the storm-bed audio is wrapped in 
+- ~~The storm notification is NOT capture-gated -- a toast can land in a visual baseline (gate flake)~~ — **NO-PLAYER-IMPACT**. MECHANISM CONFIRMED (stronger than claimed), but fails the player bar. (1) Cited lines are real at HEAD 1386b5e, NOT fixed: frontend/src/render/WeatherSystem.jsx — the storm-bed audio is wrapped in 
 - ~~COVERAGE GAP (not a bug): the Modal Tab focus-trap, chest item transfer via the panel, gear equip/unequip via the panel,~~ — **NO-PLAYER-IMPACT**. Re-ran the evidence on HEAD (1386b5e). The coverage facts are largely real: tests/gates/modal-a11y.test.jsx exists, has exactly 5 tests, passes green (npx vitest run -> 5 passed / 5), and `grep -n Tab` returns nothing, s
-- ~~cooldownMirror hardcodes ability durations, duplicating the state-machine constants (currently correct — latent drift ri~~ — **NO-PLAYER-IMPACT**. Everything the claim asserts is factually TRUE — I re-ran all of it on HEAD 1386b5e. /Users/kz/Code/Crafty/frontend/src/game/cooldownMirror.js:13-16 really does hardcode 0.6/1.5/1.5/1.0, and line 18/20 reads dodge.cooldo
+- ~~cooldownMirror hardcodes ability durations, duplicating the state-machine constants (currently correct — latent drift ri~~ — **NO-PLAYER-IMPACT**. Everything the claim asserts is factually TRUE — I re-ran all of it on HEAD 1386b5e. frontend/src/game/cooldownMirror.js:13-16 really does hardcode 0.6/1.5/1.5/1.0, and line 18/20 reads dodge.cooldo
 - ~~Store-level spendTalentPoint enforces the rank limit but NOT the prereq — the tree's dependency graph is a UI-only conve~~ — **NO-PLAYER-IMPACT**. Mechanism REPRODUCED independently (own probe, not the claim's). Wrote tests/store/zz-refute-prereq.test.js seeding talentPoints:10 / unlockedTalents:{} and calling the real store action for three orphan nodes; vitest ou
 - ~~allocateAttribute has no attribute whitelist — a bad key writes NaN into attributes, burns the point, and serializes to ~~ — **NO-PLAYER-IMPACT**. Every technical assertion reproduces; the finding fails only on reachability. (1) Cited code is real: useGameStore.jsx:256 `allocateAttribute: (attr) => set(...)` does `[attr]: state.attributes[attr] + 1` with no key che
 - ~~The Q key and the tracker disagree on the claim predicate — a quest can become permanently unclaimable~~ — **NO-PLAYER-IMPACT**. Cited lines are REAL and NOT fixed on HEAD: InputManager.jsx:137 = `if (quest.progress >= quest.target && !quest.claimed)`; questClaim.js:46 (claim said 47, off-by-one) = `q.completed && !q.claimed`; QuestSystem.jsx:469 
@@ -1313,10 +1313,10 @@ MECHANISM CONFIRMED (executed): WeatherSystem.jsx:101 is verbatim `return () => 
 - ~~DOC-TRUTH: questClaim.js claims it is locked by a test file that does not exist~~ — **NO-PLAYER-IMPACT**. Factual core CONFIRMED, player gate FAILED. (1) The comment is real and on HEAD (1386b5e): src/game/questClaim.js lines 18-19 read "Locked by quest-multiclaim-gates.test.jsx (behavioral, RED against the old code) + quest
 - ~~Lightning's `stunDuration` is dead data -- the stun was never built~~ — **NO-PLAYER-IMPACT**. The mechanical grep reproduces, but the claim's framing and its "zero gates" evidence are both refuted.
 
-REPRODUCED: `grep -rn 'stunDuration' src/ tests/` in /Users/kz/Code/Crafty/frontend returns exactly one line — src/
+REPRODUCED: `grep -rn 'stunDuration' src/ tests/` in frontend/ returns exactly one line — src/
 - ~~HYPOTHESIS (root cause NOT proven): the impact spark burst carries no element identity in the pinned baselines~~ — **REFUTED**. Reproduced the claim's inputs, then disproved its conclusion.
 
-WIRE IS GENUINE (not fabricated): SPARK_PROFILE = fire 52/ice 42/lightning 48/arcane 46 (/Users/kz/Code/Crafty/frontend/src/game/spellVisualProfiles.js:13-19
+WIRE IS GENUINE (not fabricated): SPARK_PROFILE = fire 52/ice 42/lightning 48/arcane 46 (frontend/src/game/spellVisualProfiles.js:13-19
 - ~~CONTEXT (not a domain defect): the working tree was uncompilable mid-audit -- another agent's in-flight GameHud.jsx edit~~ — **NO-PLAYER-IMPACT**. The claim is self-refuting by its own text ("CONTEXT (not a domain defect)", "never shipped", "player_impact: NONE"), and I confirmed nothing survives in the tree. (1) `git show HEAD:frontend/src/ui/GameHud.jsx | diff - 
 - ~~equipItem performs NO slot validation — any item can be forced into any slot, stacking its stats 5x~~ — **NO-PLAYER-IMPACT**. Cited line is REAL and NOT fixed: HEAD=1386b5e; useGameStore.jsx:165 is verbatim `equipItem: (slot, itemName) => set((state) => {` with no slot check. The store mechanic REPRODUCES: my own vitest probe against the real s
 - ~~Unequip migrates an item across inventory buckets (tools -> blocks) when a duplicate was looted~~ — **REFUTED**. Mechanism is REAL in code but UNREACHABLE by any player; not fixed, but not player-facing either.
@@ -1324,7 +1324,7 @@ WIRE IS GENUINE (not fabricated): SPARK_PROFILE = fire 52/ice 42/lightning 48/ar
 (1) RE-RAN the evidence (vitest probe against the real store, tests/store/zz_probe.test.js, now deleted). Probe A reprodu
 - ~~BOSS_CONFIG.damage / .speed / .aggroRange / .size are dead fields that silently do nothing~~ — **NO-PLAYER-IMPACT**. CODE FACT CONFIRMED, PLAYER IMPACT ABSENT.
 
-file:line is real on HEAD (1386b5e, not fixed): /Users/kz/Code/Crafty/frontend/src/game/bossConfig.js:9-12 = damage:20, speed:3.5, size:3.2, aggroRange:30.
+file:line is real on HEAD (1386b5e, not fixed): frontend/src/game/bossConfig.js:9-12 = damage:20, speed:3.5, size:3.2, aggroRange:30.
 
 Dead-field claim re
 - ~~Water (id 9) is placeable by id but the mesher emits no faces — an invisible, non-colliding ghost voxel~~ — **NO-PLAYER-IMPACT**. Mechanism reproduced with my own probe driving the real terrain.worker.js in-process (vitest, since deleted): placing STONE(3) in an air cell added 60 verts; placing WATER(9) in the same cell added 0 verts (13212 -> 1321

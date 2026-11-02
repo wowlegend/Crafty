@@ -128,7 +128,7 @@
 > is the indicated fix.** After rebooting, this one-liner tells you in ~3s whether it worked:
 >
 > ```
-> cd /Users/kz/Code/Crafty/frontend && npm run visual:capture
+> cd ~/Code/Crafty/frontend && npm run visual:capture
 > ```
 >
 > It now runs a **preflight** (shipped `82a6cc1`) that asks "can this browser present a frame?" on
@@ -471,7 +471,7 @@
 >    still await your ratify/drop call; the capture-reliability fix comes first (the frames flake — tracked).
 > 2. **📱 M2 iPad FPS run — READY (2026-06-10, one-tap, ~5 min, bundles #63):** the harness SHIPPED and the
 >    desktop gate PASSED (C−B 0.00ms median / +0.10ms p95 vs the 1.5/3.0ms budget, ANGLE Metal M3 Max —
->    full verdict + numbers in `memory/S2B2-M2-PERF.md`). Your part: Mac `cd /Users/kz/Code/Crafty/frontend
+>    full verdict + numbers in `memory/S2B2-M2-PERF.md`). Your part: Mac `cd ~/Code/Crafty/frontend
 >    && npx vite --host` → iPad Safari `http://<mac-LAN-ip>:5173/?perf=B` (wait for the on-screen DONE
 >    numbers) → then `?perf=C` → compare medians vs the budget (no Safari inspector needed). **Same session:
 >    the #63 WILDHEART golem check** per `memory/S2B1-M2-PERF.md` §4. Does NOT block M3 — the loop proceeds.

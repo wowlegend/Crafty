@@ -85,7 +85,7 @@ device-scale confirmation and now exercises the real verbs via `?perf=E`.
 
 ## 4. On-device protocol (Kevin — one-tap, ~5 min, bundles #63)
 
-1. Mac: `cd /Users/kz/Code/Crafty/frontend && npx vite --host`
+1. Mac: `cd ~/Code/Crafty/frontend && npx vite --host`
 2. iPad (same Wi-Fi), Safari: `http://<mac-LAN-ip>:5173/?perf=B` → wait for the on-screen
    **DONE** numbers (~2 min) → then `?perf=C` (optionally `?perf=E`). No Safari inspector needed.
 3. Compare the two medians: **C−B ≤ 1.5 ms median / ≤ 3.0 ms p95 = PASS** (desktop shape above

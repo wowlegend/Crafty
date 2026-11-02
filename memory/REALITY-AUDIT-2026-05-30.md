@@ -1,7 +1,7 @@
 # Crafty S0 Reality Audit — Real vs Gemini-Claimed Baseline
 
 **Date:** 2026-05-30 · **Method:** static read + live headless capture · read-only · 2-lens adversarial refutation
-**Repo:** `/Users/kz/Code/Crafty` (`frontend/src`) · **Capture assets:** `memory/REALITY-AUDIT-2026-05-30-assets/`
+**Repo:** `~/Code/Crafty` (`frontend/src`) · **Capture assets:** `memory/REALITY-AUDIT-2026-05-30-assets/`
 
 ---
 
