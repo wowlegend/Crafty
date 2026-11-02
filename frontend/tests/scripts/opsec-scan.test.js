@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanText, verdict, RULES, EXEMPT, readForScan } from '../../scripts/ci/opsec-scan.mjs';
-import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
+import { fixtureGit, fixtureGitWith, isolatedGitEnv } from './_isolatedGit.js';
 
 const SCANNER = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/ci/opsec-scan.mjs');
 
@@ -106,23 +106,39 @@ describe('opsec-scan — verdict shape', () => {
 
 describe('opsec-scan — the CLI over a tracked tree: no file keeps a home path', () => {
   // DRIVEN: the real CLI runs in a throwaway git repo, so what is asserted is what the commit, the push and CI
-  // run, not a function the CLI might stop calling. A per-file allowance (a ledger file, or a `--write` that
-  // freezes whatever the tree holds) would let a leak in an allowed file pass; the last two cases guard one each.
+  // run (each calls `--all`), not a function the CLI might stop calling. A per-file allowance (a ledger file, or a
+  // `--write` that freezes whatever the tree holds) would let a leak in an allowed file pass; two cases guard one each.
   const dirs = [];
   afterAll(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
   // Assembled at runtime so this file never holds the literal.
   const home = ['', 'Users', 'someone', 'Code', 'elsewhere', 'notes.md'].join('/');
   const ledgerPath = (dir) => join(dir, 'frontend', 'tests', 'gates', '.opsec-ledger.json');
+  // A fixed identity and date, so the fixture commit needs nothing from the caller's git config.
+  const who = 'fixture';
+  const at = '1780000000 +0000';
+  const IDENTITY = {
+    GIT_AUTHOR_NAME: who, GIT_AUTHOR_EMAIL: 'fixture@example.invalid', GIT_AUTHOR_DATE: at,
+    GIT_COMMITTER_NAME: who, GIT_COMMITTER_EMAIL: 'fixture@example.invalid', GIT_COMMITTER_DATE: at,
+  };
 
-  function repoWith(text) {
+  function emptyRepo() {
     const dir = mkdtempSync(join(tmpdir(), 'crafty-opsec-cli-'));
     dirs.push(dir);
     fixtureGit(dir, 'init', '-q');
-    writeFileSync(join(dir, 'notes.md'), `${text}\n`);
-    fixtureGit(dir, 'add', 'notes.md');
     return dir;
   }
-  const scan = (dir, ...args) => spawnSync(process.execPath, [SCANNER, '--all', ...args], { cwd: dir, encoding: 'utf8', env: isolatedGitEnv() });
+  // COMMITTED, not only staged: in a repo with no commit `git diff --cached` lists every staged file, so a staged-only
+  // fixture reads the same under `--all` (`git ls-files`) and under the staged scan, and a CLI that ignored `--all`
+  // passed every case here.
+  function repoWith(text) {
+    const dir = emptyRepo();
+    writeFileSync(join(dir, 'notes.md'), `${text}\n`);
+    fixtureGit(dir, 'add', 'notes.md');
+    fixtureGitWith(dir, IDENTITY, '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'fixture');
+    return dir;
+  }
+  const run = (dir, ...args) => spawnSync(process.execPath, [SCANNER, ...args], { cwd: dir, encoding: 'utf8', env: isolatedGitEnv() });
+  const scan = (dir, ...args) => run(dir, '--all', ...args);
 
   it('positive control: a tracked file with a relative path scans clean, and the denominator is 1', () => {
     const r = scan(repoWith('see docs/elsewhere/notes.md'));
@@ -154,6 +170,21 @@ describe('opsec-scan — the CLI over a tracked tree: no file keeps a home path'
     expect(r.stdout).toMatch(/notes\.md:1 {2}\[home-path\]/);
     expect(r.status).toBe(1);
     expect(existsSync(ledgerPath(dir))).toBe(false);
+  });
+
+  // The two modes differ only in WHICH files they read, so this case reads one answer from each: the committed
+  // notes.md holds a home path and a staged clean.md does not. Only --all reaches the committed file.
+  it('--all scans every tracked file; without it only the staged files are scanned', () => {
+    const dir = repoWith(home);
+    writeFileSync(join(dir, 'clean.md'), 'see docs/elsewhere/notes.md\n');
+    fixtureGit(dir, 'add', 'clean.md');
+    const all = scan(dir);
+    expect(all.stdout).toMatch(/2 file\(s\) scanned/);
+    expect(all.stdout).toMatch(/notes\.md:1 {2}\[home-path\]/);
+    expect(all.status).toBe(1);
+    const staged = run(dir);
+    expect(staged.stdout).toMatch(/1 file\(s\) scanned, 0 finding\(s\)/);
+    expect(staged.status).toBe(0);
   });
 });
 
