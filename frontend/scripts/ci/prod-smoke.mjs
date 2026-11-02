@@ -53,7 +53,7 @@ const PORT = 4180;
  * error for the whole run, which is how a count like this reads as clean.
  *
  * RATCHETED, NOT THRESHOLDED. Nobody knows the post-fix number, so the first run RECORDS and later runs
- * may FALL and never RISE — the same shape as the opsec and source-grep ledgers here. That
+ * may FALL and never RISE — the same shape as the source-grep ledger here. That
  * makes the number falsifiable without pretending to know it.
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────────────────

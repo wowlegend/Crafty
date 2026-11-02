@@ -10,7 +10,9 @@
  *
  * WHAT IT REFUSES, and why each is scoped the way it is:
  *   HOME PATHS   — `/Users/<name>/` or `/home/<name>/` publishes the operator's username and directory
- *                  layout. The repo's own path is NOT exempt: it is the same disclosure.
+ *                  layout. The repo's own path is NOT exempt: it is the same disclosure. No file has an
+ *                  allowance (no per-file ledger, no `--write` freezing what the tree holds): an allowed
+ *                  file is where the next leak would pass unseen.
  *   SECRETS      — the shapes that are catastrophic rather than embarrassing.
  *   ATTRIBUTION  — agent footers the estate forbids in git history.
  * Deliberately NOT refused: the operator's FIRST NAME. It appears in ~196 files as design attribution
@@ -35,7 +37,7 @@
  * the same file with a relative path exited 0.
  */
 import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync, lstatSync, readlinkSync } from 'node:fs';
+import { readFileSync, lstatSync, readlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
@@ -159,37 +161,8 @@ function gitFiles(all) {
 
 export const REPO = resolve(process.cwd().includes('/frontend') ? '..' : '.');
 
-export const LEDGER = resolve(REPO, 'frontend/tests/gates/.opsec-ledger.json');
-
-/**
- * ACCEPTED DEBT, ratcheted. 373 home-path lines across 48 files predate this gate — mostly archived
- * audit JSON that records where files sat on the machine that produced it. A gate that reds on all of
- * them is permanently red, and a permanently-red gate becomes noise that hides the real finding behind
- * the structural one. So: existing findings are frozen per FILE, the count may FALL and never RISE, and
- * a finding in a file with NO ledger entry blocks outright.
- *
- * The SECRET and ATTRIBUTION rules are NEVER ratcheted — there are zero today (verified across all 1,902
- * commits of history), so there is no debt to grandfather, and a credential is the one class where
- * "accepted" is never the right word.
- */
-export function applyRatchet(findings, ledger) {
-  if (!ledger) return { blocking: findings, accepted: [] };
-  const cap = ledger.files || {};
-  const byFile = new Map();
-  const blocking = [];
-  const accepted = [];
-  for (const f of findings) {
-    if (f.rule !== 'home-path') { blocking.push(f); continue; } // secrets/attribution never ratchet
-    const seen = (byFile.get(f.file) || 0) + 1;
-    byFile.set(f.file, seen);
-    if (seen <= (cap[f.file] || 0)) accepted.push(f);
-    else blocking.push(f);
-  }
-  return { blocking, accepted };
-}
-
 /** The verdict, separated from I/O so the selftest can drive it. */
-export function verdict(findings, scanned, accepted = 0) {
+export function verdict(findings, scanned) {
   // R3a — the zero-guard EXITS. "0 findings" and "scanned nothing" are the same reading from outside,
   // and only one of them is good news. A staged-file scan with an empty stage is legitimately empty, so
   // that case is reported as SKIPPED rather than as a pass.
@@ -197,7 +170,7 @@ export function verdict(findings, scanned, accepted = 0) {
     return { code: 0, skipped: true, line: 'opsec-scan: 0 files staged — nothing to scan (SKIPPED, not a pass)' };
   }
   const blocks = findings.filter((f) => f.severity === 'BLOCK');
-  const head = `opsec-scan: ${scanned} file(s) scanned, ${findings.length} new finding(s), ${accepted} accepted (ratcheted debt)`;
+  const head = `opsec-scan: ${scanned} file(s) scanned, ${findings.length} finding(s)`;
   if (blocks.length === 0) return { code: 0, line: `${head}\n✓ opsec-scan: clean` };
   const body = blocks
     .map((f) => `  ✖ ${f.file}:${f.line}  [${f.rule}]  ${f.match}\n      ${f.why}\n      fix: ${f.fix}`)
@@ -223,18 +196,7 @@ if (import.meta.main) {
     scanned += 1;
     findings.push(...scanText(text, f));
   }
-  let ledger = null;
-  try { ledger = JSON.parse(readFileSync(LEDGER, 'utf8')); } catch { /* absent -> nothing ratcheted */ }
-  if (process.argv.includes('--write')) {
-    const per = {};
-    for (const f of findings) if (f.rule === 'home-path') per[f.file] = (per[f.file] || 0) + 1;
-    const body = { _README: 'Accepted home-path debt, per file. MAY FALL, NEVER RISE. Secrets and agent attribution are never ratcheted. Regenerate: node scripts/ci/opsec-scan.mjs --all --write', _total: Object.values(per).reduce((a, b) => a + b, 0), _files: Object.keys(per).length, files: Object.fromEntries(Object.entries(per).sort()) };
-    writeFileSync(LEDGER, `${JSON.stringify(body, null, 2)}\n`);
-    console.log(`opsec-scan: froze ${body._total} accepted home-path line(s) across ${body._files} file(s)`);
-    process.exit(0);
-  }
-  const { blocking, accepted } = applyRatchet(findings, ledger);
-  const v = verdict(blocking, scanned, accepted.length);
+  const v = verdict(findings, scanned);
   console.log(v.line);
   process.exit(v.code);
 }

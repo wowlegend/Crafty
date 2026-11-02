@@ -12,10 +12,15 @@
 // publishes on your behalf (Vercel's PR comment embeds the team slug and project id — outside this
 // repo's control). It also deliberately does not flag the operator's first name; see the module header.
 import { describe, it, expect, afterAll } from 'vitest';
-import { mkdtempSync, writeFileSync, symlinkSync, mkdirSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, symlinkSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { scanText, verdict, RULES, EXEMPT, readForScan } from '../../scripts/ci/opsec-scan.mjs';
+import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
+
+const SCANNER = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/ci/opsec-scan.mjs');
 
 const ids = (f) => f.map((x) => x.rule).sort();
 
@@ -96,6 +101,59 @@ describe('opsec-scan — verdict shape', () => {
     const v = verdict([], 0);
     expect(v.skipped).toBe(true);
     expect(v.line).toMatch(/SKIPPED, not a pass/);
+  });
+});
+
+describe('opsec-scan — the CLI over a tracked tree: no file keeps a home path', () => {
+  // DRIVEN: the real CLI runs in a throwaway git repo, so what is asserted is what the commit, the push and CI
+  // run, not a function the CLI might stop calling. A per-file allowance (a ledger file, or a `--write` that
+  // freezes whatever the tree holds) would let a leak in an allowed file pass; the last two cases guard one each.
+  const dirs = [];
+  afterAll(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
+  // Assembled at runtime so this file never holds the literal.
+  const home = ['', 'Users', 'someone', 'Code', 'elsewhere', 'notes.md'].join('/');
+  const ledgerPath = (dir) => join(dir, 'frontend', 'tests', 'gates', '.opsec-ledger.json');
+
+  function repoWith(text) {
+    const dir = mkdtempSync(join(tmpdir(), 'crafty-opsec-cli-'));
+    dirs.push(dir);
+    fixtureGit(dir, 'init', '-q');
+    writeFileSync(join(dir, 'notes.md'), `${text}\n`);
+    fixtureGit(dir, 'add', 'notes.md');
+    return dir;
+  }
+  const scan = (dir, ...args) => spawnSync(process.execPath, [SCANNER, '--all', ...args], { cwd: dir, encoding: 'utf8', env: isolatedGitEnv() });
+
+  it('positive control: a tracked file with a relative path scans clean, and the denominator is 1', () => {
+    const r = scan(repoWith('see docs/elsewhere/notes.md'));
+    expect(r.stdout).toMatch(/1 file\(s\) scanned/);
+    expect(r.status).toBe(0);
+  });
+
+  it('a tracked file holding a home path blocks, naming the file, line and rule', () => {
+    const r = scan(repoWith(home));
+    expect(r.stdout).toMatch(/notes\.md:1 {2}\[home-path\]/);
+    expect(r.status).toBe(1);
+  });
+
+  it('a ledger allowing that file its home path does not let it pass', () => {
+    const dir = repoWith(home);
+    mkdirSync(dirname(ledgerPath(dir)), { recursive: true });
+    writeFileSync(ledgerPath(dir), JSON.stringify({ files: { 'notes.md': 1 } }));
+    const r = scan(dir);
+    expect(r.stdout).toMatch(/notes\.md:1 {2}\[home-path\]/);
+    expect(r.status).toBe(1);
+  });
+
+  it('--write cannot freeze a home path into an allowance: it still blocks and writes no ledger', () => {
+    const dir = repoWith(home);
+    // The ledger's directory exists, so a scanner that still writes one can: without it the write would throw,
+    // exit 1 and leave no file, which reads exactly like a refusal.
+    mkdirSync(dirname(ledgerPath(dir)), { recursive: true });
+    const r = scan(dir, '--write');
+    expect(r.stdout).toMatch(/notes\.md:1 {2}\[home-path\]/);
+    expect(r.status).toBe(1);
+    expect(existsSync(ledgerPath(dir))).toBe(false);
   });
 });
 
