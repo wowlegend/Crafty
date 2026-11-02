@@ -19,6 +19,33 @@
 
 ---
 
+## 2026-11-02 (opsec home paths) — [KEVIN] the public/private split is punted; [LOOP] every home path blocks
+
+Kevin, 2026-11-02, answering the command session's reading of a public/private split: "so gitignoring things would
+break things? let's keep this idea punted. i don't really mind these things out in public for now. do that cheap
+cleanup now". The cleanup is `land/2026-11-02-opsec` (cut from main `32498cd3`, main `613d8871` merged in).
+
+537. **A home path in any tracked text file blocks; no file has an allowance.** `frontend/scripts/ci/opsec-scan.mjs`
+   refused `/Users/<name>/` and `/home/<name>/` only in files its per-file ledger did not list, and `--all --write`
+   froze whatever the tree held into that ledger. The seven records that held its last 36 matches now cite
+   repo-relative or `~/` paths (`f897aad3`), so the ledger file, its reader and `--write` are deleted (`b1368e6e`; the
+   ledger is readable at `32498cd3`). *Why:* an allowed file is where the next leak passes unseen, a `--write` could
+   allow one anywhere, and with no debt left the allowance protected nothing. *Allow-list left:* the scanner's three
+   EXEMPT paths (itself, its test fixtures, the machine-local settings file) and the CI-owned `runner` and `git` home
+   names in its regex; binary and over-2 MB files are still skipped. *Not changed:* Agentic-Brain mentions and the
+   `~/.claude/projects/` slugs, which the rule does not match. *Enforcer:* opsec-scan on every commit, push and CI
+   run; its selftest drives the CLI in a throwaway repo, mutation-proven in `b1368e6e`. Closes
+   `W2J:row57:opsec-ledger-zero`.
+
+538. **[KEVIN] The agent layer stays in this public repo; splitting it into a private companion repo is punted.**
+   The idea: move `CLAUDE.md`, `.claude/rules/`, `docs/superpowers/`, `memory/` and the agent-only gate scripts into a
+   private repo. *Why punted* (the reasons the command session gave, which Kevin answered above): gitignoring
+   `CLAUDE.md` alone hides little, since the rest of the agent layer stays public, and breaks what reads it: 16
+   scripts and CI files name it (`git grep -l -F CLAUDE.md -- frontend/scripts ci .githooks scripts .github/workflows`,
+   41 with the tests and rule files), and CI's checkout and every new worktree would lack it; a private repo would
+   stop CI under the $0 Actions budget. Kevin does not mind the method being public for now. *Resumes* when Kevin
+   asks; the row `DECISIONS:2026-11-02:private-agent-repo` (`LANE:backlog`, owner Kevin) says what resuming needs.
+
 ## 2026-11-01 (wrap-up records) — [LOOP] the sweep is the command session's: a lane reports what it left, read-only
 
 The records landing of 2026-11-01 (`land/2026-11-01`, from main `39786876`), before the pause Kevin ordered that day.
