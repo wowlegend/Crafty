@@ -28,7 +28,8 @@
  * about what a third-party bot publishes on your behalf — Vercel's PR comment embeds the team slug and
  * project id, and that is outside this repo's control.
  *
- * Exit: 0 = scanned and clean · 1 = scanned and found something · 3 = COULD NOT SCAN (control failure).
+ * Exit: 0 = scanned and clean, or an empty stage SKIPPED · 1 = scanned and found something · 3 = COULD NOT SCAN
+ * (control failure: no git, or --all found no tracked text file).
  *
  * Mutation-Proof: disabling the home-path rule's regex, and separately widening its negative lookahead
  * to exempt an ordinary username, each turned 4 assertions RED in tests/scripts/opsec-scan.test.js
@@ -161,11 +162,15 @@ function gitFiles(all) {
 
 export const REPO = resolve(process.cwd().includes('/frontend') ? '..' : '.');
 
-/** The verdict, separated from I/O so the selftest can drive it. */
-export function verdict(findings, scanned) {
+/** The verdict, separated from I/O so the selftest can drive it. `all`: the scan read every tracked file. */
+export function verdict(findings, scanned, { all = false } = {}) {
   // R3a — the zero-guard EXITS. "0 findings" and "scanned nothing" are the same reading from outside,
   // and only one of them is good news. A staged-file scan with an empty stage is legitimately empty, so
-  // that case is reported as SKIPPED rather than as a pass.
+  // that case is reported as SKIPPED rather than as a pass. Under --all, which the commit, the push and CI run,
+  // 0 tracked text files means the scan read nothing it was meant to, so it cannot pass.
+  if (scanned === 0 && all) {
+    return { code: 3, line: 'opsec-scan: COULD NOT SCAN — --all found 0 tracked text files, so nothing was checked' };
+  }
   if (scanned === 0) {
     return { code: 0, skipped: true, line: 'opsec-scan: 0 files staged — nothing to scan (SKIPPED, not a pass)' };
   }
@@ -196,7 +201,7 @@ if (import.meta.main) {
     scanned += 1;
     findings.push(...scanText(text, f));
   }
-  const v = verdict(findings, scanned);
+  const v = verdict(findings, scanned, { all });
   console.log(v.line);
   process.exit(v.code);
 }

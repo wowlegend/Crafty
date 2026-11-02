@@ -102,6 +102,15 @@ describe('opsec-scan — verdict shape', () => {
     expect(v.skipped).toBe(true);
     expect(v.line).toMatch(/SKIPPED, not a pass/);
   });
+
+  // `--all` reads every tracked file, so 0 means the scan read nothing it was meant to. The commit, the push and CI
+  // all call `--all`, and a SKIPPED exit 0 there would pass the publish gate over an empty denominator.
+  it('under --all, 0 files scanned is COULD NOT SCAN, exit 3, never SKIPPED', () => {
+    const v = verdict([], 0, { all: true });
+    expect(v.code).toBe(3);
+    expect(v.skipped).toBeUndefined();
+    expect(v.line).toMatch(/COULD NOT SCAN/);
+  });
 });
 
 describe('opsec-scan — the CLI over a tracked tree: no file keeps a home path', () => {
@@ -185,6 +194,19 @@ describe('opsec-scan — the CLI over a tracked tree: no file keeps a home path'
     const staged = run(dir);
     expect(staged.stdout).toMatch(/1 file\(s\) scanned, 0 finding\(s\)/);
     expect(staged.status).toBe(0);
+  });
+
+  it('--all over a repo with no tracked file exits 3, not a SKIPPED 0', () => {
+    const r = scan(emptyRepo());
+    expect(r.stdout).toMatch(/COULD NOT SCAN/);
+    expect(r.status).toBe(3);
+  });
+
+  // The allow case one flag away: an empty STAGE is legitimately empty, so the staged scan still skips with 0.
+  it('the staged scan with nothing staged still reports SKIPPED and exits 0', () => {
+    const r = run(repoWith('see docs/elsewhere/notes.md'));
+    expect(r.stdout).toMatch(/SKIPPED, not a pass/);
+    expect(r.status).toBe(0);
   });
 });
 
