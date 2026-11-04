@@ -343,9 +343,10 @@ test.describe('the dragon fight', () => {
       const out = { hp0, steady, phases: {} };
       // Each window keeps the calls made in it, and the live ones from any other source: an HP change is a source's only
       // when no other source hit the dragon in its window.
-      const mark = async (name, sources, act, ms) => {
+      const mark = async (name, sources, act, ms, started = null) => {
         const before = hp(), n0 = calls.length, d0 = direct.length, w0 = call('worldNow');
         await act();
+        if (started) out[`${name}Started`] = await until(() => started(d0), 30000);
         await waitWorld(ms);
         const own = calls.slice(n0);
         out.phases[name] = { before, after: hp(), w0, calls: own, others: own.filter((c) => c.live && !sources.includes(c.source)), boss: direct.slice(d0) };
@@ -372,7 +373,10 @@ test.describe('the dragon fight', () => {
       cam.rotation.set(0, -Math.PI / 2, 0);
       cam.updateMatrixWorld();
       store.getState().setMana?.(store.getState().maxMana);
-      await mark('burn', ['player', 'player-dot'], () => { out.cast = store.getState().castSpell?.('fireball') === true; }, 5500);
+      // The burn starts at the fireball's direct hit, which a slow runner's frames can bring late in its flight (a local
+      // run: the hit 5.2 s of world time after the cast), so its window opens at the hit, not at the cast.
+      await mark('burn', ['player', 'player-dot'], () => { out.cast = store.getState().castSpell?.('fireball') === true; }, 5500,
+        (d0) => direct.slice(d0).some((h) => h.source === 'player'));
       out.burnDone = await until(() => dots().length >= burnTicks, 30000);
       out.burnTicks = dots();
       // ZONE: a burning zone painted under the dragon, as an imbued cast's impact paints one.
@@ -398,6 +402,7 @@ test.describe('the dragon fight', () => {
     expect(of('hurl', 'player').length, `the hurled block never reached the dragon: ${JSON.stringify(run.phases.hurl)}`).toBeGreaterThanOrEqual(1);
     expect(run.phases.hurl.after, 'the hurl did not lower its HP').toBeLessThan(run.phases.hurl.before);
     expect(run.cast, 'SETUP: castSpell refused the fireball').toBe(true);
+    expect(run.burnStarted, `SETUP: the fireball never hit the dragon in 30 s: ${JSON.stringify(run.phases.burn)}`).toBe(true);
     expect(of('burn', 'player-dot').length, `the fireball's burn never ticked on the dragon in its window: ${JSON.stringify(run.phases.burn)}`).toBeGreaterThanOrEqual(1);
     expect(run.phases.burn.after, 'the cast and its burn did not lower its HP').toBeLessThan(run.phases.burn.before);
     expect(run.burnDone, `the burn did not deal its ${Math.floor(SPELL_TYPES.fireball.secondary.duration)} ticks on the dragon in 30 s: ${JSON.stringify(run.burnTicks)}`).toBe(true);
