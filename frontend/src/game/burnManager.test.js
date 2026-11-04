@@ -108,4 +108,33 @@ describe('makeBurnManager — fire DoT interval registry', () => {
       expect(mgr.size).toBe(0);
     });
   });
+
+  // A busy main thread runs timers behind frame work while frames keep coming (a 600 ms timer fired after ~5 s under a
+  // 10x CPU throttle, tests/e2e/music-bus.spec.js), and the fireball's burn on the dragon then dealt no tick in its
+  // window (registry REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached). The frame loop pumps the burns too.
+  it('ticks on time from the frame loop while its timer is held back', () => {
+    const onTime = globalThis.setInterval;
+    globalThis.setInterval = (fn, ms, ...a) => onTime(fn, ms + 5000, ...a);
+    try {
+      const hits = [];
+      const mgr = makeBurnManager();
+      mgr.start('m1', 3, 5, () => (id) => { hits.push([id, Math.round(performance.now())]); return { id }; });
+      const t0 = performance.now();
+      for (let i = 0; i < 32; i++) { vi.advanceTimersByTime(100); mgr.pump?.(); }
+      expect(hits.length, `3.2 s into a 3-tick burn with its timer held 5 s late, the frame pump dealt ${hits.length} ticks: ${JSON.stringify(hits.map(([, t]) => t - t0))}`).toBe(3);
+      expect(hits.map(([, t]) => Math.round((t - t0) / 1000)), 'the ticks did not come a second apart').toEqual([1, 2, 3]);
+      expect(mgr.size, 'the burn did not clear after its last tick').toBe(0);
+    } finally {
+      globalThis.setInterval = onTime;
+    }
+  });
+
+  it('with the timer on time and the frame loop pumping too, each tick lands once', () => {
+    const hits = [];
+    const mgr = makeBurnManager();
+    mgr.start('m1', 3, 5, () => (id) => { hits.push(id); return { id }; });
+    for (let i = 0; i < 50; i++) { vi.advanceTimersByTime(100); mgr.pump(); }
+    expect(hits.length, 'a 3-tick burn driven by its timer and the frame loop together').toBe(3);
+  });
 });
+
