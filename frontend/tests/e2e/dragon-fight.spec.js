@@ -329,6 +329,11 @@ test.describe('the dragon fight', () => {
         if (id === 'shadow-dragon') calls.push({ dmg, source, live: !!out, t: call('worldNow') });
         return out;
       };
+      // A spell projectile's direct hit on the dragon takes the store's damageBoss, not damageMob (EnhancedMagicSystem's
+      // boss check), so it is recorded here too: without it the fireball's 60 read as an HP drop with no call.
+      const realBoss = store.getState().damageBoss;
+      const direct = [];
+      store.setState({ damageBoss: (amount, source = 'player', ...rest) => { direct.push({ amount, source, t: call('worldNow') }); return realBoss(amount, source, ...rest); } });
       const hp = () => store.getState().bossHealth;
       const waitWorld = async (ms) => { const w0 = call('worldNow'), t0 = performance.now(); while (call('worldNow') - w0 < ms && performance.now() - t0 < 30000) await frame(); };
       store.setState({ hitstopUntil: performance.now() });
@@ -339,16 +344,16 @@ test.describe('the dragon fight', () => {
       // Each window keeps the calls made in it, and the live ones from any other source: an HP change is a source's only
       // when no other source hit the dragon in its window.
       const mark = async (name, sources, act, ms) => {
-        const before = hp(), n0 = calls.length;
+        const before = hp(), n0 = calls.length, d0 = direct.length, w0 = call('worldNow');
         await act();
         await waitWorld(ms);
         const own = calls.slice(n0);
-        out.phases[name] = { before, after: hp(), calls: own, others: own.filter((c) => c.live && !sources.includes(c.source)) };
+        out.phases[name] = { before, after: hp(), w0, calls: own, others: own.filter((c) => c.live && !sources.includes(c.source)), boss: direct.slice(d0) };
       };
       // Wait until `done()` holds, at most `maxMs` of real time. A burn and a zone outlive the window that started them,
-      // so the next window waits for each to end by its own measure: the burn once it has dealt its ticks (they run on
-      // a real-time interval a loaded runner can starve, so a quiet spell is no sign it has ended), the zone once its
-      // ttl of world time has passed.
+      // so the next window waits for each to end by its own measure: the burn once it has dealt its ticks (a second
+      // apart on the wall clock, held through a freeze, so a quiet spell is no sign it has ended), the zone once its ttl
+      // of world time has passed.
       const until = async (done, maxMs) => {
         const t0 = performance.now();
         while (!done()) {
@@ -383,6 +388,7 @@ test.describe('the dragon fight', () => {
         out.allyBound = added ? !!GM.captureMob?.(added.id) : false;
       }, 4000);
       GM.damageMob = real;
+      store.setState({ damageBoss: realBoss });
       out.end = hp();
       return out;
     }, { at: st.at, burnTicks: Math.floor(SPELL_TYPES.fireball.secondary.duration), zoneTtlMs: ZONE_DEFS.burning.ttl * 1000 });
