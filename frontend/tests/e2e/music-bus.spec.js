@@ -36,11 +36,19 @@ async function read(page, step, fn, ms = 15000) {
 }
 
 function probeMusic() {
-  const probe = { audios: [], routes: 0, routeCtx: null };
+  const probe = { audios: [], routes: 0, routeCtx: null, mutedAt: null, frames: [] };
   window.__musicProbe = probe;
+  // The start time of every frame after Mute All, the page's own measure of how far it has got.
+  const onFrame = (ts) => {
+    if (probe.mutedAt !== null && probe.frames.length < 10000) probe.frames.push(ts);
+    requestAnimationFrame(onFrame);
+  };
+  requestAnimationFrame(onFrame);
   const RealAudio = window.Audio;
   window.Audio = class ProbedAudio extends RealAudio {
     constructor(...args) { super(...args); probe.audios.push(this); }
+
+    pause() { super.pause(); this.pausedAt = performance.now(); }
   };
   const route = AudioContext.prototype.createMediaElementSource;
   AudioContext.prototype.createMediaElementSource = function probedRoute(el) {
@@ -92,9 +100,31 @@ test.describe('the soundtrack in Chromium', () => {
     await page.waitForFunction(dayPlaying, null, { timeout: 30000, polling: 250 })
       .catch(async (e) => { throw new Error(`the day track is not playing through a running context after a key press: ${JSON.stringify(await state('after the key press'))} — ${e.message}`); });
 
-    await read(page, 'Mute All', () => window.useGameStore.getState().setMasterMuted(true));
-    await page.waitForFunction(() => window.__musicProbe.audios.every((a) => a.paused), null, { timeout: 3000, polling: 100 })
-      .catch(async (e) => { throw new Error(`a track is still playing 3 s after Mute All: ${JSON.stringify(await state('after Mute All'))} — ${e.message}`); });
+    // The 3 s is read on the page's own clock, from when Mute All was set to when each track was paused, and it is
+    // counted in frames: a busy runner (CI's SwiftShader, or a CPU throttle) holds back the page's timers, its frames and
+    // Playwright's polls alike, so neither a poll on the runner's clock nor a wall-clock bound in the page could tell a
+    // late pause from a slow page (registry REVIEW:e2e-flakes:music-bus-mute-all-wait). The game pauses a faded track in
+    // the first frame past the fade's end, so a pause after the first frame that begins 3 s after Mute All is a late one.
+    // The wait below only bounds how long the page may take to answer; the assertion after it is the bound.
+    await read(page, 'Mute All', () => {
+      window.__musicProbe.mutedAt = performance.now();
+      window.useGameStore.getState().setMasterMuted(true);
+    });
+    await page.waitForFunction(() => window.__musicProbe.audios.every((a) => a.paused), null, { timeout: 15000, polling: 100 })
+      .catch(async (e) => { throw new Error(`a track never paused after Mute All: ${JSON.stringify(await state('after Mute All'))} — ${e.message}`); });
+    const muted = await read(page, 'the pause times', () => {
+      const p = window.__musicProbe;
+      const since = (t) => Math.round(t - p.mutedAt);
+      const pauses = p.audios.map((a) => ({
+        src: a.src.split('/').pop(), ms: a.pausedAt === undefined || a.pausedAt < p.mutedAt ? 0 : since(a.pausedAt),
+      }));
+      const last = Math.max(...pauses.map((t) => t.ms));
+      return { pauses, frames: p.frames.map(since).filter((ms) => ms >= 3000 && ms < last) };
+    });
+    expect(muted.pauses.filter((t) => t.src === 'day.mp3' && t.ms > 0).length, `SETUP: Mute All paused no playing day track: ${JSON.stringify(muted)}`)
+      .toBe(1);
+    expect(muted.frames.length, `a track was still playing a whole frame past 3 s after Mute All (ms after it): ${JSON.stringify(muted)}`)
+      .toBeLessThanOrEqual(1);
 
     await read(page, 'unmute', () => window.useGameStore.getState().setMasterMuted(false));
     await page.waitForFunction(dayPlaying, null, { timeout: 10000, polling: 250 })

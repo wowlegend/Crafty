@@ -19,6 +19,12 @@ const onPlayError = (e) => {
   if (e?.name !== 'NotAllowedError' && e?.name !== 'AbortError') console.warn('Music track failed to play:', e);
 };
 const playTrack = (t) => { const p = t.el.play(); if (p) p.catch(onPlayError); };
+const cancelFade = (fadeRef) => {
+  if (!fadeRef.current) return;
+  clearTimeout(fadeRef.current.timer);
+  cancelAnimationFrame(fadeRef.current.frame);
+  fadeRef.current = null;
+};
 
 export default function MusicPlayer() {
   const { isDay, bossActive, musicVolume, masterMuted } = useGameStore(useShallow((s) => ({
@@ -76,8 +82,7 @@ export default function MusicPlayer() {
     });
     return () => {
       offGesture();
-      clearTimeout(fadeRef.current);
-      fadeRef.current = null;
+      cancelFade(fadeRef);
       for (const t of Object.values(tracks)) { t.el.pause(); t.source.disconnect(); t.gain.disconnect(); }
       tracksRef.current = null;
     };
@@ -104,11 +109,20 @@ export default function MusicPlayer() {
       t.gain.gain.linearRampToValueAtTime(t.target, now + secs);
       longest = Math.max(longest, secs);
     }
-    clearTimeout(fadeRef.current);
-    fadeRef.current = setTimeout(() => {
-      fadeRef.current = null;
+    // The pause is asked for by a timer AND by the frame loop, whichever comes first. Chrome runs a timer behind frame
+    // work on a busy main thread: under a 10x CPU throttle a 600 ms timer set by Mute All fired after ~5 s while frames
+    // kept coming (Chromium 156). The timer stays because a hidden tab runs no frames.
+    cancelFade(fadeRef);
+    const due = performance.now() + longest * 1000;
+    const settle = () => {
+      cancelFade(fadeRef);
       for (const t of Object.values(tracks)) if (t.target === 0 && !t.el.paused) t.el.pause();
-    }, longest * 1000);
+    };
+    const onFrame = () => {
+      if (performance.now() >= due) settle();
+      else fadeRef.current.frame = requestAnimationFrame(onFrame);
+    };
+    fadeRef.current = { timer: setTimeout(settle, longest * 1000), frame: requestAnimationFrame(onFrame) };
   }, [isDay, bossActive, musicEnabled, musicVolume, masterMuted, audioContext]);
 
   return null;
