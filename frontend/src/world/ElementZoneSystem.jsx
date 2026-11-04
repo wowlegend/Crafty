@@ -48,6 +48,10 @@ export function ElementZoneSystem() {
 
     accumRef.current += delta;
     if (accumRef.current < AI_TICK_SEC) return;
+    // The tick spans the world time since the last one, not a fixed 1/15 s: below 15 fps every frame is a tick, and a
+    // fixed credit made the effects' cadence a count of FRAMES (a burning zone hurt once per 1.25 s at 4 fps) while the
+    // zone's life runs on the world clock.
+    const tickSec = accumRef.current;
     accumRef.current = 0;
 
     // Seconds on the WORLD clock: R3F's clock runs through a pause and a hitstop, so a zone stamped on it would expire
@@ -87,9 +91,10 @@ export function ElementZoneSystem() {
     }
     zonesActiveRef.current = true;
 
-    fxAccumRef.current += AI_TICK_SEC;
+    fxAccumRef.current += tickSec;
     if (fxAccumRef.current < FX_TICK_SEC) return;
-    fxAccumRef.current = 0;
+    // The remainder is carried (at most one effects tick per frame), so the cadence is FX_TICK_SEC of world time.
+    fxAccumRef.current = Math.min(fxAccumRef.current - FX_TICK_SEC, FX_TICK_SEC);
 
     if (GameMethods.damageMob) {
       applyZoneEffects(liveZones.zones, bossTargets(mobsQuery.entities, undefined, ON_THE_GROUND), GameMethods.damageMob);
