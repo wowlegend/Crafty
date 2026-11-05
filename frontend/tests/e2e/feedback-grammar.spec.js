@@ -25,10 +25,26 @@ async function stageZombie(page, distance) {
 }
 
 async function bootGame(page) {
+  await page.addInitScript(holdWeatherCycle);
   await bootDev(page);
   await startPlayActive(page);
   await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__threeCamera && window.GameMethods?.damageMob
     && window.useGameStore.getState().spawnMob && window.__threeScene, null, { timeout: 60000 });
+  expect(await page.evaluate(() => window.__weatherCyclesHeld ?? 0), 'SETUP: WeatherSystem\'s 90 s weather cycle was not held')
+    .toBeGreaterThan(0);
+}
+
+/** In the page, before it loads: the weather stays clear. WeatherSystem's 90 s interval (render/WeatherSystem.jsx, the
+ *  page's one 90 s interval) starts a storm on wall time: its rain streaks, its darker grade (weatherMoodBoost) and its
+ *  toast, and on a slow runner one landed between a case's rest shot and its held shot (the interior dimmed 0.342 ->
+ *  0.296). That interval is registered with nothing to run, and each one held is counted for the SETUP read above. */
+function holdWeatherCycle() {
+  const realSetInterval = window.setInterval;
+  window.setInterval = function heldWeather(fn, ms, ...args) {
+    if (ms !== 90000) return realSetInterval(fn, ms, ...args);
+    window.__weatherCyclesHeld = (window.__weatherCyclesHeld ?? 0) + 1;
+    return realSetInterval(() => {}, ms);
+  };
 }
 
 async function placeMob(page, distance, type) {
@@ -38,10 +54,6 @@ async function placeMob(page, distance, type) {
     const s = window.useGameStore.getState();
     window.useGameStore.setState({ isAlive: true, playerHealth: s.maxHealth });
     s.setTimeOfDay(0.5);
-    // The weather is held clear: WeatherSystem's 90 s interval starts a storm on wall time, which darkens every lit face,
-    // and on a slow runner it landed between a case's rest shot and its held shot (the interior dimmed 0.342 -> 0.296).
-    // The setter is replaced, as ore-glow.spec does; the mood eases back to clear on real time through the 60 frames.
-    window.useGameStore.setState({ weatherMoodBoost: 0, setWeatherMoodBoost: () => {} });
     const cam = window.__threeCamera;
     for (const m of window.__craftyTest.call('readMobs')) {
       if (!m.role && Math.hypot(m.x - cam.position.x, m.z - cam.position.z) < 24) window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
