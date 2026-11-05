@@ -10,28 +10,49 @@
 // resumes with every tick it had left.
 import { isWorldFrozenNow } from './worldClock.js';
 
+const TICK_MS = 1000;
+const TIMER_SLACK_MS = 50;
+
 export function makeBurnManager() {
-  const active = new Set();
+  // handle -> { mobId, dps, getDamageMob, ticksRemaining, next }: `next` is when the next tick is due, performance.now() ms.
+  const active = new Map();
+
+  // One tick of a burn if it is due at `now`. The interval and the frame loop (pump) both ask, whichever comes first:
+  // a busy main thread runs a timer late while frames keep coming, and a hidden tab runs no frames.
+  function fire(handle, now, slack = 0) {
+    const b = active.get(handle);
+    if (!b) return;
+    // A held world deals nothing and spends nothing: the next tick is due a second after the hold ends.
+    if (isWorldFrozenNow(now)) { b.next = Math.max(b.next, now + TICK_MS); return; }
+    if (now + slack < b.next) return;
+    const damageMob = b.getDamageMob();
+    if (b.ticksRemaining <= 0 || typeof damageMob !== 'function') { stop(handle); return; }
+    b.next = now + TICK_MS;
+    // 'player-dot': the player's damage for XP and kill attribution, NOT a direct hit for feel. This
+    // omitted the argument and took the 'player' default, so every tick stamped hitstop, shook the
+    // camera and pushed an impact ring -- four times, a second apart, with no input.
+    const mob = damageMob(b.mobId, b.dps, 'fireball', 'player-dot');
+    if (!mob) { stop(handle); return; } // mob already dead/despawned
+    b.ticksRemaining--;
+    if (b.ticksRemaining <= 0) stop(handle);
+  }
 
   function start(mobId, duration, dps, getDamageMob) {
-    let ticksRemaining = Math.floor(duration);
-    const handle = setInterval(() => {
-      if (isWorldFrozenNow()) return;
-      const damageMob = getDamageMob();
-      if (ticksRemaining <= 0 || typeof damageMob !== 'function') { stop(handle); return; }
-      // 'player-dot': the player's damage for XP and kill attribution, NOT a direct hit for feel. This
-      // omitted the argument and took the 'player' default, so every tick stamped hitstop, shook the
-      // camera and pushed an impact ring -- four times, a second apart, with no input.
-      const mob = damageMob(mobId, dps, 'fireball', 'player-dot');
-      if (!mob) { stop(handle); return; } // mob already dead/despawned
-      ticksRemaining--;
-    }, 1000);
-    active.add(handle);
+    const burn = { mobId, dps, getDamageMob, ticksRemaining: Math.floor(duration), next: performance.now() + TICK_MS };
+    // A timer can fire a hair before performance.now() reaches its due time; the slack lets it take its own tick, and
+    // is far under a second, so a tick the frame loop has just dealt is never dealt again.
+    const handle = setInterval(() => fire(handle, performance.now(), TIMER_SLACK_MS), TICK_MS);
+    active.set(handle, burn);
     return handle;
   }
 
-  function stop(handle) { clearInterval(handle); active.delete(handle); }
-  function stopAll() { for (const h of active) clearInterval(h); active.clear(); }
+  /** Called every frame: deal each burn's tick that has come due. */
+  function pump(now = performance.now()) {
+    for (const handle of [...active.keys()]) fire(handle, now);
+  }
 
-  return { start, stop, stopAll, get size() { return active.size; } };
+  function stop(handle) { clearInterval(handle); active.delete(handle); }
+  function stopAll() { for (const h of active.keys()) clearInterval(h); active.clear(); }
+
+  return { start, pump, stop, stopAll, get size() { return active.size; } };
 }
