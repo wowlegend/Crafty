@@ -19,6 +19,50 @@
 
 ---
 
+## 2026-11-05 (PR #88, flaky e2e specs) — [LOOP] element zones and burns run on world time
+
+`land/2026-11-05-flaky-e2e-specs` (PR #88): the cloud session's eight commits on main `1735ec26` (an Opus 5.5 session
+at medium effort, re-committed under the repo owner's identity, trees equal), then a fixer round on its three reviews.
+Three commit bodies cite hashes of the cloud session's seed copy that are not in this history: `04dda288` and
+`ae5b2ffd` cite a4ac2c3, which is `7827a40d`, and `ae5b2ffd` cites 844a127, which is `1709d9ac`. The cloud branch's own
+hashes, cited by the PR and by `cdf5075c` (bcab507), map 934002b to `7aa139b2`, bcab507 to `c88beefb`, c4f4896 to
+`1709d9ac`, 224d3fb to `7827a40d`, be05789 to `04dda288`, 73c98ba to `ae5b2ffd`, ee51123 to `a916d1ca` and c95e568 to
+`cdf5075c`. The flake rows the branch works on stay open until CI shows ten clean runs; what each now holds is in its
+registry row.
+
+539. **Element-zone effects tick every 0.3 s of world time at every frame rate down to the frame cap, never two less
+   than 0.25 s apart, so in-zone damage rises at most frame rates.** `ElementZoneSystem` credited a fixed 1/15 s to each
+   bridge tick and fired the effects every fifth tick, so their cadence followed the frame count. `1709d9ac` credits
+   the world time each tick spans and carries the remainder; `431159cd` adds the 0.25 s floor between effects ticks,
+   the damper's 4 Hz bound, which the carry broke after a long frame (two ticks 70 ms apart). *As measured:* the
+   dynamic review's probe of the bridge at steady rates went from 27 to 30 hits in 9 s at 30, 60 and 120 fps (mean gap
+   333 to 299 ms, +11%) and from 25 to 29 at 144 fps (+16%). By arithmetic on the old code (the static review): at
+   60 fps its period was 0.33 to 0.42 s as the frames fell, so the rise there is 11% to 39%; at 16 to 30 fps a tick took
+   2 or 3 frames, a period of 0.33 to 0.63 s, so at 16 fps damage about doubles (0.625 s to 0.3 s); below 15 fps every
+   frame was a tick, a period of 1.25 s at 4 fps, about 4 times slower than now. The PR's "up to about 25% at 60 fps"
+   understated it; jittered frame rates were not measured. It applies to burning (BURN_TICK 4 a tick, about 13 dps in
+   the zone now), conductive (SHOCK_TICK 6, about 20 dps) and the frozen slow's refresh. *Why:* a zone's life runs on
+   the world clock while its effects followed frames, and the iPad-class rates lost the most; 0.3 s is the cadence the
+   file and `elementZones.js` already state as the design. *Enforcer:* `element-zone-bridge-gates` (4 fps against
+   14 fps; the 0.25 s floor), mutation-proven in `1709d9ac` and `431159cd`. How the new damage feels on a device is
+   Kevin's.
+
+540. **A burn's ticks follow world time, and the frame loop is their only driver: its interval is gone.** `burnManager`
+   ran each burn on a 1 s `setInterval`. `7827a40d` added a per-frame pump beside it, because a loaded runner holds
+   timers back while frames still come (the dragon e2e's burn window), and with it a rule that pushed the next tick a
+   full second past every frozen frame, so hitstops under a second apart held a burn at zero ticks: a fireball cast on
+   every 333 ms cooldown (a 130 ms crit hitstop a hit), or a skitterling biting every 700 ms (code review finding 1,
+   HIGH; 0 of 4 ticks in both cases on `cdf5075c`). `27c1fa05` puts a burn's ticks on a grid of world time from its
+   start (`worldNow`), dealt by the frame loop at most one a frame. *Why:* the world clock already holds a pause and a
+   hitstop exactly and every other world system runs on it; one driver needs no slack rule against double ticks; a
+   late tick no longer moves the ones after it (they drifted 8% at 270 ms frames); and a hidden tab, which runs no
+   frames, holds a burn with the rest of the world (`REVIEW:l8:hidden-touch-page-timers-run`). *What a player sees
+   change:* a hold delays the ticks after it by exactly its length, where main's interval skipped a tick that landed in
+   a hold and dealt it a whole second later; after a stalled frame the ticks a burn owes land a frame apart; on a touch page
+   hidden without a pause, the remaining ticks land on the frames after it returns, not while it is hidden.
+   *Enforcer:* `burnManager.test.js` (14 cases, among them 45 ms freezes every 700 ms and 130 ms freezes every 333 ms,
+   each red on `cdf5075c`), mutation-proven in `27c1fa05` and `e1e54c2b`.
+
 ## 2026-11-02 (opsec home paths) — [KEVIN] the public/private split is punted; [LOOP] every home path blocks
 
 Kevin, 2026-11-02, answering the command session's reading of a public/private split, his message whole: "so
