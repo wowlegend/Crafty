@@ -211,6 +211,19 @@ describe('makeBurnManager: fire damage over time, a tick per second of world tim
     expect(hits, 'the ticks, ms after the burn began').toEqual([3500, 3516, 3532, 4012]); // the fourth: the first frame past 4 s
   });
 
+  // A hidden tab runs no frames, and the world they move stops with them: a burn deals nothing on timers alone. A touch
+  // page that is hidden is not paused, so when its frames come back the world clock has run on, and the ticks it owes
+  // land a frame apart.
+  it('with timers running and no frame drawn, as in a hidden tab, a burn deals nothing until frames come back', () => {
+    const hits = [];
+    const mgr = makeBurnManager();
+    mgr.start('m1', 3, 5, () => (id) => { hits.push(id); return { id }; });
+    vi.advanceTimersByTime(5000);
+    expect(hits.length, 'the burn ticked in 5 s with no frame drawn').toBe(0);
+    frames(mgr, 3 * FRAME_MS);
+    expect(hits.length, 'the frames came back and the burn did not deal the ticks it owed').toBe(3);
+  });
+
   // However often the frame loop asks, a tick is dealt once: every 10 ms, and twice in each frame.
   it('each tick lands once, with the frame loop asking every 10 ms and twice a frame', () => {
     const hits = [];
