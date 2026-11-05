@@ -1,6 +1,7 @@
 // The DEV test bridge: the hooks a Playwright spec, a probe or the lookbook calls through window.__craftyTest to drive
 // the running game into known states. App imports this module only in a DEV build (App.jsx), so production carries
 // none of it.
+import { addEffect } from '@react-three/fiber';
 import { useGameStore } from '../store/useGameStore';
 import { setActive, getInput } from '../input/inputState';
 import { ecs, mobsQuery, alliesQuery } from '../ecs/world';
@@ -101,17 +102,24 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
   // feedback-grammar E2E compares a hit's pixels with bloom off, so a white edge's halo cannot stand in for the lit band.
   registerTestHook('passesOff', (names) => { setLookbookPassesOff(new Set(names)); return [...names]; });
   // Hold a mob in contact: its hit stamp renewed every frame until `on` is false (the feedback-grammar E2E shoots the
-  // flash the way the lookbook's stage holds it). No damage, knockback or hitstop: only the stamp the look reads.
+  // flash). No damage, knockback or hitstop: only the stamp the look reads. The stamp is written at the START of each
+  // render-loop frame (an R3F before-effect, ahead of every useFrame), so the look reads a stamp of this frame. Written
+  // from a plain requestAnimationFrame it ran after the loop and the look read the previous frame's, and a frame longer
+  // than a second (CI's SwiftShader) made that stamp spent (feedbackGrammar.js hitSequence): no flash, the hit not held.
   const held = new Set();
+  let stopStamping = null;
   registerTestHook('holdHit', (id, on = true) => {
     const e = mobsQuery.entities.find((m) => m.id === id);
     if (!e) return false;
-    if (!on) { held.delete(e); return true; }
-    if (!held.has(e)) {
-      held.add(e);
-      const stamp = () => { if (!held.has(e)) return; e.lastHit = performance.now(); requestAnimationFrame(stamp); };
-      stamp();
+    if (!on) held.delete(e);
+    else held.add(e);
+    if (held.size && !stopStamping) {
+      stopStamping = addEffect(() => { const t = performance.now(); for (const m of held) m.lastHit = t; });
+    } else if (!held.size && stopStamping) {
+      stopStamping();
+      stopStamping = null;
     }
+    if (on) e.lastHit = performance.now();
     return true;
   });
   // The squad, for the ember E2E: a bind is seen as a mob joining it, a fuse as a pair leaving it for one hybrid.

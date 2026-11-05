@@ -17,8 +17,8 @@ import { RIM } from '../../src/render/characterStyle.js';
 //   K2b MobModel zeroes the rim strength on the low tier (a tier gate put back) -> "the rim is lit on the low tier"
 //   K2c MobModel writes no outline colour -> "the live hull heats" and the danger-pixel count
 //   K3c the flash term not spliced into the rim program (the uniform still fed) -> "body pixels on the lit band went white"
-/** A mob `distance` m along the camera's level facing, at noon, every other mob within 24 m gone, the world held
- *  (one long hitstop: the AI neither moves it nor replaces its windup). Returns its id, or null. */
+/** A mob `distance` m along the camera's level facing, at noon in clear weather, every other mob within 24 m gone, the
+ *  world held (one long hitstop: the AI neither moves it nor replaces its windup). Returns its id, or null. */
 async function stageZombie(page, distance) {
   await bootGame(page);
   return placeMob(page, distance, 'zombie');
@@ -38,6 +38,14 @@ async function placeMob(page, distance, type) {
     const s = window.useGameStore.getState();
     window.useGameStore.setState({ isAlive: true, playerHealth: s.maxHealth });
     s.setTimeOfDay(0.5);
+    // The world is held BEFORE the clear, so no mob spawns or walks into the cleared ground while the dissolves run:
+    // held after it, a slow runner's 60 frames were seconds of a live world, and a mob stood within 3 m of the staged
+    // one (registry REVIEW:e2e-flakes:feedback-grammar-windup-near-mob). The weather is held clear: WeatherSystem's
+    // 90 s interval starts a storm on wall time, which darkens every lit face, and on a slow runner it landed between
+    // a case's rest shot and its held shot (the interior dimmed 0.342 -> 0.296). The setter is replaced, as
+    // ore-glow.spec does; the mood eases back to clear on real time through the 60 frames below.
+    s.triggerHitstop(200000);
+    window.useGameStore.setState({ weatherMoodBoost: 0, setWeatherMoodBoost: () => {} });
     const cam = window.__threeCamera;
     for (const m of window.__craftyTest.call('readMobs')) {
       if (!m.role && Math.hypot(m.x - cam.position.x, m.z - cam.position.z) < 24) window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
@@ -50,7 +58,6 @@ async function placeMob(page, distance, type) {
     const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
     s.spawnMob(gx, gz, kind, gy);
     const mob = window.__craftyTest.call('readMobs').find((m) => !before.has(m.id));
-    s.triggerHitstop(200000);
     if (mob) window.__craftyTest.call('faceMob', mob.id, 0);
     for (let i = 0; i < 4; i++) await frame();
     return mob ? mob.id : null;
@@ -192,8 +199,22 @@ test.describe('the feedback grammar', () => {
     await settle(page);
     const rest = await grab();
     await page.evaluate((mid) => window.__craftyTest.call('holdHit', mid, true), id);
+    // Every frame of the held shot takes over a second, as CI's SwiftShader frames sometimes do: a stamp the look reads
+    // more than a second old is spent (feedbackGrammar.js hitSequence), so a hold that stamps after the frame's render
+    // instead of before it shows no flash here, every time (registry REVIEW:e2e-flakes:feedback-grammar-lit-band-white).
+    await page.evaluate(() => {
+      window.__fgSlowFrames = true;
+      const slow = () => {
+        if (!window.__fgSlowFrames) return;
+        const t = performance.now();
+        while (performance.now() - t < 1100);
+        requestAnimationFrame(slow);
+      };
+      requestAnimationFrame(slow);
+    });
     await settle(page);
     const hit = await grab();
+    await page.evaluate(() => { window.__fgSlowFrames = false; });
     const l = await page.evaluate((mid) => window.__craftyTest.call('readMobLook', mid), id);
     await page.evaluate((mid) => window.__craftyTest.call('holdHit', mid, false), id);
     await page.evaluate(() => window.__craftyTest.call('passesOff', []));
