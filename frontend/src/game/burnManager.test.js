@@ -129,12 +129,20 @@ describe('makeBurnManager — fire DoT interval registry', () => {
     }
   });
 
-  it('with the timer on time and the frame loop pumping too, each tick lands once', () => {
-    const hits = [];
-    const mgr = makeBurnManager();
-    mgr.start('m1', 3, 5, () => (id) => { hits.push(id); return { id }; });
-    for (let i = 0; i < 50; i++) { vi.advanceTimersByTime(100); mgr.pump(); }
-    expect(hits.length, 'a 3-tick burn driven by its timer and the frame loop together').toBe(3);
+  // The frame loop deals a tick first and the timer, 30 ms late, asks right after it: the timer must not deal it again.
+  it('with the frame loop dealing each tick just before its timer, each tick lands once', () => {
+    const onTime = globalThis.setInterval;
+    globalThis.setInterval = (fn, ms, ...a) => onTime(() => setTimeout(fn, 30), ms, ...a);
+    try {
+      const hits = [];
+      const mgr = makeBurnManager();
+      mgr.start('m1', 3, 5, () => (id) => { hits.push(Math.round(performance.now())); return { id }; });
+      const t0 = performance.now();
+      for (let i = 0; i < 500; i++) { vi.advanceTimersByTime(10); mgr.pump(); }
+      expect(hits.map((t) => t - t0), 'a 3-tick burn, its frame loop pumping first and its timer 30 ms behind').toEqual([1000, 2000, 3000]);
+    } finally {
+      globalThis.setInterval = onTime;
+    }
   });
 });
 
