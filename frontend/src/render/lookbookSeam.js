@@ -51,8 +51,13 @@ let _passTimer = null; // the page-wide handle from render/passTimer.js, once th
 export const STAGE_MOMENTS = Object.freeze(['idle', 'windup', 'hit', 'cast']);
 const STAGE_WINDUP_RAMP = 0.8; // how far through its windup a staged mob is held (game/attackTelegraph.js windupRamp)
 const STAGE_HOLD_MS = 600000; // the world freeze's cap; unstage() ends it at once
-// What stage() put in the world: the mobs, whether the per-frame hit stamp runs, and whether the world is held for it.
-const _stage = { mobs: [], stamping: false, holding: false, cast: false };
+// What stage() put in the world: the mobs, the per-frame hit stamp's unsubscribe while it runs, and whether the world is
+// held for it.
+const _stage = { mobs: [], stopStamping: null, holding: false, cast: false };
+function stopStageStamp() {
+  _stage.stopStamping?.();
+  _stage.stopStamping = null;
+}
 /** How far from the eye frame() looks for mobs and spells drawn in view. */
 export const FRAME_M = 60;
 const MATCH_M = 1.5; // a drawn mob stands on its live ECS mob within this (the render damp lags a walking mob)
@@ -214,17 +219,20 @@ function finite(v, name) {
  *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>,
  *          sunDir?: () => number[], handNodes?: () => number,
  *          spawnDragon?: (o: {position?: number[]}) => {position: number[], ground: number|null},
- *          worldNow?: () => number, keyDir?: () => number[], roots?: () => Map<any, {store: any}>}} deps  `hostiles`: the
+ *          worldNow?: () => number, keyDir?: () => number[], roots?: () => Map<any, {store: any}>,
+ *          beforeFrame?: (cb: () => void) => () => void}} deps  `hostiles`: the
  *          ECS mob query, every mob (the seam picks the hostiles out). `sunDir`: the sun's direction this frame
  *          (render/mood.js skyFrameRef). `handNodes`: the objects mounted in the viewmodel's hands group
  *          (render/viewmodel.js handNodeCount). `spawnDragon`: the boss system's lookbook spawn (world/bossSystem.js).
  *          `worldNow`: the world clock (game/worldClock.js), which a staged windup is planted on. `keyDir`: the key
  *          light's direction this frame, the sun by day and the moon by night (render/mood.js skyFrameRef). `roots`:
- *          React Three Fiber's roots (its `_roots`), where frame() finds the scene the game camera draws.
+ *          React Three Fiber's roots (its `_roots`), where frame() finds the scene the game camera draws. `beforeFrame`:
+ *          React Three Fiber's addEffect, a callback run at the start of every render-loop frame (it returns the
+ *          unsubscribe), where a staged hit renews its stamp.
  */
 export function installLookbookSeam(win, {
   store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir, handNodes,
-  spawnDragon, worldNow, keyDir, roots,
+  spawnDragon, worldNow, keyDir, roots, beforeFrame,
 }) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   const unposed = (verb) => {
@@ -420,15 +428,17 @@ export function installLookbookSeam(win, {
       if (moment === 'windup') mob.windupUntil = worldNow() + (1 - STAGE_WINDUP_RAMP) * (mob.windupMs ?? WINDUP_MS);
       if (moment === 'hit') mob.lookbookHit = true;
       _stage.mobs.push(mob);
-      const raf = win.requestAnimationFrame ?? globalThis.requestAnimationFrame;
-      if (moment === 'hit' && !_stage.stamping && raf) {
-        _stage.stamping = true;
-        const stamp = () => {
-          if (!_stage.stamping) return;
-          for (const m of _stage.mobs) if (m.lookbookHit) m.lastHit = performance.now();
-          raf(stamp);
-        };
-        stamp();
+      if (moment === 'hit') {
+        mob.lastHit = performance.now();
+        // Renewed at the START of each frame, in the render loop's before-effect (ahead of every useFrame), so the look
+        // reads a stamp of this frame: a stamp written after the loop is a frame old when the look reads it, and after a
+        // frame longer than a second it is spent (render/feedbackGrammar.js hitSequence), so that frame draws no flash.
+        if (!_stage.stopStamping && beforeFrame) {
+          _stage.stopStamping = beforeFrame(() => {
+            const t = performance.now();
+            for (const m of _stage.mobs) if (m.lookbookHit) m.lastHit = t;
+          });
+        }
       }
       return { id: mob.id ?? null, position: [mob.position.x, mob.position.y, mob.position.z] };
     },
@@ -441,7 +451,7 @@ export function installLookbookSeam(win, {
       const n = _stage.mobs.length;
       for (const m of _stage.mobs) removeEntity?.(m);
       _stage.mobs = [];
-      _stage.stamping = false;
+      stopStageStamp();
       if (_stage.holding) {
         const now = performance.now();
         if (store.getState().hitstopUntil > now) store.setState({ hitstopUntil: now });
@@ -559,7 +569,7 @@ export function _resetLookbookForTest() {
   _resetLookbookStateForTest();
   _passTimer = null;
   _stage.mobs = [];
-  _stage.stamping = false;
+  stopStageStamp();
   _stage.holding = false;
   _stage.cast = false;
 }

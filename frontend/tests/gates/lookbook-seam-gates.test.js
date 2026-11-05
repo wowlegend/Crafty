@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { PerspectiveCamera, Vector3, MathUtils, Object3D } from 'three';
 import { EffectComposer, EffectPass, VignetteEffect, ToneMappingEffect, BloomEffect, BlendFunction } from 'postprocessing';
 import { World } from 'miniplex';
@@ -34,6 +34,7 @@ import { CYCLE_UNITS } from '../../src/game/dayNight.js';
 import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/render/glDiagnostics.js';
 import { windupRamp, WINDUP_MS } from '../../src/game/attackTelegraph.js';
 import { worldNow } from '../../src/game/worldClock.js';
+import { hitSequence } from '../../src/render/feedbackGrammar.js';
 
 /**
  * THE LOOKBOOK SEAM (plan docs/superpowers/plans/2026-10-27-crafty-instruments.md, part a). The lookbook probe shoots
@@ -102,6 +103,10 @@ import { worldNow } from '../../src/game/worldClock.js';
  *   K12e frame() reads the first root's scene, not the game camera's -> "frame(): ..."
  *   K12f frame() counts spells out of view -> "frame(): ..."
  *   K12g info() reads no key light -> "frame(): ..."
+ * Added with the hit stamp in the render loop's before-effect (PR #88), each RED, an identity mutant SURVIVED:
+ *   K13a the stamp renewed by a requestAnimationFrame, which runs after the render loop -> "hit: ..."
+ *   K13b the stamp never renewed -> "hit: ..."
+ *   K13c unstage() leaves the stamp on the render loop -> "hit: ..."
  *
  * BLIND SPOT: that Components.jsx's Player useFrame applies the pose to the LIVE camera (and stops applying it on
  * clear), that the hands really hide, and that index.jsx installs the seam, are the e2e's
@@ -1171,7 +1176,7 @@ describe('the pass timer\'s whole-frame mode', () => {
 // worker neither moves the mob nor replaces its windup, and the game code reads only fields it already reads
 // (windupUntil, lastHit): no look code learns about the lookbook.
 describe('stage(): a mob held in one combat moment in front of the eye', () => {
-  const setup = ({ withMobs = true } = {}) => {
+  const setup = ({ withMobs = true, beforeFrame } = {}) => {
     const world = new World();
     const mobs = world.with('isMob', 'position', 'type');
     const spawned = [];
@@ -1186,11 +1191,16 @@ describe('stage(): a mob held in one combat moment in front of the eye', () => {
     cam.rotation.set(0, yawForHeading(90), 0, 'YXZ'); // facing east, +X
     cam.updateMatrixWorld();
     useGameStore.setState({ gameCamera: cam, spawnMob, getMobFloor: () => 57, hitstopUntil: 0, hitstopStart: 0 });
-    const frames = [];
+    const frames = []; // what the seam queues with requestAnimationFrame
     const w = { ...fakeWin('?lookbook=1'), requestAnimationFrame: (cb) => { frames.push(cb); return frames.length; } };
-    const tick = () => { for (const cb of frames.splice(0)) cb(performance.now()); };
-    installLookbookSeam(w, withMobs ? { ...deps(), hostiles: () => mobs.entities, removeEntity: (e) => world.remove(e), worldNow } : deps());
-    return { w, mobs, spawned, cam, tick, world };
+    installLookbookSeam(w, withMobs ? { ...deps(), hostiles: () => mobs.entities, removeEntity: (e) => world.remove(e), worldNow, beforeFrame } : deps());
+    return { w, mobs, spawned, cam, world, frames };
+  };
+  // The render loop's own per-frame callbacks (R3F's addEffect, run before every useFrame), handed to the seam.
+  const renderLoop = () => {
+    const effects = new Set();
+    const beforeFrame = (cb) => { const sub = { cb }; effects.add(sub); return () => { effects.delete(sub); }; };
+    return { effects, beforeFrame };
   };
   afterEach(() => useGameStore.setState({ gameCamera: null, spawnMob: null, getMobFloor: null, hitstopUntil: 0, hitstopStart: 0 }));
 
@@ -1212,23 +1222,41 @@ describe('stage(): a mob held in one combat moment in front of the eye', () => {
     expect(useGameStore.getState().hitstopUntil, 'and lets the world go').toBeLessThanOrEqual(performance.now());
   });
 
-  it('hit: the stamp is renewed every frame while staged, and stops with unstage(); a turn and a side step are honoured', () => {
-    const { w, mobs, tick } = setup();
-    w.__craftyLookbook.stage({ type: 'zombie', distance: 3, moment: 'hit', yawDeg: 45, side: 1 });
-    const e = mobs.entities[0];
-    expect(e.position.z, 'one metre to the right of an eye facing east is +Z').toBeCloseTo(11, 5);
-    // From the mob at (13, 11) the eye at (10, 10) lies along (-3, -1); the turn adds 45 degrees to facing it.
-    expect(e.rotation).toBeCloseTo(Math.atan2(-3, -1) + Math.PI / 4, 5);
-    for (let i = 0; i < 3; i++) {
-      e.lastHit = 0;
-      const before = performance.now();
-      tick();
-      expect(e.lastHit, `frame ${i} renewed the stamp`).toBeGreaterThanOrEqual(before);
+  // A frame longer than a second (a first-frame shader compile, a slow GPU) makes a stamp the look reads more than a
+  // second old spent (render/feedbackGrammar.js hitSequence): no flash in the staged hit. So the stamp is renewed at the
+  // START of each frame, in the render loop's before-effect, never by a requestAnimationFrame the browser runs after it.
+  it('hit: the stamp is renewed at the start of every frame while staged, so the look reads it fresh after a frame over a second, and stops with unstage(); a turn and a side step are honoured', () => {
+    const loop = renderLoop();
+    const { w, mobs, frames } = setup({ beforeFrame: loop.beforeFrame });
+    let now = performance.now();
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    try {
+      w.__craftyLookbook.stage({ type: 'zombie', distance: 3, moment: 'hit', yawDeg: 45, side: 1 });
+      const e = mobs.entities[0];
+      expect(e.position.z, 'one metre to the right of an eye facing east is +Z').toBeCloseTo(11, 5);
+      // From the mob at (13, 11) the eye at (10, 10) lies along (-3, -1); the turn adds 45 degrees to facing it.
+      expect(e.rotation).toBeCloseTo(Math.atan2(-3, -1) + Math.PI / 4, 5);
+      // One browser frame as R3F 9.5 runs it (its loop() in @react-three/fiber's events module): the loop's
+      // before-effects, then every useFrame, where MobModel reads the stamp (mobLook calls hitSequence), then the
+      // callbacks other code queued with requestAnimationFrame, which the browser runs after the loop's own.
+      const seq = {};
+      const frame = (ms) => {
+        now += ms;
+        for (const sub of [...loop.effects]) sub.cb(now);
+        const look = hitSequence(seq, now, e.lastHit);
+        for (const cb of frames.splice(0)) cb(now);
+        return look;
+      };
+      const looks = [frame(16), frame(1100), frame(1100), frame(16)];
+      expect(looks, 'what the look drew in frames of 16 ms, 1.1 s, 1.1 s and 16 ms').toEqual(['flash', 'flash', 'flash', 'flash']);
+      w.__craftyLookbook.unstage();
+      const last = e.lastHit;
+      frame(16); frame(16);
+      expect(e.lastHit, 'no stamp after unstage').toBe(last);
+      expect(loop.effects.size, 'unstage() left the stamp on the render loop').toBe(0);
+    } finally {
+      clock.mockRestore();
     }
-    w.__craftyLookbook.unstage();
-    const last = e.lastHit;
-    tick(); tick();
-    expect(e.lastHit, 'no stamp after unstage').toBe(last);
   });
 
   it('cast: the spell system\'s deterministic cast, its projectile along the eye forward, its telegraph and impact behind the eye, the world held', () => {

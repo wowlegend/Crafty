@@ -61,7 +61,7 @@ import { ecs, mobsQuery } from './ecs/world.js';
 import { skyFrameRef } from './render/mood.js';
 import { handNodeCount } from './render/viewmodel.js';
 import { worldNow } from './game/worldClock.js';
-import { _roots } from '@react-three/fiber';
+import { _roots, addEffect } from '@react-three/fiber';
 import { loadNightWhenBuilt } from './night/nightLoader.js';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
@@ -96,6 +96,7 @@ function boot(installLookbookSeam) {
       worldNow, // a staged windup is planted on the world clock
       keyDir: () => skyFrameRef.current.keyDir,
       roots: () => _roots, // frame() finds the game's scene among them
+      beforeFrame: addEffect, // a staged hit renews its stamp at the start of each render-loop frame
     });
   }
 
