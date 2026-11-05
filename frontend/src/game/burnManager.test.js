@@ -121,6 +121,41 @@ describe('makeBurnManager: fire damage over time, a tick per second of world tim
       expect(hits.length, 'the burn lost ticks to the hitstop').toBe(2);
       expect(mgr.size).toBe(0);
     });
+
+    // The world clock sees a pause only on a frame, so a pause first seen after a stretch with no frame counts that
+    // stretch as world time: a desktop tab switched away exits pointer lock and hides, and the next frame comes when it is
+    // back. The burn then owes ticks behind the pause screen and must still deal none. After the resume the owed ticks
+    // land a frame apart, and the tick not yet owed lands on its own second of world time.
+    it('through frames drawn behind a pause first seen after 5 s with no frame, then the owed ticks land after the resume', () => {
+      const hits = [];
+      const mgr = makeBurnManager();
+      mgr.start('m1', 6, 5, () => (id) => { hits.push(performance.now()); return { id }; });
+      frames(mgr, 496);
+      setActive(false);
+      vi.advanceTimersByTime(5000);
+      frames(mgr, 960);
+      expect(hits.length, 'the burn ticked behind the pause screen').toBe(0);
+      expect(mgr.size, 'the pause ended the burn instead of holding it').toBe(1);
+      setActive(true);
+      const resumed = performance.now();
+      frames(mgr, 1000);
+      expect(hits.map((t) => Math.round(t - resumed)), 'the ticks, ms after the resume').toEqual([16, 32, 48, 64, 80, 512]);
+      expect(mgr.size).toBe(0);
+    });
+
+    // A hit landed on a stalled frame freezes the world while the burn still owes ticks for the stall: they wait for the
+    // freeze to end, then land a frame apart.
+    it('through a hitstop that starts on a 3.5 s stalled frame, holding the ticks the stall left owed', () => {
+      const hits = [];
+      const mgr = makeBurnManager();
+      const t0 = performance.now();
+      mgr.start('m1', 4, 5, () => (id) => { hits.push(Math.round(performance.now() - t0)); return { id }; });
+      frame(mgr, 3500);
+      useGameStore.getState().triggerHitstop(130);
+      frames(mgr, 1000);
+      // 3516 to 3628 are frozen; the fourth tick is due at 4000 ms of world time, 4130 ms of wall time.
+      expect(hits, 'the ticks, ms after the burn began').toEqual([3500, 3644, 3660, 4140]);
+    });
   });
 
   // THE BURN FOLLOWS WORLD TIME THROUGH ANY PATTERN OF HITSTOPS. Every direct hit the player lands freezes the world

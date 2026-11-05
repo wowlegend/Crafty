@@ -5,12 +5,18 @@
 // hitstop hold: a hold holds the burn exactly, keeping the part of the second it had run, however often the holds come;
 // and a tick dealt late, on the first frame past its second, does not move the ticks after it. At most one tick per burn
 // per frame, so a backlog after a stalled frame lands a frame apart. The frame loop is the only driver: a timer runs late
-// on a busy main thread while frames keep coming, and a hidden tab runs no frames, so the burn holds with the rest of the
-// world rather than ticking on alone.
+// on a busy main thread while frames keep coming, and a hidden tab runs no frames, so a burn deals nothing while a tab
+// is hidden. The world clock counts that stretch as world time unless it saw a pause before it, so the ticks the burn
+// owes for it land, a frame apart, once frames run unfrozen.
+//
+// No tick on a frame the world clock calls frozen (a pause or a hitstop), even one already owed: the clock sees a pause
+// only on a frame, so a pause first seen after a stretch with no frame (a desktop tab switched away) leaves ticks owed
+// behind the pause screen, and a hit on a stalled frame freezes the world while its backlog is owed. The owed ticks wait
+// for the world to run, on the same grid.
 //
 // Pure of React. damageMob is read through a getter on EVERY tick (not captured at start) so a burn
 // stops the instant the global damage method disappears — mirroring the original inline behaviour.
-import { worldNow } from './worldClock.js';
+import { worldNow, isWorldFrozen } from './worldClock.js';
 
 const TICK_MS = 1000;
 
@@ -27,7 +33,7 @@ export function makeBurnManager() {
 
   /** Called every frame: deal each burn's tick that has come due on the world clock, at most one per burn. */
   function pump(now = worldNow()) {
-    if (!active.size) return;
+    if (!active.size || isWorldFrozen()) return;
     for (const b of active.values()) {
       if (now < b.next) continue;
       const damageMob = b.getDamageMob();
