@@ -22,7 +22,7 @@
 ## 2026-11-05 (PR #88, flaky e2e specs) — [LOOP] element zones and burns run on world time
 
 `land/2026-11-05-flaky-e2e-specs` (PR #88): the cloud session's eight commits on main `1735ec26` (an Opus 5.5 session
-at medium effort, re-committed under the repo owner's identity, trees equal), then a fixer round on its three reviews.
+at medium effort, re-committed under the repo owner's identity, trees equal), then two fixer rounds on its reviews.
 Three commit bodies cite hashes of the cloud session's seed copy that are not in this history: `04dda288` and
 `ae5b2ffd` cite a4ac2c3, which is `7827a40d`, and `ae5b2ffd` cites 844a127, which is `1709d9ac`. The cloud branch's own
 hashes, cited by the PR and by `cdf5075c` (bcab507), map 934002b to `7aa139b2`, bcab507 to `c88beefb`, c4f4896 to
@@ -53,15 +53,24 @@ registry row.
    full second past every frozen frame, so hitstops under a second apart held a burn at zero ticks: a fireball cast on
    every 333 ms cooldown (a 130 ms crit hitstop a hit), or a skitterling biting every 700 ms (code review finding 1,
    HIGH; 0 of 4 ticks in both cases on `cdf5075c`). `27c1fa05` puts a burn's ticks on a grid of world time from its
-   start (`worldNow`), dealt by the frame loop at most one a frame. *Why:* the world clock already holds a pause and a
-   hitstop exactly and every other world system runs on it; one driver needs no slack rule against double ticks; a
-   late tick no longer moves the ones after it (they drifted 8% at 270 ms frames); and a hidden tab, which runs no
-   frames, holds a burn with the rest of the world (`REVIEW:l8:hidden-touch-page-timers-run`). *What a player sees
-   change:* a hold delays the ticks after it by exactly its length, where main's interval skipped a tick that landed in
-   a hold and dealt it a whole second later; after a stalled frame the ticks a burn owes land a frame apart; on a touch page
-   hidden without a pause, the remaining ticks land on the frames after it returns, not while it is hidden.
-   *Enforcer:* `burnManager.test.js` (14 cases, among them 45 ms freezes every 700 ms and 130 ms freezes every 333 ms,
-   each red on `cdf5075c`), mutation-proven in `27c1fa05` and `e1e54c2b`.
+   start (`worldNow`), dealt by the frame loop at most one a frame, and `ba1f7d2b` deals none on a frame the world clock
+   calls frozen (a pause or a hitstop) without moving that grid. That check went out with the interval in `27c1fa05`
+   and the round-2 static review found the cost (finding 1): the world clock sees a pause only on a frame, so a pause
+   first seen after a stretch with no frame counts the stretch as world time, and the ticks it left owed landed one a
+   frame behind the pause screen (5 of them in the case `ba1f7d2b` adds, on `9d020e45`). A desktop tab switched away
+   reaches it when no frame runs between the pointer-lock exit and the page hiding; that order in Chrome is read from
+   the code, not measured. *Why:* the world clock already holds a pause and a hitstop exactly and every other world system runs
+   on it; one driver needs no slack rule against double ticks; a late tick no longer moves the ones after it (they
+   drifted 8% at 270 ms frames); and a hidden tab runs no frames, so a burn deals nothing while a tab is hidden, which
+   `REVIEW:l8:hidden-touch-page-timers-run` asked of the burns. *What a player sees change:* a hold delays the ticks
+   after it by exactly its length, where main's interval skipped a tick that landed in a hold and dealt it a whole
+   second later; after a stalled frame the ticks a burn owes land a frame apart; while the world is held no tick lands,
+   even an owed one. The world time the clock counts across a hidden stretch is owed, not dropped: on a touch page
+   hidden without a pause, and on a desktop tab whose pause the clock first saw when it came back, the ticks owed for
+   it land a frame apart on the first frames that run unpaused, not while the page is hidden or paused.
+   *Enforcer:* `burnManager.test.js` (16 cases, among them 45 ms freezes every 700 ms and 130 ms freezes every 333 ms,
+   each red on `cdf5075c`, and a pause first seen after 5 s with no frame and a hitstop on a stalled frame, each red on
+   `9d020e45`), mutation-proven in `27c1fa05`, `e1e54c2b` and `ba1f7d2b`.
 
 ## 2026-11-02 (opsec home paths) — [KEVIN] the public/private split is punted; [LOOP] every home path blocks
 
