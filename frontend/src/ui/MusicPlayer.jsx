@@ -97,7 +97,7 @@ export default function MusicPlayer() {
     if (key && tracks[key].el.paused) playTrack(tracks[key]);
     // Smooth crossfade: every track's gain ramps from where it is toward its target (VOL * slider for the wanted track, 0
     // for the rest) at FADE_PER_SEC, on the audio clock, so a busy main thread cannot stretch it; once the longest ramp
-    // has run, one timer pauses every track whose target is 0.
+    // has run, every track whose target is 0 is paused (below).
     const now = audioContext.currentTime;
     let longest = 0;
     for (const [k, t] of Object.entries(tracks)) {

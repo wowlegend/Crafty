@@ -103,9 +103,9 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
   registerTestHook('passesOff', (names) => { setLookbookPassesOff(new Set(names)); return [...names]; });
   // Hold a mob in contact: its hit stamp renewed every frame until `on` is false (the feedback-grammar E2E shoots the
   // flash). No damage, knockback or hitstop: only the stamp the look reads. The stamp is written at the START of each
-  // render-loop frame (an R3F before-effect, ahead of every useFrame), so the look reads a stamp of this frame. Written
-  // from a plain requestAnimationFrame it ran after the loop and the look read the previous frame's, and a frame longer
-  // than a second (CI's SwiftShader) made that stamp spent (feedbackGrammar.js hitSequence): no flash, the hit not held.
+  // render-loop frame (an R3F before-effect, ahead of every useFrame), so the look reads a stamp of this frame: a stamp
+  // written after the loop is a frame old when the look reads it, and after a frame longer than a second (CI's
+  // SwiftShader) it is spent (feedbackGrammar.js hitSequence), so that frame draws no flash.
   const held = new Set();
   let stopStamping = null;
   registerTestHook('holdHit', (id, on = true) => {

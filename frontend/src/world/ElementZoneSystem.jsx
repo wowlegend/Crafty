@@ -50,9 +50,8 @@ export function ElementZoneSystem() {
 
     accumRef.current += delta;
     if (accumRef.current < AI_TICK_SEC) return;
-    // The tick spans the world time since the last one, not a fixed 1/15 s: below 15 fps every frame is a tick, and a
-    // fixed credit made the effects' cadence a count of FRAMES (a burning zone hurt once per 1.25 s at 4 fps) while the
-    // zone's life runs on the world clock.
+    // The tick credits the world time it spans, not a fixed 1/15 s: below 15 fps every frame is a tick, so a fixed credit
+    // would tie the effects' cadence to the frame count while the zone's life runs on the world clock.
     const tickSec = accumRef.current;
     accumRef.current = 0;
 
