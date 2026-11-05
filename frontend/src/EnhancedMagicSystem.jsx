@@ -67,8 +67,8 @@ export const EnhancedMagicSystem = React.memo(function EnhancedMagicSystemRender
   const chainRef = useRef([]);
 
 
-  // Fire DoT tickers are owned by a registry so an unmount mid-burn can stop them all — otherwise a burn
-  // still active at teardown would leak a 1s setInterval hammering damage into GameMethods forever.
+  // The fire burns tick only when this component's frame loop pumps them (the useFrame below), so none outlives it;
+  // stopAll on unmount also drops any still active.
   const burnManagerRef = useRef(null);
   if (!burnManagerRef.current) burnManagerRef.current = makeBurnManager();
   useEffect(() => () => burnManagerRef.current?.stopAll(), []);
