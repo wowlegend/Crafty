@@ -200,17 +200,10 @@ describe('makeBurnManager: fire damage over time, a tick per second of world tim
     });
   });
 
-  // A busy main thread runs timers behind frame work while frames keep coming (a 600 ms timer fired after ~5 s under a
-  // 10x CPU throttle, tests/e2e/music-bus.spec.js), and the fireball's burn on the dragon then dealt no tick in its
-  // window (registry REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached). Every timer here runs 5 s late.
-  describe('with every timer held 5 s back, as a busy main thread holds them', () => {
-    let onTime;
-    beforeEach(() => {
-      onTime = globalThis.setInterval;
-      globalThis.setInterval = (fn, ms, ...a) => onTime(fn, ms + 5000, ...a);
-    });
-    afterEach(() => { globalThis.setInterval = onTime; });
-
+  // The frame loop is the burn's only driver: a busy main thread runs timers behind frame work while frames keep coming
+  // (a 600 ms timer fired after ~5 s under a 10x CPU throttle, tests/e2e/music-bus.spec.js). At slow frame rates each
+  // tick still lands on the first frame past its second; that timers alone deal nothing is the no-frame case below.
+  describe('at slow frame rates, each tick lands on the first frame past its second', () => {
     it('ticks on time from the frame loop', () => {
       const hits = [];
       const mgr = makeBurnManager();
