@@ -101,3 +101,37 @@ describe('the zone bridge: a cast the bridge voices is a zone that is on the boa
     expect(voicedCasts, 'the run voiced nothing: the property above was never exercised').toBeGreaterThanOrEqual(10);
   });
 });
+
+// A ZONE HURTS BY WORLD TIME, WHATEVER THE FRAME RATE (registry REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached).
+// The bridge credited a fixed 1/15 s to each of its ticks and dropped the rest of the frame, so below 15 fps every frame
+// was one tick and a zone's effects came once per five FRAMES: at CI's slowest frames a burning zone under the dragon
+// dealt nothing in 3 s of world time, while its life (a world-clock ttl) ran out on time. Same zone, same mob, same 3 s of
+// world time, at 14 fps and at 4 fps (0.25 s: the longest step a frame takes, game/frameStep.js).
+describe('a burning zone hurts by world time, whatever the frame rate', () => {
+  function burnFor(frameSec, worldSec) {
+    cleanup();
+    for (const e of [...ecs.entities]) ecs.remove(e);
+    clearZones(getLiveZones());
+    render(<ElementZoneSystem />);
+    const hits = [];
+    GameMethods.damageMob = (id, dmg, type, source) => { if (source === 'hazard') hits.push({ id, dmg }); return {}; };
+    mob(1, 0, 0);
+    requestZone({ kind: 'burning', pos: { x: 0, y: 1, z: 0 } });
+    let frames = 0;
+    for (let t = 0; t < worldSec - 1e-9; t += frameSec) {
+      clock += frameSec * 1000;
+      act(() => { frame({}, frameSec); });
+      frames += 1;
+    }
+    return { hits: hits.length, frames, zones: getLiveZones().zones.length };
+  }
+
+  it('deals as many ticks in 3 s of world time at 4 fps as at 14 fps', () => {
+    const fast = burnFor(0.07, 3);
+    const slow = burnFor(0.25, 3);
+    expect(fast.zones, `SETUP: the zone was not on the board after 3 s (its ttl is 10 s): ${JSON.stringify(fast)}`).toBe(1);
+    expect(fast.hits, `SETUP: the zone hurt the mob in it fewer than 7 times in 3 s at 14 fps: ${JSON.stringify(fast)}`).toBeGreaterThanOrEqual(7);
+    expect(slow.hits, `at 4 fps the zone hurt the mob ${slow.hits} times in 3 s of world time, at 14 fps ${fast.hits}: ${JSON.stringify({ fast, slow })}`)
+      .toBeGreaterThanOrEqual(fast.hits - 1);
+  });
+});
