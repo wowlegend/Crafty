@@ -38,13 +38,9 @@ async function placeMob(page, distance, type) {
     const s = window.useGameStore.getState();
     window.useGameStore.setState({ isAlive: true, playerHealth: s.maxHealth });
     s.setTimeOfDay(0.5);
-    // The world is held BEFORE the clear, so no mob spawns or walks into the cleared ground while the dissolves run:
-    // held after it, a slow runner's 60 frames were seconds of a live world, and a mob stood within 3 m of the staged
-    // one (registry REVIEW:e2e-flakes:feedback-grammar-windup-near-mob). The weather is held clear: WeatherSystem's
-    // 90 s interval starts a storm on wall time, which darkens every lit face, and on a slow runner it landed between
-    // a case's rest shot and its held shot (the interior dimmed 0.342 -> 0.296). The setter is replaced, as
-    // ore-glow.spec does; the mood eases back to clear on real time through the 60 frames below.
-    s.triggerHitstop(200000);
+    // The weather is held clear: WeatherSystem's 90 s interval starts a storm on wall time, which darkens every lit face,
+    // and on a slow runner it landed between a case's rest shot and its held shot (the interior dimmed 0.342 -> 0.296).
+    // The setter is replaced, as ore-glow.spec does; the mood eases back to clear on real time through the 60 frames.
     window.useGameStore.setState({ weatherMoodBoost: 0, setWeatherMoodBoost: () => {} });
     const cam = window.__threeCamera;
     for (const m of window.__craftyTest.call('readMobs')) {
@@ -58,6 +54,7 @@ async function placeMob(page, distance, type) {
     const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
     s.spawnMob(gx, gz, kind, gy);
     const mob = window.__craftyTest.call('readMobs').find((m) => !before.has(m.id));
+    s.triggerHitstop(200000);
     if (mob) window.__craftyTest.call('faceMob', mob.id, 0);
     for (let i = 0; i < 4; i++) await frame();
     return mob ? mob.id : null;
