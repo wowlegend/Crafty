@@ -13,7 +13,7 @@ import { stepSquad, ALLY_DPS_HIT } from '../game/squadAI.js';
 import { makeHurl, stepHurlChunked, HURL_DAMAGE } from '../game/hurl.js';
 import { makeBurnManager } from '../game/burnManager.js';
 import { STAGGER_MS } from '../game/perfectDodge.js';
-import { worldNow } from '../game/worldClock.js';
+import { worldNow, tickWorldClock } from '../game/worldClock.js';
 
 // THE DRAGON ON THE ONE DAMAGE PATH, A SEEDED STORE PROBE (reset plan row 25; DECISIONS 2026-10-30 item 126). The real
 // boss hook (damageBoss) and the real CombatSystem (damageMob, which routes the dragon's id to damageBoss) are mounted
@@ -89,15 +89,20 @@ describe('each Aspect kit lowers the dragon\'s HP through damageMob', () => {
 
   it('a burn ticks on it, the player\'s damage: the riposte applies while it is staggered', () => {
     const burns = makeBurnManager();
+    // The frame loop as the game runs it: the world clock ticks, then the spell system pumps the burns.
+    const frames = (ms) => act(() => {
+      for (let t = 0; t < ms; t += 20) { vi.advanceTimersByTime(20); tickWorldClock(performance.now()); burns.pump(); }
+    });
+    tickWorldClock(performance.now());
     burns.start(BOSS_TARGET_ID, 2, 10, () => GameMethods.damageMob);
-    act(() => { vi.advanceTimersByTime(1000); });
+    frames(1000);
     settle();
     expect(hp()).toBe(290);
     bossCombat.staggerUntil = worldNow() + 60000;
-    act(() => { vi.advanceTimersByTime(1000); });
+    frames(1000);
     settle();
     expect(hp(), 'the second tick on a staggered dragon is a riposte').toBe(275);
-    act(() => { vi.advanceTimersByTime(3000); });
+    frames(3000);
     settle();
     expect(hp(), 'the burn outlived its two ticks').toBe(275);
     burns.stopAll();

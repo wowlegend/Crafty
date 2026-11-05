@@ -316,8 +316,7 @@ export const EnhancedMagicSystem = React.memo(function EnhancedMagicSystemRender
   }, [spawnTelegraph, createSpellImpact]);
 
   useFrame((state, frameDelta) => {
-    // The burns tick from the frame loop as well as their timers (game/burnManager.js pump): a busy main thread runs a
-    // timer seconds late while it still draws frames.
+    // The burns tick here, on the world clock (game/burnManager.js pump): the frame loop is their only driver.
     burnManagerRef.current.pump();
     // S1-D-M2: in capture mode FREEZE the spell clock (delta=0, time=0) so a driven cast
     // holds a deterministic frozen pose: the projectile stays at its placed mid-flight

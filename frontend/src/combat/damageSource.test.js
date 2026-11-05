@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { isPlayerSource, isDirectPlayerHit, attributionSource } from './damageSource.js';
 import { makeBurnManager } from '../game/burnManager.js';
+import { tickWorldClock } from '../game/worldClock.js';
 
 // THE GAME SHOOK BECAUSE SOMETHING WAS QUIETLY ON FIRE.
 //
@@ -46,14 +47,15 @@ describe('damageSource — attribution and feel are different questions', () => 
 describe('burnManager — the tick declares itself indirect', () => {
   it('passes player-dot, so the tick earns XP without shaking the camera', () => {
     // The reachability half: the predicates above are worth nothing if the burn still omits the
-    // argument. This drives the REAL ticker and reads the REAL call.
+    // argument. This drives the REAL ticker, a second of frames on the world clock, and reads the REAL call.
     vi.useFakeTimers();
     try {
       const calls = [];
       const damageMob = (...args) => { calls.push(args); return { id: 1, health: 50 }; };
       const mgr = makeBurnManager();
+      tickWorldClock(performance.now());
       mgr.start(1, 4, 5, () => damageMob);
-      vi.advanceTimersByTime(1000);
+      for (let t = 0; t < 1000; t += 20) { vi.advanceTimersByTime(20); tickWorldClock(performance.now()); mgr.pump(); }
       expect(calls.length, 'the burn never ticked — the test proves nothing').toBe(1);
       const [, , type, source] = calls[0];
       expect(type).toBe('fireball');

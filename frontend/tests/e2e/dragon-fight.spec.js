@@ -353,8 +353,8 @@ test.describe('the dragon fight', () => {
       };
       // Wait until `done()` holds, at most `maxMs` of real time. A burn and a zone outlive the window that started them,
       // so the next window waits for each to end by its own measure: the burn once it has dealt its ticks (a second
-      // apart on the wall clock, held through a freeze, so a quiet spell is no sign it has ended), the zone once its ttl
-      // of world time has passed.
+      // apart on the world clock, dealt by the frame loop, so a quiet spell is no sign it has ended), the zone once its
+      // ttl of world time has passed.
       const until = async (done, maxMs) => {
         const t0 = performance.now();
         while (!done()) {
