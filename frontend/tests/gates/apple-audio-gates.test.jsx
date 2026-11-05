@@ -242,17 +242,38 @@ describe('the soundtrack obeys the music slider and Mute All on an iPhone, whose
     const { tracks, day } = await startedAt(1);
     expect(ios.audible(day), `SETUP: ${state(tracks)}`).toBeGreaterThan(0);
     // Chromium under load: a 600 ms timer set by Mute All fired after ~5 s while frames kept coming (a 10x CPU throttle,
-    // music-bus.spec.js). Every timer set from here on runs 5 s late; frames still run on time.
+    // music-bus.spec.js). Every timer set from here on runs 5 s late; frames still run on time. The fade's own timer is
+    // told from any other by its delay: the length of the day track's ramp to 0, read from the audio graph.
     const onTime = globalThis.setTimeout;
-    let held = 0;
-    globalThis.setTimeout = (fn, ms, ...args) => { held += 1; return onTime(fn, (ms ?? 0) + 5000, ...args); };
+    const delays = [];
+    globalThis.setTimeout = (fn, ms, ...args) => { delays.push(ms ?? 0); return onTime(fn, (ms ?? 0) + 5000, ...args); };
     try {
+      const mutedAt = ios.ctx.currentTime;
       act(() => ios.gesture(() => useGameStore.getState().setMasterMuted(true)));
-      expect(held, 'SETUP: Mute All set no timer, so this case holds nothing back').toBeGreaterThan(0);
+      const fadeMs = (day.routedBy.outputs[0].gain.ramps.at(-1).at - mutedAt) * 1000;
+      expect(delays.some((ms) => Math.abs(ms - fadeMs) < 1), `SETUP: no timer of the fade's ${fadeMs} ms was held back, so this case tests no late fade timer: ${JSON.stringify(delays)}`)
+        .toBe(true);
       await advance(1000);
       expect(playing(tracks), `1 s after Mute All, its timer held back: ${state(tracks)}`).toEqual([]);
     } finally {
       globalThis.setTimeout = onTime;
+    }
+  });
+
+  // The other half of "whichever comes first": a hidden tab runs no frames, so the fade's timer is what pauses the tracks.
+  it('in a hidden tab, which runs no frames, Mute All still pauses every track within 1 s, by its timer', async () => {
+    const { tracks, day } = await startedAt(1);
+    expect(ios.audible(day), `SETUP: ${state(tracks)}`).toBeGreaterThan(0);
+    const onFrame = globalThis.requestAnimationFrame;
+    let asked = 0;
+    globalThis.requestAnimationFrame = () => { asked += 1; return 0; }; // asked for, never run
+    try {
+      act(() => ios.gesture(() => useGameStore.getState().setMasterMuted(true)));
+      expect(asked, 'SETUP: Mute All asked for no frame, so a hidden tab holds back nothing here').toBeGreaterThan(0);
+      await advance(1000);
+      expect(playing(tracks), `1 s after Mute All in a tab that runs no frames: ${state(tracks)}`).toEqual([]);
+    } finally {
+      globalThis.requestAnimationFrame = onFrame;
     }
   });
 
