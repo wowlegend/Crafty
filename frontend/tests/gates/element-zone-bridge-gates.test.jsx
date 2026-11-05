@@ -126,6 +126,28 @@ describe('a burning zone hurts by world time, whatever the frame rate', () => {
     return { hits: hits.length, frames, zones: getLiveZones().zones.length };
   }
 
+  // The effects carry what a long frame leaves over, so they keep their cadence; the carry must not bunch them. Two effects
+  // ticks less than 0.25 s apart break the damper's 4 Hz bound (FX_TICK_SEC's comment): with 0.07 s frames and every fifth
+  // frame a 0.25 s one, the carry left by a long frame used to fire the next frame too, 0.07 s later.
+  it('never deals two effects ticks less than 0.25 s apart, however the frames fall', () => {
+    cleanup();
+    for (const e of [...ecs.entities]) ecs.remove(e);
+    clearZones(getLiveZones());
+    render(<ElementZoneSystem />);
+    const at = [];
+    GameMethods.damageMob = (id, dmg, type, source) => { if (source === 'hazard') at.push(clock); return {}; };
+    mob(1, 0, 0);
+    requestZone({ kind: 'burning', pos: { x: 0, y: 1, z: 0 } });
+    for (let i = 0; i < 40; i++) {
+      const frameSec = i % 5 === 4 ? 0.25 : 0.07;
+      clock += frameSec * 1000;
+      act(() => { frame({}, frameSec); });
+    }
+    const gaps = at.slice(1).map((t, i) => Math.round(t - at[i]));
+    expect(at.length, `SETUP: the zone hurt the mob ${at.length} times in ${40} frames`).toBeGreaterThanOrEqual(10);
+    expect(Math.min(...gaps), `the gaps between effects ticks, ms of world time: ${gaps.join(', ')}`).toBeGreaterThanOrEqual(250);
+  });
+
   it('deals as many ticks in 3 s of world time at 4 fps as at 14 fps', () => {
     const fast = burnFor(0.07, 3);
     const slow = burnFor(0.25, 3);

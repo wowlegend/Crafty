@@ -16,6 +16,7 @@ const isChainTarget = (e) => isHostile(e) && !e.isAlly;
 const AI_TICK_SEC = 1 / 15; // the bridge cadence (the SquadAISystem stencil)
 const SFX_BY_KIND = { burning: 'ignite', frozen: 'freeze', conductive: 'zap', resonant: 'rune' };
 const FX_TICK_SEC = 0.3;    // zone effects at ~3.3Hz — the React-thrash damper (<=4Hz, load-bearing)
+const FX_MIN_GAP_SEC = 0.25; // the damper's bound: two effects ticks are never closer than 4 Hz's period of world time
 // A zone paints the ground, so it reaches the dragon only when the dragon is down on it (game/bossCombat.js bossTargets).
 const ON_THE_GROUND = Object.freeze({ groundOnly: true });
 
@@ -33,6 +34,7 @@ export function getLiveZones() { return liveZones; }
 export function ElementZoneSystem() {
   const accumRef = useRef(0);
   const fxAccumRef = useRef(0);
+  const fxSinceRef = useRef(0); // world seconds since the last effects tick
   const prevIsDayRef = useRef(true);
   const dayMotifPlayedRef = useRef(false); // music-motif v2: the stinger plays on the DAY'S FIRST zone only
   const zonesActiveRef = useRef(false); // tracks zone presence -> clear frozen-slow ONCE when the last zone expires
@@ -92,9 +94,12 @@ export function ElementZoneSystem() {
     zonesActiveRef.current = true;
 
     fxAccumRef.current += tickSec;
-    if (fxAccumRef.current < FX_TICK_SEC) return;
-    // The remainder is carried (at most one effects tick per frame), so the cadence is FX_TICK_SEC of world time.
+    fxSinceRef.current += tickSec;
+    if (fxAccumRef.current < FX_TICK_SEC || fxSinceRef.current < FX_MIN_GAP_SEC) return;
+    // The remainder is carried (at most one effects tick per frame), so the cadence is FX_TICK_SEC of world time; what a
+    // long frame leaves over drains at most at the damper's 4 Hz.
     fxAccumRef.current = Math.min(fxAccumRef.current - FX_TICK_SEC, FX_TICK_SEC);
+    fxSinceRef.current = 0;
 
     if (GameMethods.damageMob) {
       applyZoneEffects(liveZones.zones, bossTargets(mobsQuery.entities, undefined, ON_THE_GROUND), GameMethods.damageMob);
